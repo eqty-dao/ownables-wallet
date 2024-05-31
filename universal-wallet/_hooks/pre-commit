@@ -1,0 +1,19 @@
+#!/bin/sh
+
+echo "### Checking formatting with prettier"
+./node_modules/.bin/prettier -c ./src
+if [ $? -ne 0 ]; then
+  echo "[i]  Running fixes. Check and re-add any changed files"
+  ./run format fix
+  exit -1;
+fi
+
+echo "### Checking with eslint"
+./node_modules/.bin/eslint --ext .js,.jsx,.ts,.tsx ./src
+if [ $? -ne 0 ]; then exit -1; fi
+
+echo "### Checking types with TypeScript"
+./node_modules/.bin/tsc --noEmit --allowJs
+if [ $? -ne 0 ]; then exit -1; fi
+
+echo "Done"

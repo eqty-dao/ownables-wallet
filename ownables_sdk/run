@@ -1,0 +1,96 @@
+#!/bin/sh
+# v1.0.0 helper script for react-native projects
+
+# IMPORTANT to import cargo environment variables before running any rust commands
+. "$HOME/.cargo/env"
+
+check_environment() {
+  ENV=$1
+  if [ "$ENV" = "prod" ]; then
+    export APP_ENV=prod
+    return 0
+  elif [ "$ENV" = "staging" ]; then
+    export APP_ENV=stg
+    return 0
+  else
+    echo "Environment must by prod or staging"
+    exit 255
+  fi
+}
+
+ci_install_rust() {
+  curl https://sh.rustup.rs -sSf | sh -s -- -y
+  # Need to re-import environment variables after installing rust
+  . "$HOME/.cargo/env"
+  curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+  rustup default stable
+  rustup update stable
+  rustup target add wasm32-unknown-unknown
+  rustup --version
+  cargo --version
+  wasm-pack --version
+}
+
+ci_install_pnpm() {
+  # TODO change back to pnpm
+  npm -g install yarn
+  yarn install
+}
+
+
+createZip(){
+  rm build.zip
+  zip -q -9 -r build.zip build/
+  echo "Zip finished with code: $?"
+}
+
+
+build(){
+  check_environment $1
+  if [ "$APP_ENV" = "prod" ]; then
+    cp -f env.prod .env
+  else
+    cp -f env.stg .env
+  fi
+
+  yarn run build
+}
+
+moveToAndroid(){
+  rm -rf ../universal-wallet/android/app/src/main/assets/www
+  mkdir -p ../universal-wallet/android/app/src/main/assets/www
+  cp -R ./build/* ../universal-wallet/android/app/src/main/assets/www/
+}
+
+moveToiOS(){
+  rm -rf ../universal-wallet/www
+  mkdir -p ../universal-wallet/www
+  cp -R ./build/* ../universal-wallet/www/
+}
+
+moveToPlatforms(){
+  createZip
+
+  # unzip ./build.zip
+
+  moveToAndroid
+  moveToiOS
+}
+
+
+code_check_format() {
+  if [ "$1" = "" ]; then echo "This command requires a file parameter"; exit; fi
+
+  FILE=$1
+  ../universal-wallet/node_modules/.bin/prettier --write --list-different $FILE
+}
+
+if [ "$1" = "ci-install-rust" ]; then ci_install_rust ; exit $?; fi
+if [ "$1" = "ci-install-yarn" ]; then ci_install_pnpm ; exit $?; fi
+if [ "$1" = "ci-zip" ]; then createZip ; exit $?; fi
+
+if [ "$1" = "build" ]; then build $2; exit $?; fi
+if [ "$1" = "link-build" ]; then moveToPlatforms; exit $?; fi
+if [ "$1" = "format" ]; then code_check_format $2; exit $?; fi
+
+echo "Command not found"

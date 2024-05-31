@@ -1,0 +1,19 @@
+{
+  "name": "gdrive",
+  "version": "1.0.0",
+  "description": "",
+  "main": "gdrive.js",
+  "scripts": {
+    "build": "esbuild gdrive.source.js --bundle --platform=node --minify --outfile=../gdrive.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "google-auth-library": "^8.7.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.9"
+  }
+}

@@ -1,0 +1,300 @@
+#!/bin/sh
+# script for handling IOS and android mobile application signing
+
+IS_FLUTTER=0
+IS_REACTNATIVE=1
+
+####   Android Key management
+
+android_key_create() {
+  if [ "$ANDROID_KEY_FILE" = "" ]; then echo "ℹ️  ANDROID_KEY_FILE can not be blank"; exit; fi
+  if [ "$ANDROID_KEY_INFO" = "" ]; then echo "ℹ️  ANDROID_KEY_INFO can not be blank"; exit; fi
+  if [ "$ANDROID_KEYSTORE_PASSWORD" = "" ]; then echo "ℹ️  ANDROID_KEYSTORE_PASSWORD can not be blank"; exit; fi
+
+  keytool -genkeypair -v -keystore $ANDROID_KEY_FILE \
+    -alias upload \
+    -keyalg RSA -keysize 2048 -validity 9125 \
+    -dname "$ANDROID_KEY_INFO" \
+    -storepass $ANDROID_KEYSTORE_PASSWORD
+}
+
+android_key_test() {
+  echo "** Save android key as a secret environment variable:\n"
+  base64 $ANDROID_KEY_FILE
+  echo " "
+
+  # read keystore file and password from environment file
+  keytool -v -list -alias upload -keystore $ANDROID_KEY_FILE -storepass $ANDROID_KEYSTORE_PASSWORD | grep 'Valid from'
+  if [ $? == 0 ]; then echo "✅ SUCCESS: Key and password match"; else echo "❌ FAIL: Key test failed"; fi
+}
+
+
+android_create_debug_keystore() {
+  keytool -genkey -v -keystore ./android/app/debug.keystore -storepass android -alias androiddebugkey \
+   -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+}
+
+
+android_flutter_patch() {
+# Patches the android app/build.gradle file to sign release builds with a production key
+  APP_BUILD_FILE=./android/app/build.gradle
+
+  echo "ℹ️ PATCHING: $APP_BUILD_FILE"
+  # Make backup of original file
+  if [ ! -f "${APP_BUILD_FILE}_original" ]; then cp $APP_BUILD_FILE ${APP_BUILD_FILE}_original; fi
+  grep "// ### SCRIPTED PATCH by android_patch_app_build_gradle" $APP_BUILD_FILE > /dev/null
+  if [ $? = 0 ]; then echo "!! android/app/build.gradle already patched"; return 0; fi
+
+  # Update signingConfigs
+  export SEARCH="    buildTypes {
+        release {"
+  export REPLACE="    signingConfigs {
+        // ### SCRIPTED PATCH by android_patch_app_build_gradle
+        release {
+            Properties keyProperties = new Properties()
+            def keystorePropertiesFile = rootProject.file('key.properties')
+            if (keystorePropertiesFile.exists()) {
+                keyProperties.load(keystorePropertiesFile.newDataInputStream())
+                keyAlias keyProperties.getProperty('keyAlias')
+                keyPassword keyProperties.getProperty('keyPassword')
+                storeFile keyProperties['storeFile'] ? file(keyProperties['storeFile']) : null
+                storePassword keyProperties.getProperty('storePassword')
+            }
+        }
+    }
+    buildTypes {
+      release {"
+
+  java -cp _tools/ android_multitool replace android/app/build.gradle
+
+  # Update buildTypes
+  export SEARCH="            signingConfig signingConfigs.debug"
+  export REPLACE="            signingConfig signingConfigs.release"
+
+  java -cp _tools/ android_multitool replace android/app/build.gradle
+}
+
+android_key_add() {
+  if [ "$IS_FLUTTER" = "1" ]; then android_flutter_patch; fi
+
+  echo "storePassword=$ANDROID_KEYSTORE_PASSWORD
+keyPassword=$ANDROID_KEYSTORE_PASSWORD
+keyAlias=upload
+storeFile=$PWD/$ANDROID_KEY_FILE
+" > $PWD/android/key.properties
+
+  FULL_KEYFILE_PATH=$PWD/$ANDROID_KEY_FILE
+  echo $FULL_KEYFILE_PATH
+  echo $ANDROID_UPLOAD_KEY_BASE64 | base64 --decode > $FULL_KEYFILE_PATH
+}
+
+android_key_remove() {
+  FULL_KEYFILE_PATH=$PWD/$ANDROID_KEY_FILE
+  rm -f $FULL_KEYFILE_PATH
+}
+
+
+
+####   IOS Key management
+ios_make_request_file() {
+  TYPE=$1
+  FILE_NAME=$IOS_TMP_FOLDER/$IOS_CSR_TEAM_NAME-$TYPE
+  openssl genrsa -out $FILE_NAME.key 2048
+  openssl req -new -key $FILE_NAME.key -out $FILE_NAME.csr \
+    -subj "/emailAddress=$IOS_CSR_EMAIL, CN=$APP_BUNDLEID-$TYPE, C=$IOS_CSR_COUNTRY_CODE"
+  openssl req -noout -text -in $FILE_NAME.csr
+}
+
+ios_key_request() {
+  if [ ! -d $IOS_TMP_FOLDER ]; then mkdir $IOS_TMP_FOLDER ; fi
+
+  # Create Code Signing Request (CSR) for IOS distribution & development certificates
+  ios_make_request_file dist
+  ios_make_request_file dev
+}
+
+ios_convert_to_p12() {
+  TYPE=$1
+  FILE_NAME=$IOS_TMP_FOLDER/$IOS_CSR_TEAM_NAME-$TYPE
+
+  if [ ! -f "$FILE_NAME.cer" ]; then return 0; fi
+  openssl x509 -in $FILE_NAME.cer -inform DER -out $FILE_NAME.pem -outform PEM
+  openssl pkcs12 -export -legacy -clcerts -inkey $FILE_NAME.key -in $FILE_NAME.pem \
+    -passout pass:"$IOS_CERT_P12_PASSWORD" -out $FILE_NAME.p12
+  rm $FILE_NAME.pem
+}
+
+ios_install_provisioning_profile() {
+  echo "## Provisioning profile names and UUID\n"
+  for file in "$IOS_TMP_FOLDER/"*".mobileprovision"; do
+    PROVPROFILE_PATH=$file
+    # list out the provisioning profiles in the ios secrets folder
+    grep '<key>Name</key>' -A1 -a $PROVPROFILE_PATH
+    grep '<key>UUID</key>' -A1 -a $PROVPROFILE_PATH
+    echo " "
+    PROFILE_UUID=`grep UUID -A1 -a $PROVPROFILE_PATH | grep -io "[-A-F0-9]\{36\}"`
+    cp $PROVPROFILE_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
+  done
+}
+
+ios_key_create() {
+  echo "ℹ️  Warning: creating the encrypted IOS secrets file will delete the '$IOS_TMP_FOLDER' folder"
+  echo "ℹ️  Please make a separate backup before continuing"
+  echo "ℹ️  Type YES (in all capital) to continue"
+  read CONFIRM
+
+  if [ ! "$CONFIRM" = "YES" ]; then echo "❌ Aborted!"; exit; fi
+
+  # Generate the .p12 files
+  ios_convert_to_p12 dist
+  ios_convert_to_p12 dev
+  
+
+  # import into this computer
+  security unlock-keychain login.keychain
+  if [ ! "$?" = "0" ]; then echo "❌ Wrong password.  Aborting"; exit -1; fi 
+  echo "ℹ️  Proceeding to generate P12 Certs, your given team name is $IOS_CSR_TEAM_NAME . Should see 2x identity imported."
+  security import $IOS_TMP_FOLDER/$IOS_CSR_TEAM_NAME-dist.p12 -k login.keychain -P "$IOS_CERT_P12_PASSWORD"
+  security import $IOS_TMP_FOLDER/$IOS_CSR_TEAM_NAME-dev.p12 -k login.keychain -P "$IOS_CERT_P12_PASSWORD"
+
+  echo "ℹ️  Now installing the profile..."
+  ios_install_provisioning_profile
+
+   echo "ℹ️  Removing useless files from secrets folder..."
+  # compress and encrypt secrets folder
+  rm $IOS_TMP_FOLDER/.DS_Store
+  rm $IOS_TMP_FOLDER/*.csr
+  rm $IOS_TMP_FOLDER/*.cer
+  rm $IOS_TMP_FOLDER/*.key
+  rm $IOS_TMP_FOLDER/*.pem
+  rm $IOS_TMP_FOLDER/*.plist
+
+  echo "ℹ️  Creating Secrets file - ios_secrets.tgz , encrypted with SECRETS_PASSWORD. --- This is the file you commit to your Repo. ----"  
+  # Warning, you can't use an exclamation mark in here yet - it's an expansion charecter in Bash: https://unix.stackexchange.com/questions/33339/cant-use-exclamation-mark-in-bash
+  tar -zcvf ios_secrets.tgz $IOS_TMP_FOLDER
+  echo "$SECRETS_PASSWORD" | gpg --batch --yes --passphrase-fd 0 -c ios_secrets.tgz
+  rm ios_secrets.tgz
+  rm -rf $IOS_TMP_FOLDER
+  echo "ℹ️  Review the above for errors first, then proceed with ios-key-add to add them locally."
+}
+
+
+ios_get_secrets() {
+  echo "ℹ️  Getting signing certificate and provisioning profile"
+  echo "$SECRETS_PASSWORD" | gpg --batch --yes --passphrase-fd 0 ios_secrets.tgz.gpg
+  tar -zxvf ios_secrets.tgz --no-same-owner
+  rm ios_secrets.tgz
+
+  # Move provisioning profile to the right location
+  mkdir -pv ~/Library/MobileDevice/Provisioning\ Profiles
+  ios_install_provisioning_profile
+
+  # DEBUG-TMP show folder contents
+  # echo ">>> Provisioning profiles"
+  # ls -alh ~/Library/MobileDevice/Provisioning\ Profiles/
+  # echo ">>> secrets folder"
+  # ls -alh $IOS_TMP_FOLDER
+}
+
+ios_flutter_set_development_team() {
+  # Change project settings to allow build to succeed
+  AWK_SET_CODE_SIGNING="{ if (match(\$0, /DEVELOPMENT_TEAM =/)) {
+    print sprintf(\"%32s\", \" \") \"DEVELOPMENT_TEAM = $IOS_TEAM_ID;\";
+  } else {
+    print \$0;
+  }; }"
+  awk "$AWK_SET_CODE_SIGNING" ios/Runner.xcodeproj/project.pbxproj > ios/Runner.xcodeproj/project.pbxproj_tmp
+
+  cp ios/Runner.xcodeproj/project.pbxproj_tmp ios/Runner.xcodeproj/project.pbxproj
+  rm ios/Runner.xcodeproj/project.pbxproj_tmp
+}
+
+ios_key_add() {
+  # SOURCE: https://docs.github.com/en/enterprise-server@3.4/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
+
+  echo "ℹ️  Adding signing certificate and provisioning profile"
+
+  ios_get_secrets
+  if [ "$IS_FLUTTER" = "1" ]; then ios_flutter_set_development_team ; fi
+
+  # output build/ios/iphoneos/Runner.app
+  # To list all identities: security find-identity -v -p codesigning
+  # security list-keychains
+  KEYCHAIN_FULLNAME="${IOS_KEYCHAIN_NAME}.keychain-db"
+  echo "Keychain name: $KEYCHAIN_FULLNAME"
+
+  # create and append keychain to the search list
+  security create-keychain -p "$SECRETS_PASSWORD" "$KEYCHAIN_FULLNAME"
+
+  # REF: https://stackoverflow.com/questions/20391911/os-x-keychain-not-visible-to-keychain-access-app-in-mavericks
+  # Fixes bug where newly created keychain is not visible in the keychain app
+  security list-keychains -d user -s login.keychain "$KEYCHAIN_FULLNAME"
+
+  # Unlock the keychain
+  security set-keychain-settings -lut 21600 "$KEYCHAIN_FULLNAME"
+  security unlock-keychain -p "$SECRETS_PASSWORD" "$KEYCHAIN_FULLNAME"
+
+  # Import certificate
+  # echo $IOS_CERT_P12_BASE64 | base64 --decode > $IOS_TMP_FOLDER/ios_cert.p12
+  security import $IOS_TMP_FOLDER/$IOS_CSR_TEAM_NAME-dist.p12 -k "$KEYCHAIN_FULLNAME" -P "$IOS_CERT_P12_PASSWORD" -A -t cert -f pkcs12
+  security import $IOS_TMP_FOLDER/$IOS_CSR_TEAM_NAME-dev.p12 -k "$KEYCHAIN_FULLNAME" -P "$IOS_CERT_P12_PASSWORD" -A -t cert -f pkcs12
+
+  # Detect the iOS identity
+  IOS_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_FULLNAME" | head -1 | grep '"' | sed -e 's/[^"]*"//' -e 's/".*//')
+  IOS_UUID=$(security find-identity -v -p codesigning "$KEYCHAIN_FULLNAME" | head -1 | grep '"' | awk '{print $2}')
+
+  # New requirement for MacOS 10.12
+  security set-key-partition-list -S apple-tool:,apple: -s -k $SECRETS_PASSWORD $KEYCHAIN_FULLNAME > /dev/null
+
+  # echo "ℹ️  The following certificate has been added to the local keychain ..."
+  # FOR DEBUG Show signing keys
+  # security find-identity -v -p codesigning
+
+  echo "ℹ️  The following certificate will be used: (next line must not be blank)"
+  echo "$IOS_IDENTITY  $IOS_UUID"
+
+  echo "ℹ️  Key add complete - review above messages."
+  echo "ℹ️  I recommend checking you have a _ios_secrets folder, that also has .p12 files in it. (confirms the secrets extraction worked)"
+
+  # SIGN APP
+  # codesign -v -s "Apple Distribution: Rocket Lab Pty Ltd (YKXG58E5J6)" ./build/ios/iphoneos/Runner.app
+}
+
+ios_key_remove() {
+  KEYCHAIN_FULLNAME="${IOS_KEYCHAIN_NAME}.keychain-db"
+  echo "Keychain name: $KEYCHAIN_FULLNAME"
+  security delete-keychain "$KEYCHAIN_FULLNAME"
+  security find-identity -v -p codesigning
+  rm -rf $IOS_TMP_FOLDER
+}
+
+# Compile multitool if it does not exist
+if [ ! -f _tools/android_multitool.class ]; then javac _tools/android_multitool.java; fi
+
+if [ -f ./env.settings ]; then . ./env.settings; fi
+if [ -f ./.env.deploy ]; then . ./.env.deploy; fi
+
+# IOS management scripts
+if [ "$1" = "ios-key-request" ]; then ios_key_request; exit; fi
+if [ "$1" = "ios-key-create" ]; then ios_key_create; exit; fi
+if [ "$1" = "ios-key-get" ]; then ios_get_secrets; exit; fi
+if [ "$1" = "ios-key-add" ]; then ios_key_add; exit; fi
+if [ "$1" = "ios-key-remove" ]; then ios_key_remove; exit; fi
+if [ "$1" = "ios-key-check" ]; then codesign -dvvv "$2"; exit; fi
+
+
+# Android management scripts
+if [ "$1" = "android-key-create" ]; then android_key_create; exit; fi
+if [ "$1" = "android-key-test" ]; then android_key_test; exit; fi
+if [ "$1" = "android-key-add" ]; then android_key_add; exit; fi
+if [ "$1" = "android-key-remove" ]; then android_key_remove; exit; fi
+# if [ "$1" = "android-key-check" ]; then jarsigner -verify -verbose -certs "$2"; exit; fi
+if [ "$1" = "android-key-check" ]; then keytool -printcert -jarfile "$2"; exit; fi
+
+if [ "$1" = "test" ]; then echo "TODO: PLACEHOLDER"; exit; fi
+
+if [ "$1" = "patch-flutter" ]; then android_flutter_patch; exit; fi
+if [ "$1" = "android-create-debug" ]; then android_create_debug_keystore; exit; fi
+
+
+echo "Command not found"

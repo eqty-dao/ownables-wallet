@@ -1,0 +1,402 @@
+import { Component, ReactNode, RefObject, createRef } from "react";
+import { Modal, Box, Paper, Tooltip } from "@mui/material";
+import OwnableActionsFab from "./OwnableActionsFab";
+import { themeColors } from "../../theme/themeColors";
+import { themeStyles } from "../../theme/themeStyles";
+import PackageService from "../../services/Package.service";
+import { ReactComponent as BackIcon } from "../../assets/back_icon.svg";
+import { Binary, EventChain } from "@ltonetwork/lto";
+import LTOService from "../../services/LTO.service";
+import OwnableService, {
+  OwnableRPC,
+  StateDump,
+} from "../../services/Ownable.service";
+import TypedDict from "../../interfaces/TypedDict";
+import { TypedPackage } from "../../interfaces/TypedPackage";
+import { ReactComponent as CircleCheckIcon } from "../../assets/circle_check_icon.svg";
+import {
+  TypedMetadata,
+  TypedOwnableInfo,
+} from "../../interfaces/TypedOwnableInfo";
+import ownableErrorMessage from "../../utils/ownableErrorMessage";
+import shortId from "../../utils/shortId";
+import asDownload from "../../utils/asDownload";
+import EventChainService from "../../services/EventChain.service";
+import isObject from "../../utils/isObject";
+import OwnableFrame from "../OwnableFrame";
+import If from "../If";
+import { Cancelled, connect as rpcConnect } from "simple-iframe-rpc";
+import LtoOverlay, { LtoOverlayBanner } from "./LtoOverlay";
+import OwnableInfoDrawer from "./OwnableInfoDrawer";
+import TransferOwnableDrawer from "./TransferOwnableDrawer";
+import FavoriteButton from "./FavoriteButton";
+import AddToCollectionDrawer from "./AddtoCollectionDrawer";
+interface OwnableDetailsModalProps {
+  onClose: (shouldRefresh: boolean) => void;
+  chain: EventChain;
+  packageCid: string;
+  onConsume: (info: TypedOwnableInfo) => void;
+  onError: (title: string, message: string) => void;
+  onDelete: () => void;
+  children?: ReactNode;
+}
+
+interface OwnableDetailsModalState {
+  showMenu: boolean;
+  showInfo: boolean;
+  showAddToCollection: boolean;
+  showTransferDialog: boolean;
+  initialized: boolean;
+  applied: Binary;
+  stateDump: StateDump;
+  info?: TypedOwnableInfo;
+  metadata: TypedMetadata;
+  pkgId: string;
+}
+
+const backButtonStyle = {
+  border: "none",
+  background: "none",
+  paddingTop: "30px",
+  paddingLeft: "0px",
+  paddingBottom: "0px",
+};
+
+const modalStyle = {
+  overflowY: "auto",
+  height: "100%",
+  position: "fixed",
+  top: "auto",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  bgcolor: themeColors.darkBg,
+  boxShadow: 24,
+  p: 0,
+  zIndex: 1300,
+  transition: "transform 0.3s ease-out",
+};
+
+const ownableNameStyle = {
+  ...themeStyles.fs24fw500lh32,
+  marginTop: "17px",
+  marginBottom: "0px",
+  textAlign: "center" as const,
+};
+
+const ownableDescStyle = {
+  ...themeStyles.fs16fw400lh21,
+  overflow: "auto" as any,
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical" as any,
+  WebkitLineClamp: 3,
+  marginTop: "5px",
+  marginBottom: "16px",
+  textAlign: "center" as const,
+};
+
+const paperStyle = {
+  aspectRatio: "1/1",
+  position: "relative",
+  borderRadius: "16px",
+  overflow: "hidden",
+};
+
+const checkIcon = <CircleCheckIcon style={{ width: "40px", height: "40px" }} />;
+
+export default class OwnableDetailsModal extends Component<
+  OwnableDetailsModalProps,
+  OwnableDetailsModalState
+> {
+  private readonly pkg: TypedPackage;
+  private readonly iframeRef: RefObject<HTMLIFrameElement>;
+  private busy = false;
+
+  constructor(props: OwnableDetailsModalProps) {
+    super(props);
+    this.pkg = PackageService.info(props.packageCid);
+    this.iframeRef = createRef();
+    this.state = {
+      showMenu: false,
+      showInfo: false,
+      showAddToCollection: false,
+      pkgId: "",
+      showTransferDialog: false,
+      initialized: false,
+      applied: new EventChain(this.props.chain.id).latestHash,
+      stateDump: [],
+      metadata: {
+        name: this.pkg.title,
+        description: this.pkg.description,
+      },
+    };
+  }
+
+  get chain(): EventChain {
+    return this.props.chain;
+  }
+
+  get isTransferred(): boolean {
+    return !!this.state.info && this.state.info.owner !== LTOService.address;
+  }
+
+  private async transfer(to: string): Promise<void> {
+    await this.execute({ transfer: { to: to } });
+
+    const zip = await OwnableService.zip(this.chain);
+    const content = await zip.generateAsync({ type: "blob" });
+
+    const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+      this.chain.state.base58,
+      8,
+      ""
+    )}.zip`;
+
+    asDownload(content, filename);
+  }
+
+  private async refresh(stateDump?: StateDump): Promise<void> {
+    if (!stateDump) stateDump = this.state.stateDump;
+    if (this.pkg.hasWidgetState)
+      await OwnableService.rpc(this.props.chain.id).refresh(stateDump);
+    const info = (await OwnableService.rpc(this.props.chain.id).query(
+      { get_info: {} },
+      stateDump
+    )) as TypedOwnableInfo;
+    const metadata = this.pkg.hasMetadata
+      ? ((await OwnableService.rpc(this.props.chain.id).query(
+          { get_metadata: {} },
+          stateDump
+        )) as TypedMetadata)
+      : this.state.metadata;
+    this.setState({ info, metadata });
+  }
+
+  private async apply(partialChain: EventChain): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+
+    const stateDump =
+      (await EventChainService.getStateDump(
+        this.props.chain.id,
+        partialChain.state
+      )) || // Use stored state dump if available
+      (await OwnableService.apply(partialChain, this.state.stateDump));
+
+    await this.refresh(stateDump);
+
+    this.setState({ applied: this.props.chain.latestHash, stateDump });
+    this.busy = false;
+  }
+
+  private async execute(msg: TypedDict): Promise<void> {
+    let stateDump: StateDump;
+
+    try {
+      stateDump = await OwnableService.execute(
+        this.chain,
+        msg,
+        this.state.stateDump
+      );
+    } catch (error) {
+      this.props.onError(
+        "The Ownable returned an error",
+        ownableErrorMessage(error)
+      );
+      return;
+    }
+
+    await OwnableService.store(this.chain, stateDump);
+
+    await this.refresh(stateDump);
+    this.setState({ applied: this.chain.latestHash, stateDump });
+  }
+
+  private windowMessageHandler = async (event: MessageEvent) => {
+    if (
+      !isObject(event.data) ||
+      !("ownable_id" in event.data) ||
+      event.data.ownable_id !== this.chain.id
+    )
+      return;
+    if (this.iframeRef.current!.contentWindow !== event.source)
+      throw Error("Not allowed to execute msg on other Ownable");
+
+    await this.execute(event.data.msg);
+  };
+
+  async componentDidMount() {
+    window.addEventListener("message", this.windowMessageHandler);
+  }
+
+  async componentDidUpdate(
+    _: OwnableDetailsModalProps,
+    prev: OwnableDetailsModalState
+  ): Promise<void> {
+    const partial = this.props.chain.startingAfter(this.state.applied);
+
+    if (partial.events.length > 0) await this.apply(partial);
+    else if (
+      this.state.initialized !== prev.initialized ||
+      this.state.applied.hex !== prev.applied.hex
+    )
+      await this.refresh();
+  }
+
+  async onLoad(): Promise<void> {
+    if (!this.pkg.isDynamic) {
+      await OwnableService.initStore(this.chain, this.pkg.cid);
+      return;
+    }
+
+    const iframeWindow = this.iframeRef.current!.contentWindow;
+
+    const rpc = rpcConnect<Required<OwnableRPC>>(window, iframeWindow, "*", {
+      timeout: 5000,
+    });
+
+    try {
+      await OwnableService.init(this.chain, this.pkg.cid, rpc);
+      this.setState({ initialized: true });
+    } catch (e) {
+      if (e instanceof Cancelled) return;
+      this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
+    }
+  }
+
+  componentWillUnmount() {
+    OwnableService.clearRpc(this.chain.id);
+    window.removeEventListener("message", this.windowMessageHandler);
+  }
+
+  toggleMenu = () => {
+    this.setState((prevState) => ({
+      showMenu: !prevState.showMenu,
+    }));
+  };
+
+  toggleShowInfo = () => {
+    this.setState((prevState) => ({
+      showInfo: !prevState.showInfo,
+    }));
+  };
+
+  toggleShowTransferDialog = () => {
+    this.setState((prevState) => ({
+      showTransferDialog: !prevState.showTransferDialog,
+    }));
+  };
+
+  BackButton = () => (
+    <button onClick={() => this.props.onClose(true)} style={backButtonStyle}>
+      <BackIcon />
+    </button>
+  );
+
+  onConsumePressed = () => {
+    !!this.state.info && this.props.onConsume(this.state.info);
+  };
+
+  onClose = () => this.props.onClose(false);
+
+  onValidate = (address: string) => {
+    if (!LTOService.isValidAddress(address)) return "Invalid address";
+    if (LTOService.address === address) return "Can't transfer to own account";
+  };
+
+  toggleAddToCollection = (pkg: string) =>
+    this.setState({
+      showAddToCollection: !this.state.showAddToCollection,
+      pkgId: pkg,
+    });
+
+  closeAddToCollection = () =>
+    this.setState({ showAddToCollection: false, pkgId: "" });
+
+  render() {
+    return (
+      <Modal
+        open={true}
+        onClose={this.props.onClose}
+        aria-labelledby="modal-title"
+        aria-describedby="modal-description"
+        sx={modalStyle}
+      >
+        <Box sx={{ ...modalStyle, p: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              justifyContent: "space-between",
+            }}
+          >
+            <this.BackButton />
+            <FavoriteButton packageName={this.props.chain.id} />
+          </Box>
+          <p style={ownableNameStyle}>{this.state.metadata?.name}</p>
+          <p style={ownableDescStyle}>{this.state.metadata?.description}</p>
+
+          <Paper sx={paperStyle}>
+            <OwnableFrame
+              id={this.chain.id}
+              packageCid={this.pkg.cid}
+              isDynamic={this.pkg.isDynamic}
+              iframeRef={this.iframeRef}
+              onLoad={() => this.onLoad()}
+            />
+
+            <If condition={this.isTransferred}>
+              <Tooltip
+                title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+                followCursor
+              >
+                <LtoOverlay isForDetailsScreen={true}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={true}>
+                    Transferred
+                  </LtoOverlayBanner>
+                </LtoOverlay>
+              </Tooltip>
+            </If>
+          </Paper>
+          <OwnableActionsFab
+            onDelete={this.props.onDelete}
+            open={this.state.showMenu}
+            onOpen={this.toggleMenu}
+            onClose={this.toggleMenu}
+            closeModal={this.onClose}
+            packageCid={this.props.packageCid}
+            isConsumable={this.pkg.isConsumable && !this.isTransferred}
+            isTransferable={this.pkg.isTransferable && !this.isTransferred}
+            chain={this.props.chain}
+            metadata={this.state.metadata}
+            onShowInfo={this.toggleShowInfo}
+            onConsume={this.onConsumePressed}
+            onTransfer={this.toggleShowTransferDialog}
+            onAddToCollection={this.toggleAddToCollection}
+          />
+          <OwnableInfoDrawer
+            open={this.state.showInfo}
+            onClose={this.toggleShowInfo}
+            chain={this.props.chain}
+            metadata={this.state.metadata}
+          />
+          <TransferOwnableDrawer
+            title="Transfer Ownable"
+            open={this.state.showTransferDialog}
+            onClose={this.toggleShowTransferDialog}
+            onSubmit={(address) => this.transfer(address)}
+            ok="Transfer"
+            validate={this.onValidate}
+            TextFieldProps={{ label: "Recipient address" }}
+          />
+          <AddToCollectionDrawer
+            title="Add to Collection"
+            open={this.state.showAddToCollection}
+            onClose={this.closeAddToCollection}
+            pkgId={this.props.chain.id}
+          />
+        </Box>
+      </Modal>
+    );
+  }
+}

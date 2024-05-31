@@ -1,0 +1,1093 @@
+#!/bin/sh
+# v1.0.0 helper script for react-native projects
+
+# This should prevent the metro bundler from opening up during build
+export RCT_NO_LAUNCH_PACKAGER=true
+if [ "$1" = "android" ]; then export RCT_NO_LAUNCH_PACKAGER=false ; fi
+if [ "$1" = "ios" ]; then export RCT_NO_LAUNCH_PACKAGER=false ; fi
+
+is_ios() {
+  # if OSTYPE variable contains darwin, then this must be be for IOS platform
+  if [ "${OSTYPE#darwin}" != "$OSTYPE" ]; then
+    export TARGET_IS_IOS=1
+  else
+    export TARGET_IS_IOS=0
+  fi
+}
+# set variable TARGET_IS_IOS to indicate if this mobile platform is IOS, otherwise default is Android
+is_ios
+
+
+check_environment() {
+  ENV=$1
+  if [ "$ENV" = "prod" ]; then
+    export APP_ENV=prod
+    return 0
+  elif [ "$ENV" = "staging" ]; then
+    export APP_ENV=stg
+    return 0
+  else
+    echo "Environment must by prod or staging"
+    exit 255
+  fi
+}
+
+code_check_format() {
+  if [ "$1" = "fix" ]; then
+    ./node_modules/.bin/prettier --write --list-different ./src
+  else
+    ./node_modules/.bin/prettier --check ./src
+  fi
+  exit $?
+}
+
+code_check_lint() {
+  if [ "$1" = "fix" ]; then
+    ./node_modules/.bin/eslint --fix --ext .js,.jsx,.ts,.tsx ./src
+  else
+    ./node_modules/.bin/eslint --ext .js,.jsx,.ts,.tsx ./src
+  fi
+  exit $?;
+}
+
+
+ci_install() {
+  npm install --global yarn
+  yarn install
+}
+
+
+ci_install_ios_pods() {
+  cd ios
+  pod install
+  cd ..
+}
+
+
+ci_set_autocommit_user() {
+  git config user.name "GitHub Actions Bot"
+  git config user.email "github@users.noreply.github.com"
+}
+
+
+ci_update_develop_branch() {
+  git checkout develop
+  git pull
+  git merge staging
+  git push
+}
+
+
+ci_prebuild_checker() {
+  HAS_ERROR=0
+  # Checks that all required environment variables are defined to make IOS and Android builds
+  if [ "$SECRETS_PASSWORD" = "" ]; then HAS_ERROR=1; echo "Undefined variable SECRETS_PASSWORD" ; fi
+
+  if [ "$IOS_CERT_P12_PASSWORD" = "" ]; then HAS_ERROR=1; echo "Undefined variable IOS_CERT_P12_PASSWORD" ; fi
+  if [ "$IOS_UPLOAD_USER" = "" ]; then HAS_ERROR=1; echo "Undefined variable IOS_UPLOAD_USER" ; fi
+  if [ "$IOS_UPLOAD_PASSWORD" = "" ]; then HAS_ERROR=1; echo "Undefined variable IOS_UPLOAD_PASSWORD" ; fi
+
+  if [ "$ANDROID_UPLOAD_KEY_BASE64" = "" ]; then HAS_ERROR=1; echo "Undefined variable ANDROID_UPLOAD_KEY_BASE64" ; fi
+  if [ "$ANDROID_KEYSTORE_PASSWORD" = "" ]; then HAS_ERROR=1; echo "Undefined variable ANDROID_KEYSTORE_PASSWORD" ; fi
+  if [ "$ANDROID_UPLOAD_JSON_BASE64" = "" ]; then HAS_ERROR=1; echo "Undefined variable ANDROID_UPLOAD_JSON_BASE64" ; fi
+
+  if [ "$GOOGLE_UPLOAD_REFRESH_TOKEN" = "" ]; then HAS_ERROR=1; echo "Undefined variable GOOGLE_UPLOAD_REFRESH_TOKEN" ; fi
+  if [ "$GOOGLE_UPLOAD_FOLDER" = "" ]; then HAS_ERROR=1; echo "Undefined variable GOOGLE_UPLOAD_FOLDER" ; fi
+
+  if [ "$SLACK_CHANNEL" = "" ]; then HAS_ERROR=1; echo "Undefined variable SLACK_CHANNEL" ; fi
+  if [ "$SLACK_TOKEN" = "" ]; then HAS_ERROR=1; echo "Undefined variable SLACK_TOKEN" ; fi
+
+  if [ "$HAS_ERROR" = "1" ]; then exit -1; fi
+}
+
+
+ci_cache_load_any() {
+  # Folder to store cache files
+  CACHE_KEY="$1" ; CACHE_FILE="$CACHE_KEY"
+  # path of file to compare for changes
+  CHANGE_FILE_PATH="$2"
+  # name of file to compare for changes
+  CHANGE_FILE="$3"
+
+  if [ -f "_cache/$CACHE_KEY/$CHANGE_FILE" ]; then
+    diff "$CHANGE_FILE_PATH/$CHANGE_FILE" _cache/$CACHE_KEY/$CHANGE_FILE
+    EXIT_CODE=$?
+    if [ "$EXIT_CODE" = "0" ] && [ -f "_cache/$CACHE_KEY/$CACHE_FILE.tgz.00" ] ; then
+      echo "CACHE HIT: extracting $CACHE_KEY/$CACHE_FILE.tgz.*"
+      # zip under macos does not save and restore symbolic links correctly
+      # unzip _cache/$CACHE_KEY/$CACHE_FILE.zip -d ./
+      cat _cache/$CACHE_KEY/$CACHE_FILE.tgz.* | tar xzvf -
+      return 0;
+    fi
+  fi
+  echo "CACHE MISS: $CACHE_KEY - $CHANGE_FILE_PATH/$CHANGE_FILE"
+}
+
+ci_cache_save_any() {
+  CACHE_KEY="$1"  ;  CACHE_FILE="$CACHE_KEY"
+  CHANGE_FILE_PATH="$2"  ;  CHANGE_FILE="$3"
+  CACHED_FOLDER="$4"
+
+  UPDATE_GRADLE_CACHE1="no"
+  # Update cache files if Podfile.lock is different or does not exist
+  if [ -f "_cache/$CACHE_KEY/$CHANGE_FILE" ]; then
+    diff "$CHANGE_FILE_PATH/$CHANGE_FILE" _cache/$CACHE_KEY/$CHANGE_FILE
+    if [ ! "$?" = "0" ]; then UPDATE_GRADLE_CACHE1="yes" ; fi
+  else
+    UPDATE_GRADLE_CACHE1="yes"
+  fi
+
+  if [ "$UPDATE_GRADLE_CACHE1" = "yes" ]; then
+    echo "Updating cache file $CACHE_KEY/$CACHE_FILE.tgz"
+    mkdir -p "_cache/$CACHE_KEY"
+    cp "$CHANGE_FILE_PATH/$CHANGE_FILE" _cache/$CACHE_KEY/
+    rm -f _cache/$CACHE_KEY/$CACHE_FILE.tgz.*
+    # zip under macos does not save and restore symbolic links correctly
+    # zip -r -8 -s 35m _cache/$CACHE_KEY/$CACHE_FILE.zip "$CACHED_FOLDER"
+    tar -czf - "$CACHED_FOLDER" | split -d -b 35M - _cache/$CACHE_KEY/$CACHE_FILE.tgz.
+
+    # update repository cache
+    ci_set_autocommit_user
+    git pull
+    git add _cache/
+    git commit --no-verify -m "update $CACHE_KEY cache files"
+    git push
+    ci_update_develop_branch
+  fi
+}
+
+# Extracts cached files if already exists
+ci_cache_load() {
+  if [ $TARGET_IS_IOS -eq 1 ]; then
+    ci_cache_load_any ios_pods "ios" "Podfile.lock"
+  else
+    ci_cache_load_any android_gradle "." "package.json"
+  fi
+}
+
+ci_cache_save() {
+  if [ $TARGET_IS_IOS -eq 1 ]; then
+    ci_cache_save_any ios_pods "ios" "Podfile.lock" "ios/Pods/"
+  else
+    ci_cache_save_any android_gradle "." "package.json" "android/.gradle/"
+  fi
+}
+
+
+android_get_version() {
+  # Gets the versionCode from a apk or aab file
+  FILE_PATH=$1
+  # options for SHOW_ALL is blank, all, or store
+  SHOW_ALL=$2
+  FILE_EXT=$(echo $FILE_PATH | cut -d'.' -f2)
+  AAPT_EXE=$(find $ANDROID_HOME/build-tools -maxdepth 2 -name 'aapt' | head -n1)
+  # if aab file convert to apk to get versionCode
+  if [ "$FILE_EXT" = "aab" ]; then
+    AAPT2_EXE=$(find $ANDROID_HOME/build-tools -maxdepth 2 -name 'aapt2' | head -n1)
+    mkdir .tmp
+    unzip -p $FILE_PATH base/manifest/AndroidManifest.xml > ./.tmp/AndroidManifest.xml
+    cd ./.tmp;
+    # change in FILE_PATH must come after the unzip
+    FILE_PATH=version-xx.apk
+    zip proto_version.apk AndroidManifest.xml > /dev/null
+    $AAPT2_EXE convert proto_version.apk -o ../$FILE_PATH
+    cd ..; rm -rf .tmp;
+  fi
+
+  AWK_APK_VERSION='/versionName=/ { if ("'$SHOW_ALL'" == "all") { print $6 "+" $4;
+  } else if ("'$SHOW_ALL'" == "store")  {
+    print $4 " (" $6 ")";
+  } else
+  print $6; }'
+  SEM_VER=$($AAPT_EXE dump badging $FILE_PATH 2> /dev/null | awk -F "'" "$AWK_APK_VERSION")
+  echo $SEM_VER
+
+  if [ "$FILE_PATH" = "version-xx.apk" ]; then rm $FILE_PATH; fi
+}
+
+
+# Patches the android app/build.gradle file to sign release builds with a production key
+android_patch_app_build_gradle() {
+COMMENT="## Updates the android/app/build.gradle file. Replace the buildTypes block inside the android block with:
+   signingConfigs {
+        release {
+            Properties keyProperties = new Properties()
+            def keystorePropertiesFile = rootProject.file('key.properties')
+            if (keystorePropertiesFile.exists()) {
+                keyProperties.load(keystorePropertiesFile.newDataInputStream())
+                keyAlias keyProperties.getProperty('keyAlias')
+                keyPassword keyProperties.getProperty('keyPassword')
+                storeFile keyProperties['storeFile'] ? file(keyProperties['storeFile']) : null
+                storePassword keyProperties.getProperty('storePassword')
+            }
+        }
+   }
+   buildTypes {
+       release {
+           signingConfig signingConfigs.release
+       }
+   }
+"
+
+  APP_BUILD_FILE=./android/app/build.gradle
+  echo "Updating $APP_BUILD_FILE"
+  # Make backup of original file
+  if [ ! -f "${APP_BUILD_FILE}_original" ]; then cp $APP_BUILD_FILE ${APP_BUILD_FILE}_original; fi
+
+  # Update signingConfigs
+  export SEARCH="    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }"
+   export REPLACE="    signingConfigs {
+        // ### SCRIPTED PATCH
+        release {
+            Properties keyProperties = new Properties()
+            def keystorePropertiesFile = rootProject.file('key.properties')
+            if (keystorePropertiesFile.exists()) {
+                keyProperties.load(keystorePropertiesFile.newDataInputStream())
+                keyAlias keyProperties.getProperty('keyAlias')
+                keyPassword keyProperties.getProperty('keyPassword')
+                storeFile keyProperties['storeFile'] ? file(keyProperties['storeFile']) : null
+                storePassword keyProperties.getProperty('storePassword')
+            }
+        }
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }"
+  java -cp _tools/ android_multitool replace android/app/build.gradle
+
+  # Update buildTypes
+  export SEARCH="    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            signingConfig signingConfigs.debug"
+  export REPLACE="    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            // ### SCRIPTED PATCH
+            signingConfig signingConfigs.release"
+  
+  java -cp _tools/ android_multitool replace android/app/build.gradle
+}
+
+
+generate_android_icon() {
+  echo "## Generating Android icons"
+  SOURCE_ICON=./assets/icon.png
+  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
+
+  # Generate normal square
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher.png 72 &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher.png 48 &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 96 &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 144 &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 192 &
+  # Generate rounded icons
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png 72 round &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png 48 round &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png 96 round &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 144 round &
+  $RESIZE_COMMAND $SOURCE_ICON android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png 192 round
+}
+
+
+android_create_js_bundle() {
+  rm -rf build/
+  mkdir -p build
+
+  mkdir -p android/app/src/main/assets
+  rm android/app/src/main/assets/index.android.bundle
+
+  # Build react native javascript bundle
+  ./node_modules/.bin/react-native bundle --platform android --dev false --entry-file index.js \
+    --bundle-output android/app/src/main/assets/index.android.bundle
+  # Do not specify assets folder or it will cause compilation problems (complaining about duplicate assets)
+  # --assets-dest android/app/src/main/res
+}
+
+android_build_apk() {
+  cp -f env.stg .env
+
+  android_create_js_bundle
+
+  cd android ; 
+  ./gradlew assembleRelease; cd ..
+  ls -alh android/app/build/outputs/apk/release/*.apk
+}
+
+android_build_aab() {
+  ## TODO Temporary still use staging environment variables for now
+  cp -f env.stg .env
+
+  android_create_js_bundle
+
+  cd android ; ./gradlew bundleRelease ; cd ..
+  ls -alh android/app/build/outputs/bundle/release/*.aab
+  
+}
+
+android_upload_aab() {
+  if [ "$1" = "" ]; then echo "This command requires a file parameter"; exit; fi
+  AAB_PATH=$1
+  ANDROID_UPLOAD_JSON_PATH=$PWD/upload-key.json
+  echo $ANDROID_UPLOAD_JSON_PATH
+  echo "$ANDROID_UPLOAD_JSON_BASE64" | base64 --decode > $ANDROID_UPLOAD_JSON_PATH
+
+  VERSION_NAME=$(android_get_version "$AAB_PATH" store)
+
+  rm -rf _tools/aab2playstore/
+  unzip -oq _tools/aab2playstore.zip -d _tools/
+  # echo ">> Compiling..."
+  # ./_tools/aab2playstore/node_modules/.bin/tsc ./_tools/aab2playstore/aab2playstore.ts
+  echo ">> Uploading... $VERSION_NAME"
+  node _tools/aab2playstore/aab2playstore.js -t internal -p $APP_BUNDLEID -v "$VERSION_NAME" -k "$ANDROID_UPLOAD_JSON_PATH" -a $AAB_PATH
+
+  rm -f $ANDROID_UPLOAD_JSON_PATH
+}
+
+ios_patch_podfile() {
+  IOS_POD_FILE=./ios/Podfile
+  echo "Updating $IOS_POD_FILE"
+  if [ ! -f "${IOS_POD_FILE}_original" ]; then cp $IOS_POD_FILE ${IOS_POD_FILE}_original; fi
+
+  awk '/:hermes_enabled => false/{gsub(/false/,"true")};{print}' ${IOS_POD_FILE}_original > $IOS_POD_FILE
+}
+
+rn_stop_metro() {
+  pkill -f "$APP_NAME/.*/launchPackager.command"
+  pkill -f "$APP_NAME/.*/packager-reporter.js"
+}
+
+ios_create_js_bundle() {
+  ./node_modules/.bin/react-native bundle --entry-file index.js --platform ios --dev false --reset-cache \
+    --bundle-output ios/main.jsbundle --assets-dest ios
+}
+
+ios_build_app() {
+  # Make a build for the simulator .app file
+  rm -rf build/
+  mkdir -p build
+  ios_create_js_bundle
+
+  cd ios
+  # export SKIP_BUNDLING=1
+  # xcodebuild clean
+  xcodebuild -workspace $APP_NAME.xcworkspace -scheme $APP_NAME -configuration Release \
+     -sdk iphonesimulator
+  # -derivedDataPath ../build
+  # to build for a specific simulator add on
+  # -destination 'platform=iOS Simulator,name=iPhone 11,OS=13.3'
+  cd ..
+
+  # rn_stop_metro
+
+  # result will be in ~/Library/Developer/Xcode/DerivedData/mobiletrainer-*/Build/Products/Release-iphonesimulator/mobiletrainer.app
+}
+
+ios_build_ipa() {
+  TYPE=$1
+  if [ "$TYPE" = "adhoc" ]; then
+    E_METHOD=ad-hoc
+    PROVISION_PROFILE_NAME=${APP_BUNDLEID}-adhoc
+    cp -f env.stg .env
+  elif [ "$TYPE" = "appstore" ]; then
+    E_METHOD=app-store
+    PROVISION_PROFILE_NAME=${APP_BUNDLEID}-appstore
+    ## TODO Temporary still use staging environment variables for now
+    cp -f env.stg .env
+  else
+    echo "Please specify adhoc or appstore as an option"
+    exit -1
+  fi
+
+  echo "$E_METHOD   $PROVISION_PROFILE_NAME"
+
+  rm -rf build/
+  mkdir -p build
+  if [ ! -d "www" ]; then mkdir www ; fi
+
+  ios_create_js_bundle
+
+  EXPORT_FILE_PATH=$PWD/$IOS_TMP_FOLDER/export_options.plist
+echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\">
+<dict>
+        <key>destination</key>
+        <string>export</string>
+        <key>method</key>
+        <string>$E_METHOD</string>
+        <key>provisioningProfiles</key>
+        <dict>
+                <key>$APP_BUNDLEID</key>
+                <string>$PROVISION_PROFILE_NAME</string>
+        </dict>
+        <key>signingCertificate</key>
+        <string>Apple Distribution</string>
+        <key>signingStyle</key>
+        <string>manual</string>
+        <key>stripSwiftSymbols</key>
+        <true/>
+        <key>teamID</key>
+        <string>$IOS_TEAM_ID</string>
+        <key>uploadSymbols</key>
+        <true/>
+</dict>
+</plist>" > $EXPORT_FILE_PATH
+
+
+  cd ios
+  # export SKIP_BUNDLING=1
+  xcodebuild clean archive -quiet -workspace $APP_NAME.xcworkspace -scheme $APP_NAME -configuration Release -archivePath ../build/$APP_NAME.xcarchive \
+    DEVELOPMENT_TEAM=$IOS_TEAM_ID PROVISIONING_PROFILE="$PROVISION_PROFILE_NAME"
+    # CODE_SIGN_IDENTITY=<CODE_SIGN_IDENTITY>
+  xcodebuild -exportArchive -archivePath ../build/$APP_NAME.xcarchive -exportPath ../build/ \
+    -exportOptionsPlist ../$IOS_TMP_FOLDER/export_options.plist
+  cd ..
+
+  rn_stop_metro
+
+  ls -alh build/
+
+  echo "Done!"
+  # result will be in build/$APP_NAME.ipa
+}
+
+ios_get_secrets() {
+  echo "Getting signing certificate and provisioning profile"
+  echo "$IOS_KEYCHAIN_PASSWORD" | gpg --batch --yes --passphrase-fd 0 ios_secrets.tgz.gpg
+  tar -zxvf ios_secrets.tgz --no-same-owner
+  rm ios_secrets.tgz
+
+  # Move provisioning profile to the right location
+  mkdir -pv ~/Library/MobileDevice/Provisioning\ Profiles
+  cp $IOS_TMP_FOLDER/*.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles
+
+  # DEBUG-TMP show folder contents
+  # ls -al $IOS_TMP_FOLDER
+}
+
+ios_upload_ipa() {
+  xcrun altool --upload-app --type ios -f build/$APP_NAME.ipa -u $IOS_UPLOAD_USER -p $IOS_UPLOAD_PASSWORD
+}
+
+generate_ios_icon() {
+  echo "## Generating IOS icons"
+  SOURCE_ICON=./assets/icon.png
+  RESIZE_COMMAND="java -cp _tools/ android_multitool resize_image"
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_20px.png 20 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_29px.png 29 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_40px.png 40 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_58px.png 58 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_60px.png 60 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_76px.png 76 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_80px.png 80 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_87px.png 87 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_120px.png 120 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_152px.png 152 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_167px.png 167 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_180px.png 180 &
+  $RESIZE_COMMAND $SOURCE_ICON ios/$APPNAME/Images.xcassets/AppIcon.appiconset/appicon_1024px.png 1024
+
+  # Update content index to use icons:
+  CONTENT_JSON="ios/$APPNAME/Images.xcassets/AppIcon.appiconset/Contents.json"
+  FIXED_CONTENT='{"images":[{"filename":"appicon_40px.png","idiom":"iphone","scale":"2x","size":"20x20"},{"filename":"appicon_60px.png","idiom":"iphone","scale":"3x","size":"20x20"},{"filename":"appicon_58px.png","idiom":"iphone","scale":"2x","size":"29x29"},{"filename":"appicon_87px.png","idiom":"iphone","scale":"3x","size":"29x29"},{"filename":"appicon_80px.png","idiom":"iphone","scale":"2x","size":"40x40"},{"filename":"appicon_120px.png","idiom":"iphone","scale":"3x","size":"40x40"},{"filename":"appicon_120px.png","idiom":"iphone","scale":"2x","size":"60x60"},{"filename":"appicon_180px.png","idiom":"iphone","scale":"3x","size":"60x60"},{"filename":"appicon_20px.png","idiom":"ipad","scale":"1x","size":"20x20"},{"filename":"appicon_40px.png","idiom":"ipad","scale":"2x","size":"20x20"},{"filename":"appicon_29px.png","idiom":"ipad","scale":"1x","size":"29x29"},{"filename":"appicon_58px.png","idiom":"ipad","scale":"2x","size":"29x29"},{"filename":"appicon_40px.png","idiom":"ipad","scale":"1x","size":"40x40"},{"filename":"appicon_80px.png","idiom":"ipad","scale":"2x","size":"40x40"},{"filename":"appicon_76px.png","idiom":"ipad","scale":"1x","size":"76x76"},{"filename":"appicon_152px.png","idiom":"ipad","scale":"2x","size":"76x76"},{"filename":"appicon_167px.png","idiom":"ipad","scale":"2x","size":"83.5x83.5"},{"filename":"appicon_1024px.png","idiom":"ios-marketing","scale":"1x","size":"1024x1024"}],"info":{"author":"xcode","version":1}}'
+  echo $FIXED_CONTENT > $CONTENT_JSON
+}
+
+generate_app_icon() {
+  generate_android_icon
+  generate_ios_icon
+}
+
+
+generate_svg_icons() {
+  rm ./src/components/a_icons/*.ts? ./src/components/a_svg/*.ts?
+  ./node_modules/.bin/svgr --native --typescript --out-dir ./src/components/a_icons ./src/assets/icons/
+  ./node_modules/.bin/svgr --native --typescript --out-dir ./src/components/a_svg ./src/assets/svg/
+}
+
+
+# Macos version of sed does not have infile replace option -i so we need this wrapper
+portable_file_replace() {
+  FILENAME="$1"
+  SEARCH_TERM="$2"
+  REPLACE_TERM="$3"
+  # FOR_DEBUG: echo "Search and replacing $SEARCH_TERM => $REPLACE_TERM  in  $FILENAME"
+  sed "s/$SEARCH_TERM/$REPLACE_TERM/g" $FILENAME > ${FILENAME}_tmp
+  mv -f ${FILENAME}_tmp $FILENAME
+  # cp ${FILENAME}_tmp $FILENAME
+  # rm ${FILENAME}_tmp
+}
+
+android_change_bundleid() {
+  NEW_BUNDLEID=$1
+  NEW_BUNDLEPATH=$2
+  BUNDLEID=$3
+  BUNDLEPATH=$4
+  # FOR_DEBUG echo ">> DEBUG: $NEW_BUNDLEID $NEW_BUNDLEPATH $BUNDLEID $BUNDLEPATH"
+
+  # create java folder structure and move files to it
+  mkdir -p android/app/src/debug/java/$NEW_BUNDLEPATH
+  mkdir -p android/app/src/main/java/$NEW_BUNDLEPATH
+  cp -R android/app/src/debug/java/$BUNDLEPATH/* android/app/src/debug/java/$NEW_BUNDLEPATH/
+  cp -R android/app/src/main/java/$BUNDLEPATH/* android/app/src/main/java/$NEW_BUNDLEPATH/
+  rm -rf android/app/src/debug/java/$BUNDLEPATH android/app/src/main/java/$BUNDLEPATH
+
+  # com.example.app becomes com\.example\.app for the search expression
+  SEARCH_BUNDLEID=$(awk -v str=$BUNDLEID 'BEGIN { gsub(/\./,"\\\.", str); print str}')
+  grep -lr "$BUNDLEID" ./android ./ios | while read filename
+  do
+    portable_file_replace  "$filename" $SEARCH_BUNDLEID $NEW_BUNDLEID
+  done
+}
+
+ios_change_bundleid() {
+  NEW_BUNDLEID=$1
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+  IOS_PROJECT_FILE="ios/$APPNAME.xcodeproj/project.pbxproj"
+  # IOS_PROJECT_FILE=$(find ./ios -name '*.pbxproj')
+
+  echo "Updating $IOS_PROJECT_FILE  with new bundleid: $NEW_BUNDLEID"
+
+  sed "s/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = \"$NEW_BUNDLEID\";/g" $IOS_PROJECT_FILE > ${IOS_PROJECT_FILE}_tmp
+  mv -f ${IOS_PROJECT_FILE}_tmp $IOS_PROJECT_FILE
+}
+
+ios_get_version() {
+  FILE_PATH=$1
+  SHOW_ALL=$2
+  AWK_IOS_VERSION="BEGIN { xyz=\"\"; b=\"\"; }
+  /CFBundleShortVersion|CFBundleVersion/ { getline; if (xyz == \"\") xyz=\$3; else b=\$3; }
+  END { if (\"$SHOW_ALL\" == \"all\") print xyz \"+\" b;  else print xyz; }"
+  SEM_VER=$(tar -zxOf $FILE_PATH Payload/*.app/Info.plist | plutil -convert xml1 -r -o - -- - | awk -F '[<>]' "$AWK_IOS_VERSION")
+  echo $SEM_VER
+}
+
+app_change_bundleid() {
+  #   ./run-app rename com.example.myfunkyapp myfunkyapp "My App"
+  NEW_BUNDLEID=$1
+  NEW_BUNDLEPATH=$(awk -v str=$NEW_BUNDLEID 'BEGIN { gsub(/\./,"/", str); print str}')
+  # get current bundle id for android
+  BUNDLEID=$(awk '/applicationId "*"/{ gsub(/"/,"", $2); print $2}' android/app/build.gradle)
+  BUNDLEPATH=$(awk -v str=$BUNDLEID 'BEGIN { gsub(/\./,"/", str); print str}')
+
+  # FOR_DEBUG; echo "$APP_NAME\n$BUNDLEID\n$BUNDLEPATH\n$NEW_BUNDLEPATH"
+
+  # Change bundle ID if it is different
+  if [ "$NEW_BUNDLEID" != "$BUNDLEID" ]; then
+    echo "Changing bundle ID: $BUNDLEID => $NEW_BUNDLEID"
+    android_change_bundleid $NEW_BUNDLEID $NEW_BUNDLEPATH $BUNDLEID $BUNDLEPATH
+    ios_change_bundleid $NEW_BUNDLEID
+  fi
+}
+
+app_change_app_name() {
+  NEW_APPNAME=$1
+  # get current app name
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+
+  # update file contents
+  grep -lr "$APPNAME" ./android ./ios package.json app.json | while read filename
+  do
+    portable_file_replace  "$filename" $APPNAME $NEW_APPNAME
+  done
+
+  # rename known ios folders
+  mv ios/$APPNAME ios/$NEW_APPNAME
+  mv ios/${APPNAME}Tests ios/${NEW_APPNAME}Tests
+  mv ios/${APPNAME}.xcodeproj ios/${NEW_APPNAME}.xcodeproj
+  # rename known ios files
+  mv ios/${NEW_APPNAME}Tests/${APPNAME}Tests.m ios/${NEW_APPNAME}Tests/${NEW_APPNAME}Tests.m
+  mv ios/$NEW_APPNAME.xcodeproj/xcshareddata/xcschemes/$APPNAME.xcscheme ios/$NEW_APPNAME.xcodeproj/xcshareddata/xcschemes/$NEW_APPNAME.xcscheme
+}
+
+app_hook_link() {
+  echo "Relinking hooks ..."
+  rm .git/hooks/pre-commit
+  ln -s ../../_hooks/pre-commit .git/hooks/pre-commit
+  echo "Done"
+}
+
+update_app_label() {
+  ICON_NAME="$1"
+  echo "New icon name will be: $ICON_NAME"
+   # get current app name
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+  # android
+  portable_file_replace android/app/src/main/res/values/strings.xml "<string name=\"app_name\">.*<\/string>" "<string name=\"app_name\">$ICON_NAME<\/string>"
+  # ios
+  plutil -replace CFBundleDisplayName -string "$ICON_NAME" $PWD/ios/$APPNAME/Info.plist
+}
+
+app_rename_all() {
+  if [ "$3" = "" ]; then echo "Usage <com.bundle.id> <app_name> \"Icon Name\""; exit; fi
+
+  # must do bundleid first since it is longer than app name
+  app_change_bundleid $1
+  app_change_app_name $2
+  # icon name can be changed last since it modifies known specific files
+  update_app_label "$3"
+}
+
+# Changes IOS splash screen to a single color before react native executes
+# Best to keep the splash screen in react native code
+# This version no longer works for version above 0.71.1
+# see: # see: https://github.com/facebook/react-native/issues/35937
+update_ios_splash_v1() {
+  HEXCOLOR=$1
+  COLOR_RED=$(printf "%d" "0x${HEXCOLOR:0:2}")
+  COLOR_GREEN=$(printf "%d" "0x${HEXCOLOR:2:2}")
+  COLOR_BLUE=$(printf "%d" "0x${HEXCOLOR:4:2}")
+  DECIMAL_RED=$( awk "BEGIN{print $COLOR_RED / 255.0}" )
+  DECIMAL_GREEN=$( awk "BEGIN{print $COLOR_GREEN / 255.0}" )
+  DECIMAL_BLUE=$( awk "BEGIN{print $COLOR_BLUE / 255.0}" )
+
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+
+  NEW_LAUNCHSCREEN_FILE="ios/$APPNAME/LaunchScreen.storyboard"
+  APP_DELEGATE="ios/$APPNAME/AppDelegate.mm"
+
+  awk -v red=$COLOR_RED -v green=$COLOR_GREEN -v blue=$COLOR_BLUE \
+    '{if ($0 ~ /rootView.backgroundColor/) {printf "    rootView.backgroundColor = [[UIColor alloc] initWithRed:%f green:%f blue:%f alpha:1];\n", (red/255.0), (green/255.0), (blue/255.0);} else {print} }' \
+    $APP_DELEGATE > ${APP_DELEGATE}_tmp
+  mv ${APP_DELEGATE}_tmp $APP_DELEGATE
+
+  echo '<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="19455" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+    <device id="retina4_7" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="19454"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="EHf-IW-A2E">
+            <objects>
+                <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
+                        <color key="backgroundColor" red="'$DECIMAL_RED'" green="'$DECIMAL_GREEN'" blue="'$DECIMAL_BLUE'" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="52.173913043478265" y="375"/>
+        </scene>
+    </scenes>
+</document>
+' > $NEW_LAUNCHSCREEN_FILE
+}
+
+# Changes IOS splash screen to a single color before react native executes
+# Best to keep the splash screen in react native code
+# This version works for version >= 0.71.1
+# see: https://github.com/facebook/react-native/issues/35937
+update_ios_splash() {
+  # Get new color
+  HEXCOLOR=$1
+  DECIMAL_RED=$( awk 'BEGIN{print sprintf("%d", "0x" substr("'$HEXCOLOR'",1,2)) / 255.0 }' )
+  DECIMAL_GREEN=$( awk 'BEGIN{print sprintf("%d", "0x" substr("'$HEXCOLOR'",3,2)) / 255.0 }' )
+  DECIMAL_BLUE=$( awk 'BEGIN{print sprintf("%d", "0x" substr("'$HEXCOLOR'",5,2)) / 255.0 }' )
+
+  # Get files to be changed
+  APPNAME=$(awk '/  "name": "*"/{ gsub(/"/,"", $2); gsub(/\,/,"", $2); print $2}' app.json)
+  NEW_LAUNCHSCREEN_FILE="ios/$APPNAME/LaunchScreen.storyboard"
+  APP_DELEGATE_FILE="ios/$APPNAME/AppDelegate.mm"
+
+  # Change LaunchScreen.storyboard
+  FIND_1="<color key="
+  REPLACE_1='                        <color key="backgroundColor" red="'$DECIMAL_RED'" green="'$DECIMAL_GREEN'" blue="'$DECIMAL_BLUE'" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>'
+  REPLACE_SCRIPT_1='{ if (index($0,"'$FIND_1'") > 0) { printf REPLACEMENT "\n" } else { print } }'
+
+  awk -v REPLACEMENT="$REPLACE_1" \
+  "$REPLACE_SCRIPT_1" $NEW_LAUNCHSCREEN_FILE > ${NEW_LAUNCHSCREEN_FILE}_tmp
+  mv ${NEW_LAUNCHSCREEN_FILE}_tmp $NEW_LAUNCHSCREEN_FILE
+
+  # Change AppDelegate.mm
+  FIND_2="return [super application:application"
+  REPLACE_2='  BOOL success = [super application:application didFinishLaunchingWithOptions:launchOptions]; \
+  if (success) { \
+    // Modify as needed to match the main color of your splash. \
+    self.window.rootViewController.view.backgroundColor = [[UIColor alloc] initWithRed:'$DECIMAL_RED' green:'$DECIMAL_GREEN' blue:'$DECIMAL_BLUE' alpha:1]; \
+  } \
+  return success;\n'
+  REPLACE_SCRIPT_2='{if (index($0,"'$FIND_2'") > 0) { print REPLACEMENT } else { print $0 }}'
+
+  awk -v REPLACEMENT="$REPLACE_2" -v red=$COLOR_RED -v green=$COLOR_GREEN -v blue=$COLOR_BLUE \
+  "$REPLACE_SCRIPT_2" $APP_DELEGATE_FILE > ${APP_DELEGATE_FILE}_tmp
+  mv ${APP_DELEGATE_FILE}_tmp $APP_DELEGATE_FILE
+ }
+
+
+update_android_splash() {
+  HEXCOLOR=$1
+  STRINGS_FILE=android/app/src/main/res/values/strings.xml
+  grep 'app_background_color' $STRINGS_FILE > /dev/null
+  if [ $? != 0 ]; then
+    echo "Updating strings $HEXCOLOR"
+    export SEARCH="</resources>"
+    export REPLACE="    <color name=\"app_background_color\">#$HEXCOLOR</color>
+</resources>"
+    java -cp _tools/ android_multitool replace $STRINGS_FILE
+  else
+    awk -v hexcolor=$HEXCOLOR \
+      '{if ($0 ~ /app_background_color/) {printf "    <color name=\"app_background_color\">#%s</color>\n", hexcolor;} else {print} }' \
+      $STRINGS_FILE > ${STRINGS_FILE}_tmp
+    mv ${STRINGS_FILE}_tmp $STRINGS_FILE
+  fi
+
+  STYLES_FILE=android/app/src/main/res/values/styles.xml
+  grep 'app_background_color' $STYLES_FILE > /dev/null
+  if [ $? != 0 ]; then
+    export SEARCH="<!-- Customize your theme here. -->"
+    export REPLACE="<!-- Customize your theme here. -->
+        <item name=\"android:windowBackground\">@color/app_background_color</item>"
+    java -cp _tools/ android_multitool replace $STYLES_FILE
+  fi
+}
+
+update_app_splash() {
+  if [ "$1" = "" ]; then
+    echo "Usage ./run update-app-splash <rrggbb>\n  where rrggbb is a hex value";
+    exit
+  fi
+
+  #update_ios_splash $1
+  update_android_splash $1
+}
+
+slack_message() {
+  MESSAGE="$1"
+  CURL_DATA='{"channel":"'$SLACK_CHANNEL'","blocks":[{"type":"section","text":{"type":"mrkdwn","text":"'$MESSAGE'"}}]}'
+  echo "$CURL_DATA\n"
+  curl -H "Content-type: application/json" -H "Authorization: Bearer $SLACK_TOKEN" \
+    --data "$CURL_DATA" -X POST https://slack.com/api/chat.postMessage
+}
+
+slack_send() {
+# example
+# ./run slack-send "This is version 1.0.3 of the mobile app" release1.0.3.apk build/app/outputs/apk/release/app-release.apk
+  MESSAGE="$1"
+  SLACK_FILE="$2"
+  SLACK_FILENAME="$3"
+# The --limit-rate options helps with Slack service problem. See https://github.com/slackapi/python-slack-sdk/issues/1165
+  curl https://slack.com/api/files.upload --max-time 180 -F token="$SLACK_TOKEN" -F channels="$SLACK_CHANNEL" \
+    -F title="$MESSAGE" \
+    -F filename="$SLACK_FILE" -F file=@"$SLACK_FILENAME" \
+    --limit-rate 5M
+}
+
+# Sets the IOS app display version and build number
+version_set_ios() {
+  VERSION_NAME=$1
+  BUILD_NUMBER=$2
+
+  echo "Setting IOS to version $VERSION_NAME+$BUILD_NUMBER"
+
+  AWK_SET_IOS_VER='{
+    if (index($0, "CURRENT_PROJECT_VERSION = ") > 0) {
+      print "\t\t\t\tCURRENT_PROJECT_VERSION = " BUILD_NUMBER ";" ;
+    } else if (index($0, "MARKETING_VERSION =") > 0) {
+      print "\t\t\t\tMARKETING_VERSION = " VERSION_NAME ";" ;
+    } else {
+      print $0;
+    }
+  }'
+
+  awk -v VERSION_NAME="$VERSION_NAME" -v BUILD_NUMBER="$BUILD_NUMBER" \
+    "$AWK_SET_IOS_VER" ios/$APP_NAME.xcodeproj/project.pbxproj > ios/$APP_NAME.xcodeproj/project.pbxproj.tmp
+
+  mv ios/$APP_NAME.xcodeproj/project.pbxproj.tmp ios/$APP_NAME.xcodeproj/project.pbxproj
+}
+
+# Sets the Android app display version and code
+version_set_android() {
+  VERSION_NAME=$1
+  VERSION_CODE=$2
+
+  echo "Setting Android to version $VERSION_NAME+$VERSION_CODE"
+
+  AWK_SET_ANDROID_VER='{
+    if (index($0, "  versionCode ") > 0) {
+      print "        versionCode " VERSION_CODE;
+    } else if (index($0, "  versionName ") > 0) {
+      print "        versionName " "\"" VERSION_NAME "\"";
+    } else {
+      print $0;
+    }
+  }'
+
+  awk -v VERSION_NAME="$VERSION_NAME" -v VERSION_CODE="$VERSION_CODE" \
+    "$AWK_SET_ANDROID_VER" android/app/build.gradle > android/app/build.gradle.tmp
+  
+  mv -f android/app/build.gradle.tmp android/app/build.gradle
+}
+
+# Sets the version code for the IOS and Android app as specified in the package.json file version & versionBuildCode property
+version_set() {
+  if [ "$1" = "" ]; then
+    AWK_GET_VERSION_DISPLAY='/"version"/{ gsub(/"/, "", $2); gsub(/,/, "", $2); print $2;}'
+    AWK_GET_VERSION_BUILDCODE='/"versionBuildCode"/{ gsub(/"/, "", $2); gsub(/,/, "", $2); print $2;}'
+    VER_DISPLAY=$(awk "$AWK_GET_VERSION_DISPLAY" package.json)
+    VER_BUILDCODE=$(awk "$AWK_GET_VERSION_BUILDCODE" package.json)
+  else
+    VER_DISPLAY=$1
+    VER_BUILDCODE=$2
+  fi
+
+  version_set_android $VER_DISPLAY $VER_BUILDCODE
+  version_set_ios $VER_DISPLAY $VER_BUILDCODE
+}
+
+# save file to a folder in Google Drive
+upload_gdrive() {
+  if [ "$1" = "" ]; then echo "This command requires a file parameter"; exit; fi
+  UPLOAD_FILE_PATH="$1"
+  SLACK_MESSAGE="$2"
+
+  if [ ! -d "build" ]; then mkdir build ; fi
+
+  # use upload tool
+  node _tools/gdrive.js upload "$UPLOAD_FILE_PATH"
+
+  # wait 3 seconds before trying to get newly uploaded file information
+  sleep 3;
+  FILE_LINK=$(node _tools/gdrive.js getlink "$UPLOAD_FILE_PATH")
+  HAS_LINK=$(awk -v filelink="$FILE_LINK" 'BEGIN{ if (index(filelink,"https")==1) print "YES"}')
+
+  if [ "$HAS_LINK" = "YES" ]; then
+    LAST_UPLOAD_MESSAGE="$SLACK_MESSAGE available at: $FILE_LINK"
+    echo "$LAST_UPLOAD_MESSAGE" > build/msg.tmp
+  else
+    LAST_UPLOAD_MESSAGE="Could not upload $SLACK_MESSAGE"
+    echo "$LAST_UPLOAD_MESSAGE" > build/msg.tmp
+  fi
+}
+
+rn_increment_version() {
+  # get current version a calculate next number
+  AWK_GET_VERSION_DISPLAY='/"version"/{ gsub(/"/, "", $2); gsub(/,/, "", $2); print $2;}'
+  AWK_GET_VERSION_BUILDCODE='/"versionBuildCode"/{ gsub(/"/, "", $2); gsub(/,/, "", $2); print $2+1;}'
+  NEXT_VER_BUILDCODE=$(awk "$AWK_GET_VERSION_BUILDCODE" package.json)
+  VER_DISPLAY=$(awk "$AWK_GET_VERSION_DISPLAY" package.json)
+  NEW_VERSION="$VER_DISPLAY+$NEXT_VER_BUILDCODE"
+
+  # set new version in package.json
+  AWK_SET_VERSION_BUILDCODE='{if (index($0, "\"versionBuildCode\":") > 0) {
+     print "  \"versionBuildCode\": \"" NEXT_VER_BUILDCODE "\","; } else print $0; }'
+  awk -v NEXT_VER_BUILDCODE="$NEXT_VER_BUILDCODE" \
+    "$AWK_SET_VERSION_BUILDCODE" package.json > package.json.tmp
+  
+  mv package.json.tmp package.json
+
+  echo "Bump version to $NEW_VERSION"
+  version_set
+
+  # commit changed files
+  ci_set_autocommit_user
+  git pull
+  git add package.json android/app/build.gradle ios/$APP_NAME.xcodeproj/project.pbxproj
+  git commit --no-verify -m "Bump version to $NEW_VERSION"
+  git push
+  ci_update_develop_branch
+}
+
+app_increment_version() {
+  CURRENT_BRANCH=$(git branch --show-current)
+  if [ ! "$CURRENT_BRANCH" = "staging" ]; then
+    echo "CANCELLED: You must be in the staging branch to auto increment the version"; exit 0;
+  fi
+  rn_increment_version
+}
+
+increase_watchers() {
+  sysctl fs.inotify.max_user_instances=256
+  sysctl fs.inotify.max_user_watches=131070
+  sysctl -p
+}
+
+check_file_watchers() {
+  if [ -f "/proc/sys/fs/inotify/max_user_watches" ]; then
+    CURRENT_LIMIT=$(cat /proc/sys/fs/inotify/max_user_watches)
+    if [ $CURRENT_LIMIT -lt 131070 ]; then
+      echo "WARNING: file watch limit below threshold.  Current value: $CURRENT_LIMIT"
+      echo "type sudo ./run increase-watchers  to increase limit"
+      exit
+    fi
+  fi
+}
+
+app_test() {
+  HEXCOLOR=$1
+  # convert hex to decimal
+  COLOR_RED=$(printf "%d" "0x${HEXCOLOR:0:2}")
+  COLOR_GREEN=$(printf "%d" "0x${HEXCOLOR:2:2}")
+  COLOR_BLUE=$(printf "%d" "0x${HEXCOLOR:4:2}")
+  echo $COLOR_RED
+  echo $COLOR_GREEN
+  echo $COLOR_BLUE
+}
+
+app_patch() {
+  ./node_modules/.bin/patch-package
+  # git apply patches/react-native-webview+11.26.1.patch
+}
+
+
+app_prebuild() {
+  cp -R ../ownable-sdk/build/* _html/
+  mkdir -p android/app/src/main/assets/html ios/external/html
+  cp -R _html/* android/app/src/main/assets/html/
+  cp -R _html/* ios/external/html/
+}
+
+app_build_common() {
+  cd ../ownables_sdk
+  check_environment $1
+  ./run build $1
+  EXIT_CODE=$?
+  if [ "$EXIT_CODE" = "0" ]; then ./run link-build ; fi
+  cd ../universal-wallet;
+  exit $EXIT_CODE
+}
+
+# Clone react-native library to the plugins folder
+install_library(){
+    mkdir plugins
+    cd plugins
+    git clone https://github.com/TheRocketLab/rkt-rn-lib
+}
+
+# Add component to your project
+add_lib(){
+    LIB_NAME=$1
+    echo $LIB_NAME
+    yarn add file:./plugins/rkt-rn-lib/$LIB_NAME
+}
+
+# Link component to your project (only needed if native one)
+link_libraries(){
+    cd ios && pod install
+}
+
+
+
+# Compile multitool if it does not exist
+if [ ! -f _tools/android_multitool.class ]; then javac _tools/android_multitool.java; fi
+
+# Check linux system requirements
+if [ "$1" = "increase-watchers" ]; then increase_watchers; exit; fi
+check_file_watchers
+
+# read environment from a file
+if [ -f ./env.settings ]; then . ./env.settings; fi
+# variables read from the env.settings file needs to be exported to be used in some programs
+# such as nodejs using process.env
+export GOOGLE_UPLOAD_FOLDER="$GOOGLE_UPLOAD_FOLDER"
+if [ -f ./.env.deploy ]; then . ./.env.deploy; fi
+
+# Scripts used in ci only
+if [ "$1" = "ci-install" ]; then ci_install; exit; fi
+if [ "$1" = "ci-install-ios-pods" ]; then ci_install_ios_pods; exit; fi
+if [ "$1" = "ci-prebuild-check" ]; then ci_prebuild_checker; exit; fi
+# Custom caching disabled for now
+if [ "$1" = "ci-cache-load" ]; then exit 0; ci_cache_load; exit $?; fi
+if [ "$1" = "ci-cache-save" ]; then exit 0; ci_cache_save; exit $?; fi
+
+
+# Common scripts
+if [ "$1" = "format" ]; then code_check_format $2; exit -1; fi
+if [ "$1" = "lint" ]; then code_check_lint $2; exit -1; fi
+if [ "$1" = "bump" ]; then app_increment_version; exit $?; fi
+if [ "$1" = "prebuild" ]; then app_prebuild ; exit $? ; fi
+if [ "$1" = "patch" ]; then app_patch ; exit $? ; fi
+
+# version-set is for when you want to manually set the version and versionBuildCode in package.json
+if [ "$1" = "version-set" ]; then version_set; exit; fi
+if [ "$1" = "upload-gdrive" ]; then upload_gdrive "$2" "$3"; exit $?; fi
+if [ "$1" = "slack-last-upload" ]; then slack_message "$(cat build/msg.tmp)"; rm build/msg.tmp ; exit ; fi
+
+
+# ios_patch_podfile does not do anything yet
+if [ "$1" = "patch" ]; then android_patch_app_build_gradle; exit; fi
+if [ "$1" = "update-app-icon" ]; then generate_app_icon; exit; fi
+if [ "$1" = "update-app-label" ]; then update_app_label "$2"; exit; fi
+if [ "$1" = "update-app-splash" ]; then update_app_splash $2 $3 $4; exit; fi
+
+if [ "$1" = "rename-all" ]; then app_rename_all "$2" "$3" "$4"; exit; fi
+if [ "$1" = "rename-bundleid" ]; then app_change_bundleid "$2"; exit; fi
+if [ "$1" = "rename-appname" ]; then app_change_app_name "$2"; exit; fi
+
+if [ "$1" = "relink-githook" ]; then app_hook_link; exit; fi
+
+if [ "$1" = "build-common" ]; then app_build_common $2 ; exit $? ; fi
+
+# IOS management scripts
+if [ "$1" = "ios" ]; then ./node_modules/.bin/react-native run-ios ; exit $?; fi # --simulator "iPhone 11"
+if [ "$1" = "podinstall" ]; then cd ios ; pod install ; cd .. ; exit; fi
+if [ "$1" = "build-ios" ]; then ios_build_ipa "$2"; exit; fi
+if [ "$1" = "build-ios-sim" ]; then ios_build_app; exit; fi
+if [ "$1" = "ios-upload-ipa" ]; then ios_upload_ipa; exit; fi
+if [ "$1" = "ios-version" ]; then ios_get_version "$2" $3; exit; fi
+
+# Android management scripts
+if [ "$1" = "android" ]; then ./node_modules/.bin/react-native run-android --active-arch-only ; exit $?; fi # --deviceId "emulator-5554"
+if [ "$1" = "build-apk" ]; then android_build_apk; exit; fi
+if [ "$1" = "build-aab" ]; then android_build_aab; exit; fi
+if [ "$1" = "upload-aab" ]; then android_upload_aab "$2"; exit; fi
+if [ "$1" = "android-version" ]; then android_get_version "$2" $3; exit; fi
+
+if [ "$1" = "test" ]; then version_set; exit; fi
+
+
+if [ "$1" = "update-icons" ]; then generate_svg_icons; exit; fi
+
+if [ "$1" = "slack-message" ]; then slack_message "$2"; exit; fi
+if [ "$1" = "slack-send" ]; then slack_send "$2" "$3" "$4"; exit; fi
+
+if [ "$1" = "clean" ]; then
+  rm -rf build/
+  cd android; ./gradlew clean; cd ..
+  cd ios; rm -rf build/; xcodebuild clean; cd ..
+  exit
+fi
+
+if [ "$1" = "wrap" ]; then
+  CURRENT_FOLDER=$PWD
+  cd ..
+  zip -r "$APP_FOLDER$FILE_DATESTAMP.zip" $APP_FOLDER -x "$APP_FOLDER/node_modules/*" \
+    -x "$APP_FOLDER/android/app/build/*" -x "$APP_FOLDER/ios/Pods/*"
+  cd $CURRENT_FOLDER
+  exit 0
+fi
+
+if [ "$1" = "add-lib" ]; then add_lib $2; exit $?; fi
+
+if [ "$1" = "link-lib" ]; then link_libraries ; exit $?; fi
+
+if [ "$1" = "install-lib" ]; then install_library ; exit $?; fi
+
+
+echo "Command not found"
