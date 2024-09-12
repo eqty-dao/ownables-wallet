@@ -109,6 +109,7 @@ export default function App() {
     getCollectionName,
     selectedTab,
     setSelectedTab,
+    changeCollection,
   } = useFilters();
   const { getAll, addTo, isUpdatingCollection } = useCollections();
   const { getAllIssuers } = useIssuers();
@@ -234,11 +235,11 @@ export default function App() {
         }
       }
 
-      if (selectedTab !== TabType.ALL) {
-        filterBy(issuer, type, collection);
-      } else {
-        setSelectedTab(TabType.ALL);
-      }
+      // DC: After import an ownable, "redirect" the user to the ALL tab
+      resetFilter();
+      changeCollection(StaticCollections.ALL);
+      setSelectedTab(TabType.ALL);
+
       // update issuers
       getAllIssuers();
     }, 0);
@@ -478,7 +479,12 @@ export default function App() {
             keyExtractor={({ chain }) =>
               `${chain.id}-${reRenderTriggers[chain.id] || 0}`
             }
-            renderItem={({ chain, packageCid }) => (
+            renderItem={({
+              chain,
+              packageCid,
+              canDeleteOwnable,
+              collectionId,
+            }) => (
               <>
                 <OwnableThumb
                   chain={chain}
@@ -497,6 +503,13 @@ export default function App() {
                 >
                   <If condition={consuming?.chain.id === chain.id}>
                     <LtoOverlay isForDetailsScreen={false} zIndex={1000} />
+                  </If>
+                  <If condition={canDeleteOwnable!}>
+                    <DeleteOwnableOverlay
+                      deleteFromTab
+                      collectionId={collectionId}
+                      chain={chain}
+                    />
                   </If>
                   <If
                     condition={

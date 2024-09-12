@@ -55,9 +55,14 @@ const formatSelectCollection = (collections: CollectionItemType[]) =>
     };
   });
 
-const emptyState = {
+const issuerEmptyState = {
   value: "",
-  label: "-",
+  label: "Select Issuer",
+};
+
+const typeEmptyState = {
+  value: "",
+  label: "Select Type",
 };
 
 const formatIssuers = (issuers: string[]) => {
@@ -146,13 +151,13 @@ const FiltersDrawer = (props: Props) => {
           <LtoSelect
             ref={issuerRef}
             label="Issuer"
-            items={[emptyState, ...formatIssuers(issuers)]}
+            items={[issuerEmptyState, ...formatIssuers(issuers)]}
           />
           <LtoSelect
             ref={typeRef}
             label="Type"
             items={[
-              emptyState,
+              typeEmptyState,
               // TODO: add types
             ]}
           />

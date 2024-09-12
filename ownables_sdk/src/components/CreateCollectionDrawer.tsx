@@ -8,7 +8,8 @@ import { themeColors } from "../theme/themeColors";
 import LtoInput, { LtoInputRefMethods } from "./common/LtoInput";
 import { useRef } from "react";
 import { useFilters } from "../context/FilterContext";
-import { CollectionItemType } from "../services/Collection.service";
+import { StaticCollections } from "../services/Collection.service";
+import { TabType } from "./OwnablesTabs";
 
 interface Props {
   open: boolean;
@@ -44,17 +45,20 @@ const closeModalBtnStyle = {
 const CreateCollectionDrawer = (props: Props) => {
   const { open, onClose } = props;
   const { create } = useCollections();
-  const { filterBy } = useFilters();
+  const { resetFilter, setSelectedTab, changeCollection } = useFilters();
 
   const nameCollectionRef = useRef<LtoInputRefMethods>(null);
 
   const onCreateCollection = () => {
     if (!nameCollectionRef.current) return;
-    const recentCollection: CollectionItemType = create(
-      nameCollectionRef.current.value()
-    );
-    filterBy("", "", recentCollection.id);
-    onClose();
+    create(nameCollectionRef.current.value());
+
+    setTimeout(() => {
+      resetFilter();
+      changeCollection(StaticCollections.ALL);
+      setSelectedTab(TabType.COLLECTIONS);
+      onClose();
+    }, 0);
   };
 
   const onCancel = () => onClose();
@@ -83,7 +87,11 @@ const CreateCollectionDrawer = (props: Props) => {
         </IconButton>
       </Box>
       <Box p={2}>
-        <LtoInput ref={nameCollectionRef} label="Name Collection" />
+        <LtoInput
+          ref={nameCollectionRef}
+          label="Name Collection"
+          maxLength={20}
+        />
         <Box height={40} />
         <Box display={"flex"} flexDirection={"column"} width={"100%"}>
           <StyledButton transparent={false} onClick={onCreateCollection}>

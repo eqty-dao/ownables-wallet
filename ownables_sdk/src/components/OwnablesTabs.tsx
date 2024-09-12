@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { Box, Grid } from "@mui/material";
 import CollapsedItem from "./common/CollapsedItem";
 import EmptyCollection from "./common/EmptyCollection";
-import { StaticCollections } from "../services/Collection.service";
+import {
+  CollectionItemType,
+  StaticCollections,
+} from "../services/Collection.service";
 import { EventChain } from "@ltonetwork/lto";
 import React from "react";
 import { useFilters } from "../context/FilterContext";
@@ -51,12 +54,19 @@ export enum TabType {
 interface OwnableType {
   chain: EventChain;
   packageCid: string;
+  canDeleteOwnable?: boolean;
+  collectionId?: string;
 }
 
 interface Props {
   tab: string;
   ownables: Array<{ chain: EventChain; package: string }>;
-  renderItem: ({ chain, packageCid }: OwnableType) => React.ReactNode;
+  renderItem: ({
+    chain,
+    packageCid,
+    canDeleteOwnable,
+    collectionId,
+  }: OwnableType) => React.ReactNode;
   keyExtractor: (item: any, index: number) => string;
 }
 
@@ -64,6 +74,11 @@ const OwnablesTabs = (props: Props) => {
   const [tab, selectedTab] = useState<TabType>(
     (props.tab as TabType) || TabType.COLLECTIONS
   );
+
+  const [deletableFromCollections, setDeletableFromCollections] = useState<
+    Array<string>
+  >([]);
+
   const { collections, getFromCollection } = useCollections();
   const { setSelectedTab } = useFilters();
 
@@ -77,50 +92,93 @@ const OwnablesTabs = (props: Props) => {
     setSelectedTab(type);
   };
 
-  const renderContent = () => {
-    if (tab === TabType.COLLECTIONS) {
-      return collections.map((collection) => {
-        if (collection.id === StaticCollections.ALL) return <></>;
+  const onSetDeletableFromCollections = (
+    value: boolean,
+    collectionId: string
+  ) =>
+    setDeletableFromCollections(
+      value
+        ? [...deletableFromCollections, collectionId]
+        : deletableFromCollections.filter((item) => item !== collectionId)
+    );
 
-        const collectionCids = getFromCollection(collection.id);
-        const items = props.ownables.filter((item) =>
-          collectionCids.includes(item.chain.id)
-        );
-        return (
-          <CollapsedItem title={collection.value} key={collection.id}>
-            {items.length === 0 ? (
-              <EmptyCollection title={collection.value} />
-            ) : (
-              <Grid container columnSpacing={2} rowSpacing={2}>
-                {items.map((item: any, index: number) => {
-                  const key = props.keyExtractor(
-                    {
+  const renderCollectionItems = (
+    collections: Array<CollectionItemType>,
+    areStatic: boolean = false
+  ) => {
+    return collections.map((collection) => {
+      if (collection.id === StaticCollections.ALL) return <></>;
+
+      const collectionCids = getFromCollection(collection.id);
+      const items = props.ownables.filter((item) =>
+        collectionCids.includes(item.chain.id)
+      );
+      return (
+        <CollapsedItem
+          key={collection.id}
+          title={collection.value}
+          titleColor={areStatic ? "#B770FF" : "#ffffff"}
+          collectionId={collection.id}
+          isOpen={collection.isOpen}
+          onEdit={(value) =>
+            onSetDeletableFromCollections(value, collection.id)
+          }
+        >
+          {items.length === 0 ? (
+            <EmptyCollection title={collection.value} />
+          ) : (
+            <Grid container columnSpacing={2} rowSpacing={2}>
+              {items.map((item: any, index: number) => {
+                const key = props.keyExtractor(
+                  {
+                    chain: item.chain,
+                    packageCid: item.package,
+                  },
+                  index
+                );
+                return (
+                  <Grid
+                    key={key}
+                    item
+                    xs={6}
+                    sm={6}
+                    md={4}
+                    sx={{ position: "relative" }}
+                  >
+                    {props.renderItem({
                       chain: item.chain,
                       packageCid: item.package,
-                    },
-                    index
-                  );
-                  return (
-                    <Grid
-                      key={key}
-                      item
-                      xs={6}
-                      sm={6}
-                      md={4}
-                      sx={{ position: "relative" }}
-                    >
-                      {props.renderItem({
-                        chain: item.chain,
-                        packageCid: item.package,
-                      })}
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            )}
-          </CollapsedItem>
-        );
-      });
+                      canDeleteOwnable: deletableFromCollections.includes(
+                        collection.id
+                      ),
+                      collectionId: collection.id,
+                    })}
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+        </CollapsedItem>
+      );
+    });
+  };
+
+  const renderContent = () => {
+    if (tab === TabType.COLLECTIONS) {
+      // DC: filter static collections
+      const filteredCollections = collections.filter(
+        (collection) => collection.static === 0
+      );
+      const staticCollections = collections.filter(
+        (collection) => collection.static === 1
+      );
+
+      return (
+        <React.Fragment>
+          {renderCollectionItems(filteredCollections, false)}
+          {renderCollectionItems(staticCollections, true)}
+        </React.Fragment>
+      );
     }
 
     return (

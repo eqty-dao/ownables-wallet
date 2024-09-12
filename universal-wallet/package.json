@@ -1,7 +1,7 @@
 {
   "name": "universalWallet",
   "version": "0.2.1",
-  "versionBuildCode": "27",
+  "versionBuildCode": "31",
   "private": true,
   "scripts": {
     "start": "react-native start",

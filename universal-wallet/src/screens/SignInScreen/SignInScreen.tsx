@@ -61,7 +61,7 @@ export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'
     LTOService.unlock(password)
       .then(() => {
         setLoading(false);
-        navigation.navigate('Root');
+        navigation.replace('Root');
         setPassword('');
       })
       .catch(() => {

@@ -12,6 +12,7 @@ import StaticWebServer from 'react-native-rl-web-server';
 import {MainScreenContainer} from '../../components/MainScreenContainer';
 import {StyledImage} from '../../components/styles/OverviewHeader.styles';
 import {logoTitle} from '../../utils/images';
+import {useUserSettings} from '../../context/User.context';
 
 const port = 30122; // select a random available port
 const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/www' : RNFS.DocumentDirectoryPath + '/www';
@@ -29,10 +30,13 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
   const [accountInfo, setAccountInfo] = useState<Object | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
 
+  const {setForceSignOut} = useUserSettings();
+
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (navigation.canGoBack()) {
-        // prevent navigation
+        //DC: Redirect user to wallet screen
+        navigation.replace('Root');
       }
       return true;
     });
@@ -60,6 +64,12 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
 
   const webMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
+
+    if (data.type === 'openFileDialog') {
+      const {forceSignout} = data.data;
+      setForceSignOut(forceSignout);
+    }
+
     AsyncStorage.setItem('webData', JSON.stringify(data));
   };
 

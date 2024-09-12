@@ -1,9 +1,18 @@
-import SearchFilterIcon from "../../assets/search_filter_icon.svg"; // Adjust the import path as necessary
-import SearchIcon from "../../assets/search_icon.svg"; // Adjust the import path as necessary
+import SearchIcon from "../../assets/search_icon.svg";
 import { themeStyles } from "../../theme/themeStyles";
 import { themeColors } from "../../theme/themeColors";
 import ClearSearchIcon from "../../assets/clear_search_icon.svg";
 import { useRef } from "react";
+import { useFilters } from "../../context/FilterContext";
+import styled from "@emotion/styled";
+
+const FilterIconContainer = styled.div`
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  margin-left: 16px;
+  margin-right: 16px;
+`;
 
 const styles = {
   closeIcon: {
@@ -62,6 +71,8 @@ function LtoSearchBar({
   onFilterClick,
   onClear,
 }: SearchBarProps) {
+  const { isFiltering } = useFilters();
+
   const inputRef = useRef<HTMLInputElement>(null);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     onSearch(e.target.value);
@@ -101,15 +112,62 @@ function LtoSearchBar({
             />
           )}
         </form>
-        <img
-          src={SearchFilterIcon}
-          alt="Filter"
-          style={styles.filterIcon}
-          onClick={onFilterClick}
-        />
+
+        <FilterIconContainer onClick={onFilterClick}>
+          <FilterIcon color={isFiltering ? "#B770FF" : "#ffffff"} />
+        </FilterIconContainer>
       </div>
     </>
   );
 }
+
+interface FilterIconProps {
+  color: string;
+}
+
+const FilterIcon = (props: FilterIconProps) => {
+  return (
+    <svg
+      width="32"
+      height="32"
+      fill={"transparent"}
+      viewBox="0 0 32 32"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M13.7735 22.1234H5.37256"
+        stroke={props.color}
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M17.5205 9.20056H25.9215"
+        stroke={props.color}
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <path
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        d="M11.635 9.12834C11.635 7.4008 10.2241 6 8.48411 6C6.74413 6 5.33325 7.4008 5.33325 9.12834C5.33325 10.8559 6.74413 12.2567 8.48411 12.2567C10.2241 12.2567 11.635 10.8559 11.635 9.12834Z"
+        stroke={props.color}
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <path
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+        d="M26.6665 22.0717C26.6665 20.3442 25.2567 18.9434 23.5167 18.9434C21.7756 18.9434 20.3647 20.3442 20.3647 22.0717C20.3647 23.7992 21.7756 25.2 23.5167 25.2C25.2567 25.2 26.6665 23.7992 26.6665 22.0717Z"
+        stroke={props.color}
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+  );
+};
 
 export default LtoSearchBar;

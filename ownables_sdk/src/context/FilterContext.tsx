@@ -18,6 +18,7 @@ interface FilterContextType {
   getCollectionName: (slug: string) => any;
   resetFilter: () => any;
   setSelectedTab: (tab: TabType) => any;
+  changeCollection: (collection: string) => any;
 }
 
 const FilterContext = createContext<FilterContextType>({
@@ -32,6 +33,7 @@ const FilterContext = createContext<FilterContextType>({
   getCollectionName: () => {},
   resetFilter: () => {},
   setSelectedTab: () => {},
+  changeCollection: () => {},
 });
 
 interface Props {
@@ -70,6 +72,8 @@ export const FilterProvider = (props: Props) => {
     return found[0].value;
   };
 
+  const changeCollection = (collection: string) => setCollection(collection);
+
   const contextValue: FilterContextType = {
     collection,
     issuer,
@@ -82,6 +86,7 @@ export const FilterProvider = (props: Props) => {
     resetFilter,
     selectedTab,
     setSelectedTab,
+    changeCollection,
   };
 
   return (

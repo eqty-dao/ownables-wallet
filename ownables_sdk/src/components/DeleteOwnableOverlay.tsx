@@ -7,6 +7,8 @@ import styled from "@emotion/styled";
 
 interface Props {
   chain: EventChain;
+  collectionId?: string;
+  deleteFromTab?: boolean;
 }
 
 const Container = styled.div`
@@ -21,7 +23,14 @@ const DeleteOwnableOverlay = (props: Props) => {
   const { collection, filterBy, issuer, type } = useFilters();
 
   const handleDelete = () => {
-    if (!props.chain || !collection) return;
+    if (!props.chain) return;
+
+    if (props.deleteFromTab && props.collectionId) {
+      removeFrom(props.collectionId, props.chain.id);
+      return;
+    }
+
+    if (!collection) return;
 
     removeFrom(collection, props.chain.id);
     filterBy(issuer, type, collection);
