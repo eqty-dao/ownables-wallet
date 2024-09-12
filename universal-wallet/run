@@ -957,7 +957,7 @@ app_patch() {
 
 
 app_prebuild() {
-  cp -R ../ownable-sdk/build/* _html/
+  cp -R ../ownables_sdk/build/* _html/
   mkdir -p android/app/src/main/assets/html ios/external/html
   cp -R _html/* android/app/src/main/assets/html/
   cp -R _html/* ios/external/html/
