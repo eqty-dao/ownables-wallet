@@ -12,9 +12,10 @@ export default function ShortSectionList<ItemT, SectionT = DefaultSectionT>(
 
   const renderSection = (section: SectionListData<ItemT, SectionT>) => [
     props.renderSectionHeader ? props.renderSectionHeader({section}) : undefined,
-    props.renderItem
-      ? section.data.map((item, index) => props.renderItem!({item, index, section, separators: dummySeparators}))
-      : undefined,
+    //@TODO: BT: This is a bug, renderItem is not a prop of SectionListProps
+    // props.renderItem
+    //   ? section.data.map((item, index) => props.renderItem!({item, index, section, separators: dummySeparators}))
+    //   : undefined,
     props.renderSectionFooter ? props.renderSectionFooter({section}) : undefined,
   ];
 

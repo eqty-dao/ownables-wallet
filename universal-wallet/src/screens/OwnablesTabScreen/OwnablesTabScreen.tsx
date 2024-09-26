@@ -64,6 +64,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
 
   const webMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
+    console.log('webMessage', data);
 
     if (data.type === 'openFileDialog') {
       const {forceSignout} = data.data;
@@ -117,6 +118,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
   // Needed to open the LTO documentation in the browser rather than
   // inside the web view on IOS
   const handleShouldStartLoadWithRequest = (request: WebViewNavigation): boolean => {
+    console.log('handleShouldStartLoadWithRequest', request.url);
     if (Platform.OS === 'ios' && request.url.includes('docs.')) {
       Linking.openURL(request.url).catch(err => console.error('An error occurred', err));
       return false;
@@ -144,7 +146,8 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
           onMessage={webMessage}
           onLoadEnd={onWebviewLoads}
           source={{
-            uri: getWebViewUrl(),
+            // uri: getWebViewUrl(),
+            uri: 'http://10.0.144:3000/?seed=alone gospel model flip kitchen brisk tonight high find short ginger shiver diary rate crater',
             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
             cacheEnabled: true,
           }}

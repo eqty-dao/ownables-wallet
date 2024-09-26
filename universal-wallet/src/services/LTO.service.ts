@@ -1,10 +1,13 @@
-import {Account, CancelLease, Lease, LTO, Transaction} from '@ltonetwork/lto';
+import { Account, CancelLease, Lease, LTO, Transaction } from '@ltonetwork/lto';
 import LocalStorageService from './LocalStorage.service';
-import {TypedTransaction} from '../interfaces/TypedTransaction';
+import { TypedTransaction } from '../interfaces/TypedTransaction';
+import { LTO_NETWORK_ID, LTO_API_URL } from '@env';
 
-export const lto = new LTO(process.env.LTO_NETWORK_ID);
-if (process.env.LTO_API_URL) lto.nodeAddress = process.env.LTO_API_URL;
-
+console.log("LTO_NETWORK_ID", LTO_NETWORK_ID, "LTO_API_URL", LTO_API_URL);
+export const lto = new LTO(LTO_NETWORK_ID);
+if (LTO_API_URL as string && lto) {
+  lto.nodeAddress = LTO_API_URL!;
+}
 export default class LTOService {
   static account?: Account;
 
@@ -20,9 +23,9 @@ export default class LTOService {
     const seed = encryptedAccount.seed[seedIndex];
 
     if (signature) {
-      this.account = lto.account({seedPassword: encodedSignature, seed});
+      this.account = lto.account({ seedPassword: encodedSignature, seed });
     } else {
-      this.account = lto.account({seedPassword: password, seed});
+      this.account = lto.account({ seedPassword: password, seed });
     }
   };
 
@@ -66,7 +69,7 @@ export default class LTOService {
 
   public static importAccount = async (seed: string) => {
     try {
-      this.account = lto.account({seed: seed});
+      this.account = lto.account({ seed: seed });
     } catch (error) {
       throw new Error('Error importing account from seeds');
     }

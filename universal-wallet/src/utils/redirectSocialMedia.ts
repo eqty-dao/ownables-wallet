@@ -1,7 +1,8 @@
 import {InAppBrowser} from 'react-native-inappbrowser-reborn';
+import {LTO_EXPLORER_URL, LTO_WALLET_URL} from '@env';
 
-const EXPLORER_URL = process.env.LTO_EXPLORER_URL || 'https://explorer.testnet.lto.network';
-const WALLET_URL = process.env.LTO_WALLET_URL || 'https://wallet.testnet.lto.network';
+const EXPLORER_URL = LTO_EXPLORER_URL || 'https://explorer.testnet.lto.network';
+const WALLET_URL = LTO_WALLET_URL || 'https://wallet.testnet.lto.network';
 
 export const nagivateTo = async (url: string) => {
   await InAppBrowser.open(url);
