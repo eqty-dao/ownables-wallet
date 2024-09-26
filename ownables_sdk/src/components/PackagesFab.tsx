@@ -43,6 +43,7 @@ export default function PackagesFab(props: PackagesFabProps) {
     }, 100);
 
     const files = await selectFile({ accept: ".zip", multiple: true });
+    console.log(files);
     if (files.length === 0) return;
 
     try {

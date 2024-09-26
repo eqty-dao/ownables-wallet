@@ -435,7 +435,7 @@ export default function App() {
 
   const handleSearchFilter = () => setShowFilters(!showFilters);
 
-  const handleFabItemSelected = (item: TypedFabItem) => {
+  const handleFabItemSelected = async (item: TypedFabItem) => {
     setOpenFab(false);
 
     switch (item.id) {
@@ -448,6 +448,7 @@ export default function App() {
         setShowPackages(true);
         return;
       case HomePageEnums.ReceiveOwnables:
+        await PackageService.importFromRelay()
         return;
       default:
         return;

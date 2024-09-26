@@ -8,7 +8,7 @@ export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID);
 export const relayURL = process.env.REACT_APP_RELAY
   ? process.env.REACT_APP_RELAY
   : null;
-export const relayLocalURL = process.env.REACT_APP_LOCAL_RELAY;
+export const relayLocalURL = process.env.REACT_APP_RELAY;
 
 //lto.relay = new Relay("https://relay.lto.network/");
 lto.relay = relayURL
