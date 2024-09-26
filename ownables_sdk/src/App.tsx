@@ -46,6 +46,7 @@ import OwnablesTabs, { TabType } from "./components/OwnablesTabs";
 import EmptyCollection from "./components/common/EmptyCollection";
 import FilterService from "./services/Filter.service";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
+import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -96,6 +97,9 @@ export default function App() {
 
   // DC: Collection drawer
   const [showCollectionDrawer, setShowCollectionDrawer] = useState(false);
+
+  // CST: Create ownable drawer
+  const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false); 
 
   // DC: filters
   const {
@@ -443,6 +447,7 @@ export default function App() {
         setShowCollectionDrawer(true);
         return;
       case HomePageEnums.CreateOwnables:
+        setShowCreateOwnableDrawer(true);
         return;
       case HomePageEnums.ImportPackage:
         setShowPackages(true);
@@ -680,6 +685,11 @@ export default function App() {
         open={showCollectionDrawer}
         title="Create Collection"
         onClose={() => setShowCollectionDrawer(false)}
+      />
+      <CreateOwnablesDrawer
+        open={showCreateOwnableDrawer}
+        title="Create Ownable"
+        onClose={() => setShowCreateOwnableDrawer(false)}
       />
       <Loading show={!loaded} />
     </>
