@@ -147,7 +147,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
           onLoadEnd={onWebviewLoads}
           source={{
             // uri: getWebViewUrl(),
-            uri: 'http://10.0.144:3000/?seed=alone gospel model flip kitchen brisk tonight high find short ginger shiver diary rate crater',
+            uri: 'http://10.0.167:3000/?seed=alone gospel model flip kitchen brisk tonight high find short ginger shiver diary rate crater',
             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
             cacheEnabled: true,
           }}

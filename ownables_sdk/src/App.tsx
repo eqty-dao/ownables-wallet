@@ -99,7 +99,7 @@ export default function App() {
   const [showCollectionDrawer, setShowCollectionDrawer] = useState(false);
 
   // CST: Create ownable drawer
-  const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false); 
+  const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false);
 
   // DC: filters
   const {
@@ -603,11 +603,11 @@ export default function App() {
             title: "Create Collection",
             icon: CollectionIcon,
           },
-          {
-            id: HomePageEnums.ImportPackage,
-            title: "Import Package",
-            icon: CreateIcon,
-          },
+          // {
+          //   id: HomePageEnums.ImportPackage,
+          //   title: "Import Package",
+          //   icon: CreateIcon,
+          // },
           {
             id: HomePageEnums.CreateOwnables,
             title: "Create Ownables",

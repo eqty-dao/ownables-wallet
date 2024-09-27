@@ -12,9 +12,12 @@
     "@mui/icons-material": "^5.11.9",
     "@mui/material": "^5.11.10",
     "all-inline": "^0.1.7",
+    "axios": "^1.6.8",
     "blockstore-core": "^4.0.1",
     "buffer": "^6.0.3",
     "craco": "^0.0.3",
+    "fs": "^0.0.1-security",
+    "heic2any": "^0.0.4",
     "ipfs-unixfs-importer": "^15.1.0",
     "jszip": "^3.10.0",
     "mime": "^3.0.0",
@@ -26,21 +29,19 @@
     "simple-iframe-rpc": "0.1.10",
     "tuai": "^1.0.8",
     "util": "^0.12.5",
-    "web-vitals": "^2.1.4",
-    "fs": "^0.0.1-security",
-    "axios": "^1.6.8"
+    "web-vitals": "^2.1.4"
   },
   "devDependencies": {
-    "typescript": "^4.9.5",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^29.4.0",
     "@types/node": "^16.18.12",
     "@types/react": "^18.0.28",
     "@types/react-dom": "^18.0.11",
-    "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "webpack-cli": "^5.0.1",
-    "stream-browserify": "^3.0.0"
+    "stream-browserify": "^3.0.0",
+    "typescript": "^4.9.5",
+    "webpack-cli": "^5.0.1"
   },
   "overrides": {
     "react-json-view": {
