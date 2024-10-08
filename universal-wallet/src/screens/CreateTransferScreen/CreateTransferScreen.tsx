@@ -24,7 +24,7 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
 
   const [recipient, setRecipient] = useState('');
   const [amountText, setAmountText] = useState('');
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState<number | null>(null);
   const [attachment, setAttachment] = useState('');
 
   const [tx, setTx] = useState<TransferTx | undefined>();
@@ -34,7 +34,8 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
 
   const {available} = details;
   const sendButtonDisabled =
-    isNaN(amount) || amount <= 0 || amount > available || recipient === '' || !LTOService.isValidAddress(recipient);
+    amount === null || amount <= 0 || amount > available || recipient === '' || !LTOService.isValidAddress(recipient);
+
   const availableLTOText = formatNumber(Math.max(available - LTO_REPRESENTATION, 0));
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
     if (amountText === '') {
       setAmount(0);
     } else if (!amountText.match(/^\d+(\.\d+)?$/)) {
-      setAmount(NaN);
+      setAmount(null);
     } else {
       setAmount(Math.floor(parseFloat(amountText) * LTO_REPRESENTATION));
     }
@@ -87,6 +88,7 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
   };
 
   const handleSend = () => {
+    if (amount === null) return;
     setTx(new TransferTx(recipient, amount, attachment));
     setDialogVisible(true);
   };
@@ -111,7 +113,7 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
         <InputField
           label="Amount"
           value={amountText}
-          error={isNaN(amount) || amount < 0 || amount > available}
+          error={amount === null || amount < 0 || amount > available}
           onChangeText={setAmountText}
           subLabel={`Available: ${availableLTOText} LTO`}
           placeholder="Enter amount"
