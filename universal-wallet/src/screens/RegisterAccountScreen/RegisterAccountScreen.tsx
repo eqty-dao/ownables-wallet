@@ -13,6 +13,7 @@ import {StyledButton} from '../../components/StyledButton';
 import {FormContainer} from '../../components/styles/FormContainer.styles';
 import {CheckBoxCard} from '../../components/CheckBoxCard';
 import {BottomModal} from '../../components/BottomModal';
+import DOMpurify from 'dompurify';
 
 export default function RegisterAccountScreen({navigation, route}: RootStackScreenProps<'RegisterAccount'>) {
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -48,7 +49,8 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
   };
 
   const handleInputChange = (name: string, value: string) => {
-    setloginForm({...loginForm, [name]: value});
+    const sanitizedValue = DOMpurify.sanitize(value);
+    setloginForm({...loginForm, [name]: sanitizedValue});
   };
 
   const validateForm = (): {err?: string} => {
