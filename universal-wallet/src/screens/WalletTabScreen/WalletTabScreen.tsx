@@ -147,13 +147,12 @@ const MainTab = ({children, navigation}) => {
     try {
       const account = await LTOService.getAccount();
       setAccountAddress(account.address);
-      console.log('---------------------');
-      console.log(account.address);
-      console.log(account.seed);
-      console.log('---------------------');
+      // console.log('---------------------');
+      // console.log(account.address);
+      // console.log(account.seed);
+      // console.log('---------------------');
     } catch (error) {
       console.error('Error loading account:', error);
-      // Handle the error appropriately
     }
   };
 
@@ -472,7 +471,7 @@ const MainTab = ({children, navigation}) => {
               <If condition={leases.length > 0}>
                 <ActivityCard>
                   <ActivityCardTitle>
-                    <Typography size={6} color={Colors[colorScheme ?? "dark"].white[100]} bold>
+                    <Typography size={6} color={Colors[colorScheme ?? 'dark'].white[100]} bold>
                       {WALLET.ACTIVE_LEASES}
                     </Typography>
                   </ActivityCardTitle>
@@ -483,7 +482,7 @@ const MainTab = ({children, navigation}) => {
               <If condition={transactions.length > 0}>
                 <ActivityCard>
                   <ActivityCardTitle>
-                    <Typography size={6} color={Colors[colorScheme ?? "dark"].white[100]} bold>
+                    <Typography size={6} color={Colors[colorScheme ?? 'dark'].white[100]} bold>
                       {WALLET.RECENT_ACTIVITY}
                     </Typography>
                   </ActivityCardTitle>
@@ -493,7 +492,7 @@ const MainTab = ({children, navigation}) => {
                       renderSectionHeader={({section: {date}}) => (
                         <List.Subheader
                           key={`transaction.section:${date}`}
-                          style={{color: Colors[colorScheme ??"dark"].white[200]}}>
+                          style={{color: Colors[colorScheme ?? 'dark'].white[200]}}>
                           {date}
                         </List.Subheader>
                       )}
