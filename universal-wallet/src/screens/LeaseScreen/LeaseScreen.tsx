@@ -58,19 +58,25 @@ export default function LeaseScreen({navigation, route}: RootStackScreenProps<'L
 
   useFocusEffect(
     React.useCallback(() => {
-      LTOService.getAccount().then(account => setAccountAddress(account.address));
+      LTOService.getAccount()
+        .then(account => setAccountAddress(account.address))
+        .catch(error => console.error(`Error getting account`, error));
     }, []),
   );
 
   useFocusEffect(
     React.useCallback(() => {
-      CommunityNodesService.info(nodeAddress).then(info => setNode(info));
+      CommunityNodesService.info(nodeAddress)
+        .then(info => setNode(info))
+        .catch(error => console.error(`Error getting community node info`, error));
     }, []),
   );
 
   useFocusEffect(
     React.useCallback(() => {
-      Promise.all([loadAccountDetails(), loadLeases()]).then(() => setIsLoading(false));
+      Promise.all([loadAccountDetails(), loadLeases()])
+        .then(() => setIsLoading(false))
+        .catch(error => console.error(`Error getting loading data`, error));
     }, [accountAddress]),
   );
 
