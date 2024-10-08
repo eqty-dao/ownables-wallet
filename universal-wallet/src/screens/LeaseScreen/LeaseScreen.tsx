@@ -117,11 +117,21 @@ export default function LeaseScreen({navigation, route}: RootStackScreenProps<'L
   };
 
   const sendTx = async () => {
-    const account = await LTOService.getAccount();
-    await LTOService.broadcast(tx!.signWith(account));
-
-    setMessageInfo('Transaction sent successfully!');
-    setShowMessage(true);
+    try {
+      if (!tx) {
+        throw new Error('Transaction is not defined');
+      }
+      const account = await LTOService.getAccount();
+      const signedTx = tx.signWith(account);
+      await LTOService.broadcast(signedTx);
+      setMessageInfo('Transaction sent successfully!');
+      setShowMessage(true);
+      navigation.goBack();
+    } catch (error) {
+      if (error instanceof Error) console.error(`Error sending transaction: ${error.message}`);
+      setShowMessage(true);
+      setMessageInfo(`Failed to send transaction. Please try again later`);
+    }
   };
 
   const NodeDetail = (props: {value: string | undefined; description?: string | undefined; icon: string}) => (
