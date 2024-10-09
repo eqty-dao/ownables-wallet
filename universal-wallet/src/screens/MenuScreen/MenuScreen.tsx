@@ -32,7 +32,7 @@ export default function MenuScreen({navigation}: RootStackScreenProps<'Menu'>) {
   useEffect(() => {
     getAccountAddress();
     getNickname();
-  }, [accountAddress, accountNickname]);
+  }, []);
 
   const getNickname = () => {
     LocalStorageService.getData('@userAlias')
