@@ -12,7 +12,7 @@ import {MainScreenMinorContainer, MainScreenSubContainer} from '../../components
 import {StyledButton} from '../../components/StyledButton';
 import {UserCard} from '../../components/UserCard';
 import {SocialsCard} from '../../components/SocialsCard';
-import {BackHandler} from 'react-native';
+import {BackHandler, Platform} from 'react-native';
 
 export default function MenuScreen({navigation}: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
@@ -20,13 +20,15 @@ export default function MenuScreen({navigation}: RootStackScreenProps<'Menu'>) {
   const {setShowMessage, setMessageInfo} = useContext(MessageContext);
 
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      }
-      return true;
-    });
-    return () => backHandler.remove();
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        }
+        return true;
+      });
+      return () => backHandler.remove();
+    }
   }, []);
 
   useEffect(() => {
