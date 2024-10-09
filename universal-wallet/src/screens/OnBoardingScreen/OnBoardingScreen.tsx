@@ -21,7 +21,7 @@ export default function OnboardingScreen() {
   const changeSlide = () => {
     let nextIndex = currentSlideIndex + 1;
 
-    if (currentSlideIndex === slides.length - 1) {
+    if (currentSlideIndex >= slides.length - 1) {
       nextIndex = currentSlideIndex - 1;
     }
 
