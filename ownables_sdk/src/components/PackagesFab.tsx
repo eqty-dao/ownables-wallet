@@ -88,7 +88,6 @@ export default function PackagesFab(props: PackagesFabProps) {
         return;
       }
     }
-    console.log;
     onSelect(pkg);
   };
 

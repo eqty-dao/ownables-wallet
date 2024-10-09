@@ -82,7 +82,7 @@ function RootNavigator(): any {
   return (
     userAlias !== null && (
       <Stack.Navigator
-        initialRouteName={appFirstLaunch ? 'OnBoarding' : userAlias ? 'Root' : 'SignUp'}
+        initialRouteName={appFirstLaunch ? 'OnBoarding' : userAlias ? 'SignIn' : 'SignUp'}
         screenOptions={{
           headerTitleStyle: {color: '#A017B7', fontWeight: '400', fontSize: 16},
           headerTintColor: '#A017B7',

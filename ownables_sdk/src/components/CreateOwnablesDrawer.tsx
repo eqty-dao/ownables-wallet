@@ -160,6 +160,7 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    onClose();
   };
 
   const handleClose = () => {
@@ -421,11 +422,6 @@ const CreateOwnablesDrawer = (props: Props) => {
     const description = descriptionRef.current?.value() || "";
     const image = fileInputRef.current?.files?.[0] || null;
 
-    console.log("description", description);
-    console.log("ownerName", ownerName);
-    console.log("ownerEmail", ownerEmail);
-    console.log("ownableName", ownableName);
-    console.log("tags", tags);
 
     const requiredFields = [
       { name: "Owner name", value: ownerName },
@@ -509,6 +505,25 @@ const CreateOwnablesDrawer = (props: Props) => {
             link.download = formattedName + ".zip";
             // Simulate a click on the link to trigger the download
             link.click();
+            // send the zip file to obuilder
+            const formData = new FormData();
+            formData.append('file', zipFile, formattedName + ".zip");
+            axios.post(
+              `${process.env.REACT_APP_OBUILDER}/api/v1/upload`,
+              // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/Ownable',
+              // 'http://localhost:3000/api/v1/Ownable',
+              formData,
+              {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                  'Accept': '*/*'
+                }
+              }
+            ).then(response => {
+              console.log("response", response);
+            }).catch(error => {
+              console.error("Error sending zip file:", error);
+            });
 
             setOpenDialog(true);
           });
@@ -771,6 +786,8 @@ const CreateOwnablesDrawer = (props: Props) => {
                   transparent={false}
                   onClick={handleCreateOwnable}
                   disabled={isNaN(amount) || amount <= 0 || amount > available}
+                  size="large"
+                  style={{ color: "white" }}
                 >
                   Create
                 </StyledButton>
