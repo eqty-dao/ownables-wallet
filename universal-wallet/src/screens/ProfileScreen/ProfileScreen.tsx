@@ -19,8 +19,9 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
   const [isSeedBlur, setIsSeedBlur] = useState<boolean>(true);
   const [accountNickname, setAccountNickname] = useState<string>('');
   const [showConfirmDelete, setShowConfirmDelete] = useState<boolean>(false);
-
   const {address, publicKey, privateKey, seed} = accountInformation;
+  const [showPrivateKey, setShowPrivateKey] = useState(false);
+  const [showSeedPhrase, setShowSeedPhrase] = useState(false);
 
   useEffect(() => {
     readStorage();
@@ -75,7 +76,13 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
         <Card label={publicKey} subLabel={PROFILE.PUBLIC_KEY} type="secondary" />
         <ExpandableText
           text="Show private key"
-          content={<Card label={privateKey} subLabel={PROFILE.PRIVATE_KEY} type="secondary" />}
+          content={
+            showPrivateKey ? (
+              <Card label={privateKey} subLabel={PROFILE.PRIVATE_KEY} type="secondary" />
+            ) : (
+              <StyledButton text="Show Private Key" onPress={() => setShowPrivateKey(true)} type="primary" />
+            )
+          }
         />
         <ExpandableText
           text="Show backup phrase"
