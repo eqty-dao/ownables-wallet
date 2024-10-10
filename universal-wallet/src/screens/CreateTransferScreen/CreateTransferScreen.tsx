@@ -96,7 +96,16 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
   };
 
   const handleSend = () => {
-    if (amount === null) return;
+    if (!LTOService.isValidAddress(recipient)) {
+      setMessageInfo('Invalid recipient address');
+      setShowMessage(true);
+      return;
+    }
+    if (amount === null) {
+      setMessageInfo('Amount must be a valid value');
+      setShowMessage(true);
+      return;
+    }
     setTx(new TransferTx(recipient, amount, attachment));
     setDialogVisible(true);
   };
