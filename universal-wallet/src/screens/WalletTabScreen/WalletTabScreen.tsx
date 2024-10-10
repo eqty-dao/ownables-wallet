@@ -92,7 +92,7 @@ const MainTab = ({children, navigation}) => {
 
   const isFocused = useIsFocused();
 
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() ?? 'dark';
 
   const {isSignOutForced} = useUserSettings();
 
