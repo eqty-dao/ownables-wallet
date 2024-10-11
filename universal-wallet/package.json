@@ -29,6 +29,7 @@
     "@tradle/react-native-http": "^2.0.1",
     "@types/styled-components-react-native": "^5.2.5",
     "axios": "^1.6.8",
+    "bip39": "^3.1.0",
     "browserify": "^17.0.0",
     "browserify-global": "^1.1.2",
     "browserify-zlib": "^0.2.0",

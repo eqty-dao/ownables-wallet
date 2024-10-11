@@ -1,18 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Linking, Platform } from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {BackHandler, Linking, Platform} from 'react-native';
 import LTOService from '../../services/LTO.service';
-import { RootTabScreenProps } from '../../../types';
+import {RootTabScreenProps} from '../../../types';
 import OverviewHeader from '../../components/OverviewHeader';
-import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
+import {WebView, WebViewMessageEvent, WebViewNavigation} from 'react-native-webview';
 import styled from 'styled-components/native';
-import { useFocusEffect } from '@react-navigation/native';
+import {useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
 import StaticWebServer from 'react-native-rl-web-server';
-import { MainScreenContainer } from '../../components/MainScreenContainer';
-import { StyledImage } from '../../components/styles/OverviewHeader.styles';
-import { logoTitle } from '../../utils/images';
-import { useUserSettings } from '../../context/User.context';
+import {MainScreenContainer} from '../../components/MainScreenContainer';
+import {StyledImage} from '../../components/styles/OverviewHeader.styles';
+import {logoTitle} from '../../utils/images';
+import {useUserSettings} from '../../context/User.context';
+import DOMPurify from 'dompurify';
 
 const port = 30122; // select a random available port
 const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/www' : RNFS.DocumentDirectoryPath + '/html';
@@ -26,11 +27,11 @@ const WebViewContainer = styled.View`
   background-color: #0d0d0d;
 `;
 
-export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ownables'>) {
+export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Ownables'>) {
   const [accountInfo, setAccountInfo] = useState<Object | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
 
-  const { setForceSignOut } = useUserSettings();
+  const {setForceSignOut} = useUserSettings();
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -50,8 +51,8 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
         return account;
       })
       .catch(error => {
-        // throw new Error(`Error retrieving data. ${error}`)
-        console.log(`Error retrieving data. ${error}`);
+        throw new Error(`Error retrieving data. ${error}`);
+        //console.log(`Error retrieving data. ${error}`);
         return null;
       });
   };
@@ -64,14 +65,14 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
 
   const webMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
-    console.log('webMessage', data);
-
+    const sanitizedData = DOMPurify.sanitize(data);
+    console.log('webMessage', sanitizedData);
     if (data.type === 'openFileDialog') {
-      const { forceSignout } = data.data;
+      const {forceSignout} = data.data;
       setForceSignOut(forceSignout);
     }
 
-    AsyncStorage.setItem('webData', JSON.stringify(data));
+    AsyncStorage.setItem('webData', JSON.stringify(sanitizedData));
   };
 
   const [serverUrl, setServerUrl] = React.useState<string>();
@@ -79,7 +80,7 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
   const copyWWWBuildFiles = async (directory: string) => {
     // If the directory does not exist, proceed with copying
     console.log('Copying files from', directory);
-    (await RNFS.readDirAssets(directory)).forEach(async (file: { isDirectory: () => any; path: string }) => {
+    (await RNFS.readDirAssets(directory)).forEach(async (file: {isDirectory: () => any; path: string}) => {
       if (file.isDirectory()) {
         await RNFS.mkdir(RNFS.DocumentDirectoryPath + '/' + file.path);
         return copyWWWBuildFiles(file.path);
@@ -151,7 +152,7 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
             cacheEnabled: true,
           }}
-          style={{ backgroundColor: '#0D0D0D', opacity: webViewOpacity }}
+          style={{backgroundColor: '#0D0D0D', opacity: webViewOpacity}}
         />
       </WebViewContainer>
     </MainScreenContainer>
