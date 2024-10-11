@@ -46,13 +46,13 @@ public class android_multitool {
     switch (toolName) {
       case "resize_image":
         image_resizer(toolOptions);
-        return;
+        break;
       case "replace":
         multiline_replace(toolOptions);
-        return;
+        break;
       case "resize_splash":
         splash_resizer(toolOptions);
-        return;
+        break;
     }
   }
 
@@ -61,7 +61,7 @@ public class android_multitool {
     if (args.length < 4 || args.length > 6) {
       System.out.print(
           "Usage: java splash_resizer <input.png> <target.png> <canvas.width> <canvas.height> <rrggbb> [square.size]\n");
-      System.exit(-1);
+      return;
     }
 
     Path source = Paths.get(args[0]);
@@ -150,7 +150,7 @@ public class android_multitool {
 
     if (args.length < 3 || args.length > 4) {
       System.out.print("Usage: java resize_image <input.png> <output.size> <new_width> [round]\n");
-      System.exit(-1);
+      return;
     }
 
     Path source = Paths.get(args[0]);
@@ -225,7 +225,6 @@ public class android_multitool {
   public static void multiline_replace(String[] args) {
     if (args.length != 1) {
       System.out.println("need file name");
-      System.exit(-1);
       return;
     }
 

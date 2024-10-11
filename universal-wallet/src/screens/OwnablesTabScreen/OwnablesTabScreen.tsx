@@ -14,6 +14,7 @@ import {StyledImage} from '../../components/styles/OverviewHeader.styles';
 import {logoTitle} from '../../utils/images';
 import {useUserSettings} from '../../context/User.context';
 import DOMPurify from 'dompurify';
+import {Account} from '@ltonetwork/lto';
 
 const port = 30122; // select a random available port
 const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/www' : RNFS.DocumentDirectoryPath + '/html';
@@ -28,7 +29,7 @@ const WebViewContainer = styled.View`
 `;
 
 export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Ownables'>) {
-  const [accountInfo, setAccountInfo] = useState<Object | null>(null);
+  const [accountInfo, setAccountInfo] = useState<Account | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
 
   const {setForceSignOut} = useUserSettings();
@@ -65,6 +66,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
 
   const webMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
+    console.log(data);
     const sanitizedData = DOMPurify.sanitize(data);
     console.log('webMessage', sanitizedData);
     if (data.type === 'openFileDialog') {
