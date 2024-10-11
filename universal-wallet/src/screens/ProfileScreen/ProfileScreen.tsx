@@ -1,5 +1,6 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useContext, useState} from 'react';
 import {PROFILE} from '../../constants/Text';
+import {MessageContext} from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
 import LTOService from '../../services/LTO.service';
 import {RootStackScreenProps} from '../../../types';
@@ -11,6 +12,7 @@ import {StyledButton} from '../../components/StyledButton';
 import {ExpandableText} from '../../components/ExpandableText';
 import {ScreenSubView} from '../../components/styles/ScreenContainer.styles';
 import {BottomModal} from '../../components/BottomModal';
+import {InputModal} from '../../components/InputModal';
 
 export default function ProfileScreen({navigation}: RootStackScreenProps<'Profile'>) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -22,6 +24,9 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
   const {address, publicKey, privateKey, seed} = accountInformation;
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showSeedPhrase, setShowSeedPhrase] = useState(false);
+  const [showInputModal, setShowInputModal] = useState<boolean>(false);
+  const [currentReveal, setCurrentReveal] = useState<'privateKey' | 'seed' | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     readStorage();
@@ -65,6 +70,35 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
         throw new Error(`Error retrieving data. ${error}`);
       });
   };
+  const handleShowPrivateKey = () => {
+    setCurrentReveal('privateKey');
+    setShowInputModal(true);
+  };
+
+  const handleShowSeedPhrase = () => {
+    setCurrentReveal('seed');
+    setShowInputModal(true);
+  };
+
+  const handlePasswordSubmit = (password: string) => {
+    if (!password.trim()) {
+      setErrorMessage('Password required');
+      return;
+    }
+
+    LTOService.unlock(password)
+      .then(() => {
+        if (currentReveal === 'privateKey') {
+          setShowPrivateKey(true);
+        } else if (currentReveal === 'seed') {
+          setShowSeedPhrase(true);
+        }
+        setShowInputModal(false);
+      })
+      .catch(() => {
+        setErrorMessage('Incorrect password');
+      });
+  };
 
   return (
     <ScreenContainer>
@@ -80,17 +114,39 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
             showPrivateKey ? (
               <Card label={privateKey} subLabel={PROFILE.PRIVATE_KEY} type="secondary" />
             ) : (
-              <StyledButton text="Show Private Key" onPress={() => setShowPrivateKey(true)} type="primary" />
+              <StyledButton text="Show Private Key" onPress={handleShowPrivateKey} type="primary" />
             )
           }
         />
+
         <ExpandableText
           text="Show backup phrase"
-          content={<Card label={seed} subLabel={PROFILE.PHRASE} type="secondary" />}
+          content={
+            showSeedPhrase ? (
+              <Card label={seed} subLabel={PROFILE.PHRASE} type="secondary" />
+            ) : (
+              <StyledButton text="Show Seed Phrase" onPress={handleShowSeedPhrase} type="primary" />
+            )
+          }
         />
       </ScreenSubView>
 
+      {/* InputModal for prompting password */}
+      <InputModal
+        visible={showInputModal}
+        onSubmit={handlePasswordSubmit}
+        onCancel={() => setShowInputModal(false)}
+        title="Enter Password"
+        placeholder="Please enter your password to reveal"
+        inputType="password"
+        body={[]}
+        submitText="Submit"
+        submitButtonType="primary"
+        onInputChange={() => {}}
+      />
+
       <StyledButton text={PROFILE.DELETE_ACCOUNT} onPress={() => setShowConfirmDelete(true)} type="danger" />
+
       <BottomModal
         title={PROFILE.DELETE_ACCOUNT_LABEL}
         body={[{text: PROFILE.DELETE_ACCOUNT_MESSAGE}, {text: PROFILE.DELETE_ACCOUNT_MESSAGE_2}]}
