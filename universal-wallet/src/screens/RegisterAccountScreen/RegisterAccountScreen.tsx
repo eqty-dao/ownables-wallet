@@ -53,6 +53,10 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
     setloginForm({...loginForm, [name]: sanitizedValue});
   };
 
+  const isStrongPassword = (password) => {
+    const regex = 
+  }
+
   const validateForm = (): {err?: string} => {
     if (loginForm.nickname === '') {
       return {err: 'Nickname is required!'};
@@ -66,8 +70,8 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
       return {err: 'Password is required!'};
     }
 
-    if (loginForm.password.length < 3) {
-      return {err: 'Password must be at least 3 characters long!'};
+    if (loginForm.password.length < 8) {
+      return {err: 'Password must be at least 8 characters long!'};
     }
 
     if (loginForm.password !== loginForm.passwordConfirmation) {
