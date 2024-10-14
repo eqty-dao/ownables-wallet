@@ -261,6 +261,8 @@ public class android_multitool {
       writer.close();
       return true;
     } catch (IOException e) {
+      System.err.println("Error writing to the file: " + e.getMessage());
+      e.printStackTrace();
     }
     return false;
   }
