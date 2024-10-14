@@ -15,6 +15,7 @@ import {logoTitle} from '../../utils/images';
 import {useUserSettings} from '../../context/User.context';
 import DOMPurify from 'dompurify';
 import {Account} from '@ltonetwork/lto';
+//import path from 'path';
 
 const port = 30122; // select a random available port
 const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/www' : RNFS.DocumentDirectoryPath + '/html';
@@ -31,7 +32,6 @@ const WebViewContainer = styled.View`
 export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Ownables'>) {
   const [accountInfo, setAccountInfo] = useState<Account | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
-
   const {setForceSignOut} = useUserSettings();
 
   useEffect(() => {
@@ -87,7 +87,10 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
         await RNFS.mkdir(RNFS.DocumentDirectoryPath + '/' + file.path);
         return copyWWWBuildFiles(file.path);
       } else {
-        await RNFS.copyFileAssets(file.path, RNFS.DocumentDirectoryPath + '/' + file.path);
+        //await RNFS.copyFileAssets(file.path, RNFS.DocumentDirectoryPath + '/' + file.path);
+        const sanitizedPath = file.path.replace(/^(\.\.[\/\\])+/, '');
+        const targetPath = `${RNFS.DocumentDirectoryPath}/${sanitizedPath}`;
+        await RNFS.copyFileAssets(file.path, targetPath);
       }
     });
   };
