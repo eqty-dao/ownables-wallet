@@ -66,7 +66,6 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
 
   const webMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
-    console.log(data);
     const sanitizedData = DOMPurify.sanitize(data);
     console.log('webMessage', sanitizedData);
     if (data.type === 'openFileDialog') {
