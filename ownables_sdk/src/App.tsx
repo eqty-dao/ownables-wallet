@@ -127,7 +127,7 @@ export default function App() {
     setFoundOwnables(foundOwnables);
   };
 
-  const initializeCollections = () => {
+  const initializeCollections = async () => {
     CollectionService.init();
     // do a initial search to fill filteredPackages
     filterBy("", "", StaticCollections.ALL);
@@ -136,6 +136,10 @@ export default function App() {
     getAllIssuers();
     // reset filter
     resetFilter();
+    const pkgs = (await PackageService.importFromRelay())?.filter(Boolean) as TypedPackage[];
+    if(pkgs && pkgs.length > 0) {
+      relayImport(pkgs);
+    }
   };
 
   useEffect(() => {
@@ -219,7 +223,7 @@ export default function App() {
   };
 
   const forge = async (pkg: TypedPackage) => {
-    const chain = OwnableService.create(pkg);
+    const chain = await OwnableService.create(pkg);
     setOwnables([...ownables, { chain, package: pkg.cid }]);
     setShowPackages(false);
     enqueueSnackbar(`${pkg.title} forged`, {
@@ -249,26 +253,56 @@ export default function App() {
     }, 0);
   };
 
-  // DC: WithRelayService
-  const relayImport = async (pkg: any) => {
-    setOwnables((prevOwnables) => [
-      ...prevOwnables,
-      ...pkg.map((data: any) => {
-        console.log(data);
-        return {
-          chain: data.chain,
-          package: data.cids,
-        };
-      }),
-    ]);
-
-    if (pkg.length > 0) {
-      enqueueSnackbar(`Ownable successfully loaded!`, {
+  const relayImport = async (pkg: TypedPackage[] | null) => {
+    if (pkg != null && pkg.length > 0) {
+      setOwnables((prevOwnables) => [
+        ...prevOwnables,
+        ...pkg.map((data: any) => {
+          return {
+            chain: data.chain,
+            package: data.cid,
+          };
+        }),
+      ]);
+      enqueueSnackbar(`Ownable successfully loaded`, {
         variant: "success",
       });
+      setAlert({
+        severity: "info",
+        title: "New Ownables Detected",
+        message: "New ownables have been detected. Refreshing...",
+      });
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 4000);
+    } else {
+      enqueueSnackbar(`Nothing to Load from relay`, {
+        variant: "error",
+      });
     }
-    setShowPackages(false);
   };
+
+
+  // DC: WithRelayService
+  // const relayImport = async (pkg: any) => {
+  //   setOwnables((prevOwnables) => [
+  //     ...prevOwnables,
+  //     ...pkg.map((data: any) => {
+  //       console.log(data);
+  //       return {
+  //         chain: data.chain,
+  //         package: data.cids,
+  //       };
+  //     }),
+  //   ]);
+
+  //   if (pkg.length > 0) {
+  //     // enqueueSnackbar(`Ownable successfully loaded!`, {
+  //     //   variant: "success",
+  //     // });
+  //   }
+  //   setShowPackages(false);
+  // };
 
   const canConsume = async (consumer: {
     chain: EventChain;
@@ -421,9 +455,7 @@ export default function App() {
     const foundedOwnables = items.filter((ownable) => {
       const pkg = PackageService.info(ownable.package);
       const lowerCasedTitle = pkg.title.toLowerCase();
-      const includesPartialKeyword = pkg.keywords.some((keyword) =>
-        keyword.toLowerCase().includes(queryFormat)
-      );
+      const includesPartialKeyword = pkg && pkg.keywords ? pkg.keywords.some((keyword) => keyword.includes(queryFormat)) : false;
       const includesPartialTitle =
         lowerCasedTitle.includes(queryFormat) ||
         lowerCasedTitle.split(" ").some((part) => part.includes(queryFormat));
@@ -453,7 +485,10 @@ export default function App() {
         setShowPackages(true);
         return;
       case HomePageEnums.ReceiveOwnables:
-        await PackageService.importFromRelay()
+        const pkgs = await PackageService.importFromRelay() as TypedPackage[];
+        if(pkgs && pkgs.length > 0) {
+          relayImport(pkgs);
+        }
         return;
       default:
         return;

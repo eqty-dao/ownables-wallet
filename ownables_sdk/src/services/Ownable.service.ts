@@ -1,4 +1,4 @@
-import { EventChain, Event } from "@ltonetwork/lto";
+import { EventChain, Event, Binary } from "@ltonetwork/lto";
 import LTOService from "./LTO.service";
 import IDBService from "./IDB.service";
 import TypedDict from "../interfaces/TypedDict";
@@ -11,6 +11,7 @@ import JSZip from "jszip";
 import { TypedPackage } from "../interfaces/TypedPackage";
 import { TypedOwnableInfo } from "../interfaces/TypedOwnableInfo";
 import EventChainService from "./EventChain.service";
+import LocalStorageService from "./LocalStorage.service";
 
 export type StateDump = Array<[ArrayLike<number>, ArrayLike<number>]>;
 
@@ -55,10 +56,25 @@ export interface OwnableRPC {
 }
 
 export default class OwnableService {
+  private static _anchoring = !!LocalStorageService.get("anchoring");
+
+  static get anchoring(): boolean {
+    return this._anchoring;
+  }
+  static set anchoring(enabled: boolean) {
+    LocalStorageService.set("anchoring", enabled);
+    this._anchoring = enabled;
+  }
+
   private static readonly _rpc = new Map<string, OwnableRPC>();
 
   static async loadAll(): Promise<
-    Array<{ chain: EventChain; package: string; created: Date }>
+    Array<{
+      chain: EventChain;
+      package: string;
+      created: Date;
+      keywords: string[];
+    }>
   > {
     return EventChainService.loadAll();
   }
@@ -66,7 +82,6 @@ export default class OwnableService {
   static rpc(id: string): OwnableRPC {
     const rpc = this._rpc.get(id);
     if (!rpc) throw new Error(`No RPC for ownable ${id}`);
-
     return rpc;
   }
 
@@ -80,13 +95,13 @@ export default class OwnableService {
       if (e instanceof Cancelled) return;
       throw e;
     }
-
     this._rpc.delete(id);
   }
 
-  static create(pkg: TypedPackage): EventChain {
+  static async create(pkg: TypedPackage): Promise<EventChain> {
     const account = LTOService.account;
     const chain = EventChain.create(account);
+    const anchors: Array<{ key: Binary; value: Binary }> = [];
 
     if (pkg.isDynamic) {
       const msg = {
@@ -94,19 +109,24 @@ export default class OwnableService {
         ownable_id: chain.id,
         package: pkg.cid,
         network_id: LTOService.networkId,
+        keywords: pkg.keywords,
       };
-
       new Event(msg).addTo(chain).signWith(account);
+    }
+
+    if (this.anchoring) {
+      const hash = chain.latestHash.hex;
+      anchors.push(...chain.startingWith(Binary.fromHex(hash)).anchorMap);
+    }
+
+    if (anchors.length > 0) {
+      await LTOService.anchor(...anchors);
     }
 
     return chain;
   }
 
-  static async init(
-    chain: EventChain,
-    pkg: string,
-    rpc: OwnableRPC
-  ): Promise<void> {
+  static async init(chain: any, cid: string, rpc: OwnableRPC): Promise<void> {
     if (this._rpc.has(chain.id)) {
       try {
         delete (this._rpc.get(chain.id) as any).handler;
@@ -114,20 +134,17 @@ export default class OwnableService {
     }
 
     this._rpc.set(chain.id, rpc);
-
-    const moduleJs = await PackageService.getAssetAsText(pkg, "ownable.js");
+    const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
     const js = workerJsSource + moduleJs;
 
     const wasm = (await PackageService.getAsset(
-      pkg,
+      cid,
       "ownable_bg.wasm",
       (fr, file) => fr.readAsArrayBuffer(file)
     )) as ArrayBuffer;
-
     await rpc.init(chain.id, js, new Uint8Array(wasm));
-
     const stateDump = await this.apply(chain, []);
-    await EventChainService.initStore(chain, pkg, stateDump);
+    await this.initStore(chain, cid, stateDump);
   }
 
   static async apply(
@@ -149,7 +166,9 @@ export default class OwnableService {
     stateDump: StateDump
   ): Promise<{ result?: TypedDict; state: StateDump }> {
     const info = {
-      sender: event.signKey!.publicKey.base58,
+      sender: event.signKey!.publicKey.base58
+        ? event.signKey!.publicKey.base58
+        : event.signKey!.publicKey.toString(),
       funds: [],
     };
     const { "@context": context, ...msg } = event.parsedData;
@@ -218,8 +237,7 @@ export default class OwnableService {
       sender: LTOService.account.publicKey,
       funds: [],
     };
-    const consumeMessage = { consume: {} }; //{consume: {ownable_id: consumer.id}};
-
+    const consumeMessage = { consume: {} };
     const consumerState = await EventChainService.getStateDump(
       consumer.id,
       consumer.state
@@ -274,7 +292,6 @@ export default class OwnableService {
     if (await IDBService.hasStore(`ownable:${chain.id}`)) {
       return;
     }
-
     const dbs = [`ownable:${chain.id}`];
     if (stateDump) dbs.push(`ownable:${chain.id}.state`);
 
@@ -283,6 +300,8 @@ export default class OwnableService {
       state: chain.state.hex,
       package: pkg,
       created: new Date(),
+      latestHash: chain.latestHash.hex,
+      keywords: PackageService.info(pkg).keywords,
     };
 
     const data: TypedDict = {};
@@ -296,16 +315,11 @@ export default class OwnableService {
   static async store(chain: EventChain, stateDump: StateDump): Promise<void> {
     const storedState = await IDBService.get(`ownable:${chain.id}`, "state");
     if (storedState === chain.state) return;
-
     await IDBService.setAll(
       Object.fromEntries([
         [
           `ownable:${chain.id}`,
-          {
-            chain: chain.toJSON(),
-            state: chain.state.hex,
-            id: new Date().getTime().toString(),
-          },
+          { chain: chain.toJSON(), state: chain.state.hex },
         ],
         [`ownable:${chain.id}.state`, new Map(stateDump)],
       ])

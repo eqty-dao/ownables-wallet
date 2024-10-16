@@ -1838,6 +1838,11 @@
     interface-datastore "^8.2.11"
     multiformats "^13.1.0"
 
+"@ltonetwork/http-message-signatures@^0.1.12":
+  version "0.1.12"
+  resolved "https://registry.npmjs.org/@ltonetwork/http-message-signatures/-/http-message-signatures-0.1.12.tgz"
+  integrity sha512-bk7BemlROclcdXu5ISTKjPeRstJoqWefh6Bvr1q6XaX+KyKgLuKeCSYOKRyBBJ8P/E+tq9toBUIlMRLvW5J9KQ==
+
 "@ltonetwork/lto@^0.15.16":
   version "0.15.16"
   resolved "https://registry.npmjs.org/@ltonetwork/lto/-/lto-0.15.16.tgz"
@@ -8642,6 +8647,11 @@ miller-rabin@^4.0.0:
   version "1.52.0"
   resolved "https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz"
   integrity sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==
+
+mime-lite@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.npmjs.org/mime-lite/-/mime-lite-1.0.3.tgz"
+  integrity sha512-V85l97zJSTG8FEvmdTlmNYb0UMrVBwvRjw7bWTf/aT6KjFwtz3iTz8D2tuFIp7lwiaO2C5ecnrEmSkkMRCrqVw==
 
 mime-types@^2.1.12, mime-types@^2.1.27, mime-types@^2.1.31, mime-types@~2.1.17, mime-types@~2.1.24, mime-types@~2.1.34:
   version "2.1.35"

@@ -158,4 +158,17 @@ export default class LTOService {
 
     return this.account
   }
+
+  public static async transfer(recipient: string, amount: number | null) {
+    try {
+      if (!amount) {
+        return;
+      }
+      const tx = await lto.transfer(this.account, recipient, amount);
+      return tx.id;
+    } catch {
+      return "failed";
+    }
+  }
+
 }

@@ -5,23 +5,20 @@ export interface TypedPackageCapabilities {
   isConsumable: boolean;
   isConsumer: boolean;
   isTransferable: boolean;
+  isBridgeable?: boolean;
 }
 
 export interface TypedPackage extends TypedPackageCapabilities {
-  // DC: custom id
-  id: string;
   title: string;
   detail?;
   name: string;
   description?: string;
   cid: string;
+  chain?;
+  isNotLocal?: boolean;
+  uniqueMessageHash?: string;
   versions: Array<{ date: Date; cid: string }>;
-  // DC: keywords
-  keywords: string[];
-  // DC: collaborators
-  collaborators: string[];
-  // DC: chanIds
-  chainIds: Array<string>;
+  keywords?: string[];
 }
 
 export interface TypedPackageStub {
@@ -29,4 +26,5 @@ export interface TypedPackageStub {
   name: string;
   description?: string;
   stub: true;
+  isNotLocal?: boolean;
 }

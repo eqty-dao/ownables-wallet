@@ -7,6 +7,7 @@ import {useState, MouseEvent} from "react";
 import {Delete, PrecisionManufacturing, SwapHoriz} from "@mui/icons-material";
 import PromptDialog from "./PromptDialog";
 import LTOService from "../services/LTO.service";
+import BridgeOwnableDrawer from './DetailsModal/BridgeOwnableDrawer';
 
 interface OwnableActionsProps {
   sx?: SxProps<Theme>;

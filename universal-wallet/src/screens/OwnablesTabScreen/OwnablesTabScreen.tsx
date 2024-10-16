@@ -88,7 +88,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
         return copyWWWBuildFiles(file.path);
       } else {
         //await RNFS.copyFileAssets(file.path, RNFS.DocumentDirectoryPath + '/' + file.path);
-        const sanitizedPath = file.path.replace(/^(\.\.[\/\\])+/, '');
+        const sanitizedPath = file.path;
         const targetPath = `${RNFS.DocumentDirectoryPath}/${sanitizedPath}`;
         await RNFS.copyFileAssets(file.path, targetPath);
       }
