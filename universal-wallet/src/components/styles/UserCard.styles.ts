@@ -3,6 +3,7 @@ import styled from 'styled-components';
 export const UserCardContainer = styled.View`
   flex-direction: row;
   gap: 16px;
+  flex-wrap: wrap;
 `;
 
 export const UserCardImageContainer = styled.View`

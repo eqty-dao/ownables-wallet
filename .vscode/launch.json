@@ -8,7 +8,7 @@
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
-            "url": "http://localhost:3000/?seed=alone gospel model flip kitchen brisk tonight high find short ginger shiver diary rate crater",
+            "url": "http://10.0.0.167:3000/?seed=alone%20gospel%20model%20flip%20kitchen%20brisk%20tonight%20high%20find%20short%20ginger%20shiver%20diary%20rate%20crater",
             "webRoot": "${workspaceFolder}"
         }
     ]
