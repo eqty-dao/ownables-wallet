@@ -310,6 +310,9 @@ export default class PackageService {
           const mainMessage = message;
           const asset = await this.extractAssets(mainMessage.data.buffer);
           const cid = await calculateCid(asset);
+          if(cid === "") {
+            return null;
+          }
           const chainJson = await this.getChainJson(
             "chain.json",
             mainMessage.data.buffer
@@ -356,8 +359,8 @@ export default class PackageService {
           pkg.chain = chain;
           pkg.uniqueMessageHash = uniqueMessageHash;
           return pkg;
-        })
-      );
+        }).filter((pkg) => pkg !== null)
+      )
       return results.filter((pkg) => pkg !== null);
     } catch (error) {
       console.error("Error:", error);
