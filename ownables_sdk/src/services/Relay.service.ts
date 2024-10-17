@@ -21,15 +21,14 @@ export const relayURL = process.env.REACT_APP_RELAY
 export const relayLocalURL = process.env.REACT_APP_RELAY;
 
 //lto.relay = new Relay("https://relay.lto.network/");
-lto.relay = relayURL
-  ? new Relay(`${relayURL}/`)
-  : new Relay(`${relayLocalURL}/`);
-window.alert("SEED: " + seed);
+
 
 export class RelayService {
   private static relayURL =
     process.env.REACT_APP_RELAY || process.env.REACT_APP_LOCAL;
-  private static relay = new Relay(`${this.relayURL}`);
+  private static relay = relayURL
+  ? new Relay(`${relayURL}/`)
+  : new Relay(`${relayLocalURL}/`);
 
   /**
    * Handle All Signed Requests
@@ -90,11 +89,11 @@ export class RelayService {
 
     const address = sender.address;
     const isRelayAvailable = await this.isRelayUp();
+
     if (!isRelayAvailable) return null;
     const url = `${this.relayURL}/inboxes/${address}/`;
     try {
       const responses = await this.handleSignedRequest("GET", url);
-
       if (!responses.data.length) return null;
 
       const ownableData = await Promise.all(

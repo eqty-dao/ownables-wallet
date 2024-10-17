@@ -304,7 +304,6 @@ export default class PackageService {
       const filteredMessages = await RelayService.checkDuplicateMessage(
         relayData
       );
-
       const results = await Promise.all(
         filteredMessages.map(async (data: any) => {
           const { message, ...messageHash } = data;
@@ -359,7 +358,6 @@ export default class PackageService {
           return pkg;
         })
       );
-
       return results.filter((pkg) => pkg !== null);
     } catch (error) {
       console.error("Error:", error);

@@ -968,6 +968,7 @@ app_prebuild() {
   mkdir -p android/app/src/main/assets/html ios/external/html
   cp -R _html/* android/app/src/main/assets/html/
   cp -R _html/* ios/external/html/
+  cp -R _html/* www
   echo "Done copying ownables sdk to android and ios"
 }
 

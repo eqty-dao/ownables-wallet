@@ -4,8 +4,14 @@ import SessionStorageService from "./SessionStorage.service";
 
 export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID)
 if (process.env.REACT_APP_LTO_API_URL) lto.nodeAddress = process.env.REACT_APP_LTO_API_URL;
+const getSeedFromQuery = () => {
+  const queryParams = new URLSearchParams(window.location.search);
+  return queryParams.get("seed");
+}
 
-const sessionSeed = SessionStorageService.get('@seed');
+const seed = getSeedFromQuery();
+
+const sessionSeed = SessionStorageService.get('@seed') || seed;
 
 export default class LTOService {
   public static readonly networkId = lto.networkId;
