@@ -15,8 +15,10 @@ interface CollectionContextType {
   updateTitle: (collectionName: string, newName: string) => void;
   getAll: () => void;
   getFromCollection: (collectionName: string) => any;
-  setUpdating: (value: boolean) => any;
+  setUpdating: (value: boolean, collectionId: string) => any;
+  updateOpenState: (collectionId: string, isOpen: boolean) => void;
   isUpdatingCollection: boolean;
+  updatingCollectionId: string;
 }
 
 const CollectionContext = createContext<CollectionContextType>({
@@ -32,7 +34,9 @@ const CollectionContext = createContext<CollectionContextType>({
   updateTitle: () => {},
   getFromCollection: () => {},
   setUpdating: () => {},
+  updateOpenState: () => {},
   isUpdatingCollection: false,
+  updatingCollectionId: "",
 });
 
 interface Props {
@@ -52,18 +56,20 @@ export const CollectionsProvider = (props: Props) => {
   );
 
   const [isUpdatingCollection, setIsUpdating] = useState<boolean>(false);
+  const [updatingCollectionId, setUpdatingCollectionId] = useState<string>("");
 
-  const create = (collectionName: string) : CollectionItemType => {
+  const create = (collectionName: string): CollectionItemType => {
     const collectionId = createSlug(collectionName);
     const newCollection = {
       id: collectionId,
       value: collectionName,
       static: 0,
-      items : []
-    }
+      items: [],
+      isOpen: true,
+    };
     CollectionService.add(newCollection);
-    setCollections(CollectionService.getAll())
-    return newCollection
+    setCollections(CollectionService.getAll());
+    return newCollection;
   };
 
   const addTo = (collection: string, pkg: string) => {
@@ -89,7 +95,8 @@ export const CollectionsProvider = (props: Props) => {
 
   const getAll = () => setCollections(CollectionService.getAll());
 
-  const getFromCollection = (collectionId: string) => CollectionService.findItemsFromCollection(collectionId)
+  const getFromCollection = (collectionId: string) =>
+    CollectionService.findItemsFromCollection(collectionId);
 
   const removeFrom = (collectionName: string, pkg: string) => {
     CollectionService.removeItemFromCollection(collectionName, pkg);
@@ -104,9 +111,17 @@ export const CollectionsProvider = (props: Props) => {
   const updateTitle = (collectionName: string, newName: string) => {
     CollectionService.updateCollectionName(collectionName, newName);
     setCollections(CollectionService.getAll());
-  }
+  };
 
-  const setUpdating = (value: boolean) => setIsUpdating(value)
+  const updateOpenState = (collectionId: string, isOpen: boolean) => {
+    CollectionService.updateOpenState(collectionId, isOpen);
+    setCollections(CollectionService.getAll());
+  };
+
+  const setUpdating = (value: boolean, collectionId: string) => {
+    setIsUpdating(value);
+    setUpdatingCollectionId(collectionId);
+  };
 
   const contextValue: CollectionContextType = {
     collections,
@@ -121,7 +136,9 @@ export const CollectionsProvider = (props: Props) => {
     updateTitle,
     getFromCollection,
     setUpdating,
-    isUpdatingCollection
+    isUpdatingCollection,
+    updatingCollectionId,
+    updateOpenState,
   };
 
   return (

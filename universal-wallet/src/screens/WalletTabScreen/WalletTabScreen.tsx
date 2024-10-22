@@ -5,6 +5,7 @@ import {
   AppStateStatus,
   BackHandler,
   ImageBackground,
+  Linking,
   Text,
   useColorScheme,
   useWindowDimensions,
@@ -51,6 +52,32 @@ import Typography from '../../components/Typography';
 import Colors from '../../constants/Colors';
 import Spacer from '../../components/Spacer';
 import BottomTile from './BottomTile';
+import styled from 'styled-components/native';
+import {useUserSettings} from '../../context/User.context';
+import InAppBrowser from 'react-native-inappbrowser-reborn';
+import {LTO_EXPLORER_URL} from '@env';
+const WALLET_URL = LTO_EXPLORER_URL;
+
+const ExitPopup = styled.View`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+`;
+
+const ExitMessage = styled.View`
+  padding: 8px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #000000;
+  border-radius: 8px;
+`;
 
 const MainTab = ({children, navigation}) => {
   const {width, height} = useWindowDimensions();
@@ -69,23 +96,38 @@ const MainTab = ({children, navigation}) => {
 
   const isFocused = useIsFocused();
 
-  const colorScheme = useColorScheme();
+  const colorScheme = useColorScheme() ?? 'dark';
+
+  const {isSignOutForced} = useUserSettings();
+
+  const [isExitPopupVisible, setExitPopupVisible] = useState(false);
+
+  const onBackPress = () => {
+    if (!isFocused) return false;
+
+    if (isExitPopupVisible) {
+      BackHandler.exitApp();
+      return true;
+    }
+
+    setExitPopupVisible(true);
+    setTimeout(() => {
+      setExitPopupVisible(false);
+    }, 2000); // Reset exit popup after 2 seconds
+    return true;
+  };
+
+  useEffect(() => {
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+  }, [isFocused, isExitPopupVisible, onBackPress]);
 
   useEffect(() => {
     if (isFocused) {
       loadAccount();
     }
   }, [isFocused]);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        return true;
-      };
-      BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
-    }, []),
-  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -109,13 +151,12 @@ const MainTab = ({children, navigation}) => {
     try {
       const account = await LTOService.getAccount();
       setAccountAddress(account.address);
-      console.log('---------------------');
-      console.log(account.address);
-      console.log(account.seed);
-      console.log('---------------------');
+      // console.log('---------------------');
+      // console.log(account.address);
+      // console.log(account.seed);
+      // console.log('---------------------');
     } catch (error) {
       console.error('Error loading account:', error);
-      // Handle the error appropriately
     }
   };
 
@@ -324,13 +365,9 @@ const MainTab = ({children, navigation}) => {
   };
 
   const handleAppStateChange = (nextAppState: AppStateStatus): void => {
-    if (appState === 'active' && nextAppState?.match(/background/)) {
+    if (nextAppState?.match(/background/) && isSignOutForced) {
       console.log('>>> Locking screen');
-      // TODO temporarily disable lock on app state change
-      // LTOService.lock()
-      // setTimeout(() => {
-      //     navigation.navigate('LockedScreen')
-      // }, 500)
+      navigation.replace('SignIn');
     }
     setAppState(nextAppState);
   };
@@ -340,153 +377,154 @@ const MainTab = ({children, navigation}) => {
     return () => {
       unsubscribeAppState.remove();
     };
-  }, []);
+  }, [isSignOutForced]);
 
-  useEffect(() => {
-    const handleBackButton = () => {
-      if (navigation.canGoBack()) {
-        BackHandler.exitApp();
-        return true;
-      }
-      return false;
-    };
-    BackHandler.addEventListener('hardwareBackPress', handleBackButton);
-    return () => {
-      BackHandler.removeEventListener('hardwareBackPress', handleBackButton);
-    };
-  }, [appState]);
+  const handleMoreTransactionPressed = () => {
+    //open external link
+    const url = `${WALLET_URL}/address/${accountAddress}`;
+    InAppBrowser.open(url);
+  };
 
   return (
-    <Loader loading={isLoading}>
-      <Container>
-        <ImageBackground source={backgroundImage} style={{width, height: height / 2, position: 'absolute'}} />
-        <OverviewContainer style={{height}}>
-          <TopContainer>
-            <OverviewHeader
-              icon={'menu'}
-              hideQR
-              onPress={() => navigation.navigate('Menu')}
-              input={<StyledImage testID="logo-title" source={logoTitle} />}
-            />
+    <>
+      {isExitPopupVisible && (
+        <ExitPopup>
+          <ExitMessage>
+            <Text style={{color: '#ffffff'}}>Tap again to exit</Text>
+          </ExitMessage>
+        </ExitPopup>
+      )}
+      <Loader loading={isLoading}>
+        <Container>
+          <ImageBackground source={backgroundImage} style={{width, height: height / 2, position: 'absolute'}} />
+          <OverviewContainer style={{height}}>
+            <TopContainer>
+              <OverviewHeader
+                icon={'menu'}
+                hideQR
+                onPress={() => navigation.navigate('Menu')}
+                input={<StyledImage testID="logo-title" source={logoTitle} />}
+              />
 
-            <Spacer size={40} />
+              <Spacer size={40} />
 
-            <TopCardsRipple
-              onPress={() => setShowBalanceDetails(!showBalanceDetails)}
-              borderless={true}
-              style={{
-                paddingLeft: 16,
-                paddingRight: 16,
-              }}>
-              <TopCardsContainer>
-                <TopCard>
+              <TopCardsRipple
+                onPress={() => setShowBalanceDetails(!showBalanceDetails)}
+                borderless={true}
+                style={{
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                }}>
+                <TopCardsContainer>
+                  <TopCard>
+                    <Card.Content>
+                      <Typography color={Colors[colorScheme].white[200]} size={4}>
+                        {WALLET.REGULAR}
+                      </Typography>
+                      <AmountContainer>
+                        <Typography color={Colors[colorScheme].white[100]} size={12} bold>
+                          {formatNumber(regular)}
+                        </Typography>
+                        <Spacer size={4} />
+                        <Typography color={Colors[colorScheme].white[100]} size={5} bold>
+                          LTO
+                        </Typography>
+                      </AmountContainer>
+                      <Typography color={Colors[colorScheme].white[100]} size={4}>
+                        {WALLET.EQUIVALENT}{' '}
+                        <Typography color={Colors[colorScheme].purple[100]} size={4}>
+                          {formatNumber(change)}
+                          {WALLET.DOLLAR_SYMBOL}
+                        </Typography>
+                      </Typography>
+                    </Card.Content>
+                  </TopCard>
+
+                  <TopCard>
+                    <Card.Content>
+                      <Typography color={Colors[colorScheme].white[200]} size={4}>
+                        {WALLET.PRICE}
+                      </Typography>
+                      <AmountContainer>
+                        <Typography color={Colors[colorScheme].white[100]} size={12} bold>
+                          {price?.toFixed(3)}
+                        </Typography>
+                        <Spacer size={4} />
+                        <Typography color={Colors[colorScheme].white[100]} size={5} bold>
+                          {WALLET.DOLLAR_SYMBOL}
+                        </Typography>
+                      </AmountContainer>
+                      {checkPositiveNegative(percent_change_24h)}
+                    </Card.Content>
+                  </TopCard>
+                </TopCardsContainer>
+              </TopCardsRipple>
+            </TopContainer>
+
+            <ScrollContainer style={{marginTop: 2}} innerStyle={{paddingBottom: 130}}>
+              <Collapsible
+                collapsed={!showBalanceDetails}
+                style={{
+                  alignItems: 'center',
+                }}>
+                <BottomCardsContainer>
+                  <BottomTile title={WALLET.LEASING} value={formatNumber(leasing, 0)} suffix={WALLET.LTO} />
+                  <Spacer size={25} />
+                  <BottomTile title={WALLET.UNBONDING} value={formatNumber(unbonding, 0)} suffix={WALLET.LTO} />
+                  <Spacer size={25} />
+                  <BottomTile title={WALLET.AVAILABLE} value={formatNumber(available, 0)} suffix={WALLET.LTO} />
+                  <Spacer size={25} />
+                  <BottomTile title={WALLET.EFFECTIVE} value={formatNumber(effective, 0)} suffix={WALLET.LTO} />
+                </BottomCardsContainer>
+              </Collapsible>
+
+              <If condition={leases.length > 0}>
+                <ActivityCard>
+                  <ActivityCardTitle>
+                    <Typography size={6} color={Colors[colorScheme ?? 'dark'].white[100]} bold>
+                      {WALLET.ACTIVE_LEASES}
+                    </Typography>
+                  </ActivityCardTitle>
+                  <ShortList data={leases} renderItem={({item}) => renderLease(item)} />
+                </ActivityCard>
+              </If>
+
+              <If condition={transactions.length > 0}>
+                <ActivityCard>
+                  <ActivityCardTitle>
+                    <Typography size={6} color={Colors[colorScheme ?? 'dark'].white[100]} bold>
+                      {WALLET.RECENT_ACTIVITY}
+                    </Typography>
+                  </ActivityCardTitle>
                   <Card.Content>
-                    <Typography color={Colors[colorScheme].white[200]} size={4}>
-                      {WALLET.REGULAR}
-                    </Typography>
-                    <AmountContainer>
-                      <Typography color={Colors[colorScheme].white[100]} size={12} bold>
-                        {formatNumber(regular)}
-                      </Typography>
-                      <Spacer size={4} />
-                      <Typography color={Colors[colorScheme].white[100]} size={5} bold>
-                        LTO
-                      </Typography>
-                    </AmountContainer>
-                    <Typography color={Colors[colorScheme].white[100]} size={4}>
-                      {WALLET.EQUIVALENT}{' '}
-                      <Typography color={Colors[colorScheme].purple[100]} size={4}>
-                        {formatNumber(change)}
-                        {WALLET.DOLLAR_SYMBOL}
-                      </Typography>
-                    </Typography>
+                    <ShortSectionList
+                      sections={transactions}
+                      renderSectionHeader={({section: {date}}) => (
+                        <List.Subheader
+                          key={`transaction.section:${date}`}
+                          style={{color: Colors[colorScheme ?? 'dark'].white[200]}}>
+                          {date}
+                        </List.Subheader>
+                      )}
+                      renderItem={({item}) => (
+                        <TransactionListItem direction={item.sender === accountAddress ? 'out' : 'in'} tx={item} />
+                      )}
+                    />
                   </Card.Content>
-                </TopCard>
+                  <Card.Actions>
+                    <Button color="#9D8EE6" style={{width: '100%'}} onPress={() => handleMoreTransactionPressed()}>
+                      {WALLET.MORE}
+                    </Button>
+                  </Card.Actions>
+                </ActivityCard>
+              </If>
+            </ScrollContainer>
+          </OverviewContainer>
+        </Container>
 
-                <TopCard>
-                  <Card.Content>
-                    <Typography color={Colors[colorScheme].white[200]} size={4}>
-                      {WALLET.PRICE}
-                    </Typography>
-                    <AmountContainer>
-                      <Typography color={Colors[colorScheme].white[100]} size={12} bold>
-                        {price?.toFixed(3)}
-                      </Typography>
-                      <Spacer size={4} />
-                      <Typography color={Colors[colorScheme].white[100]} size={5} bold>
-                        {WALLET.DOLLAR_SYMBOL}
-                      </Typography>
-                    </AmountContainer>
-                    {checkPositiveNegative(percent_change_24h)}
-                  </Card.Content>
-                </TopCard>
-              </TopCardsContainer>
-            </TopCardsRipple>
-          </TopContainer>
-
-          <ScrollContainer style={{marginTop: 2}} innerStyle={{paddingBottom: 130}}>
-            <Collapsible
-              collapsed={!showBalanceDetails}
-              style={{
-                alignItems: 'center',
-              }}>
-              <BottomCardsContainer>
-                <BottomTile title={WALLET.LEASING} value={formatNumber(leasing, 0)} suffix={WALLET.LTO} />
-                <Spacer size={25} />
-                <BottomTile title={WALLET.UNBONDING} value={formatNumber(unbonding, 0)} suffix={WALLET.LTO} />
-                <Spacer size={25} />
-                <BottomTile title={WALLET.AVAILABLE} value={formatNumber(available, 0)} suffix={WALLET.LTO} />
-                <Spacer size={25} />
-                <BottomTile title={WALLET.EFFECTIVE} value={formatNumber(effective, 0)} suffix={WALLET.LTO} />
-              </BottomCardsContainer>
-            </Collapsible>
-
-            <If condition={leases.length > 0}>
-              <ActivityCard>
-                <ActivityCardTitle>
-                  <Typography size={6} color={Colors[colorScheme].white[100]} bold>
-                    {WALLET.ACTIVE_LEASES}
-                  </Typography>
-                </ActivityCardTitle>
-                <ShortList data={leases} renderItem={({item}) => renderLease(item)} />
-              </ActivityCard>
-            </If>
-
-            <If condition={transactions.length > 0}>
-              <ActivityCard>
-                <ActivityCardTitle>
-                  <Typography size={6} color={Colors[colorScheme].white[100]} bold>
-                    {WALLET.RECENT_ACTIVITY}
-                  </Typography>
-                </ActivityCardTitle>
-                <Card.Content>
-                  <ShortSectionList
-                    sections={transactions}
-                    renderSectionHeader={({section: {date}}) => (
-                      <List.Subheader
-                        key={`transaction.section:${date}`}
-                        style={{color: Colors[colorScheme].white[200]}}>
-                        {date}
-                      </List.Subheader>
-                    )}
-                    renderItem={({item}) => (
-                      <TransactionListItem direction={item.sender === accountAddress ? 'out' : 'in'} tx={item} />
-                    )}
-                  />
-                </Card.Content>
-                <Card.Actions>
-                  <Button color="#9D8EE6" style={{width: '100%'}} onPress={() => navigation.navigate('Transactions')}>
-                    {WALLET.MORE}
-                  </Button>
-                </Card.Actions>
-              </ActivityCard>
-            </If>
-          </ScrollContainer>
-        </OverviewContainer>
-      </Container>
-
-      {children}
-    </Loader>
+        {children}
+      </Loader>
+    </>
   );
 };
 

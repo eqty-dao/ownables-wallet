@@ -14,11 +14,12 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		7699B88040F8A987B510C191 /* libPods-universalWallet-universalWalletTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-universalWallet-universalWalletTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A28D73522CC2424C0018CC79 /* main.jsbundle in Resources */ = {isa = PBXBuildFile; fileRef = A28D73512CC2424C0018CC79 /* main.jsbundle */; };
+		A2E2CA892CC0CB79000DF75C /* www in Resources */ = {isa = PBXBuildFile; fileRef = A2E2CA882CC0CB79000DF75C /* www */; };
 		BF179E5A2BCD0F2700DF2127 /* Satoshi.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BF179E562BCD0F2600DF2127 /* Satoshi.ttf */; };
 		BF179E5B2BCD0F2700DF2127 /* LTOIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BF179E572BCD0F2600DF2127 /* LTOIcons.ttf */; };
 		BF179E5C2BCD0F2700DF2127 /* Inter.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BF179E582BCD0F2600DF2127 /* Inter.ttf */; };
 		BF179E5D2BCD0F2700DF2127 /* Urbanist.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BF179E592BCD0F2600DF2127 /* Urbanist.ttf */; };
-		BF179E5F2BCD0F3400DF2127 /* www in Resources */ = {isa = PBXBuildFile; fileRef = BF179E5E2BCD0F3300DF2127 /* www */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +49,12 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-universalWallet.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-universalWallet.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = universalWallet/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-universalWallet-universalWalletTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-universalWallet-universalWalletTests.release.xcconfig"; path = "Target Support Files/Pods-universalWallet-universalWalletTests/Pods-universalWallet-universalWalletTests.release.xcconfig"; sourceTree = "<group>"; };
+		A28D734F2CC236F00018CC79 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
+		A28D73512CC2424C0018CC79 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
+		A2E2CA882CC0CB79000DF75C /* www */ = {isa = PBXFileReference; lastKnownFileType = folder; name = www; path = ../www; sourceTree = "<group>"; };
+		A2E2CA8A2CC0CE36000DF75C /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
+		A2E2CA8C2CC0E00F000DF75C /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
+		A2FBAB6A2CC02CC000D0A6C9 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
 		BF179E562BCD0F2600DF2127 /* Satoshi.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Satoshi.ttf; path = ../assets/fonts/Satoshi.ttf; sourceTree = "<group>"; };
 		BF179E572BCD0F2600DF2127 /* LTOIcons.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = LTOIcons.ttf; path = ../assets/fonts/LTOIcons.ttf; sourceTree = "<group>"; };
 		BF179E582BCD0F2600DF2127 /* Inter.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Inter.ttf; path = ../assets/fonts/Inter.ttf; sourceTree = "<group>"; };
@@ -131,6 +138,12 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				A2E2CA8A2CC0CE36000DF75C /* main.jsbundle */,
+				A2E2CA8C2CC0E00F000DF75C /* main.jsbundle */,
+				A28D734F2CC236F00018CC79 /* main.jsbundle */,
+				A28D73512CC2424C0018CC79 /* main.jsbundle */,
+				A2E2CA882CC0CB79000DF75C /* www */,
+				A2FBAB6A2CC02CC000D0A6C9 /* main.jsbundle */,
 				13B07FAE1A68108700A75B9A /* universalWallet */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* universalWalletTests */,
@@ -256,8 +269,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A28D73522CC2424C0018CC79 /* main.jsbundle in Resources */,
+				A2E2CA892CC0CB79000DF75C /* www in Resources */,
 				BF179E5A2BCD0F2700DF2127 /* Satoshi.ttf in Resources */,
-				BF179E5F2BCD0F3400DF2127 /* www in Resources */,
 				BF179E5C2BCD0F2700DF2127 /* Inter.ttf in Resources */,
 				BF179E5D2BCD0F2700DF2127 /* Urbanist.ttf in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
@@ -485,11 +499,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 27;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = XK9J8T5BP2;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = XK9J8T5BP2;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = universalWallet/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "LTO Wallet";
@@ -498,7 +511,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.2.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -507,7 +520,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ltonetwork.universal;
 				PRODUCT_NAME = universalWallet;
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "com.ltonetwork.universal-adhoc";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -520,11 +532,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 27;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = XK9J8T5BP2;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = XK9J8T5BP2;
 				INFOPLIST_FILE = universalWallet/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "LTO Wallet";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
@@ -532,7 +543,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.2.3;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -541,7 +552,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ltonetwork.universal;
 				PRODUCT_NAME = universalWallet;
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "com.ltonetwork.universal-adhoc";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

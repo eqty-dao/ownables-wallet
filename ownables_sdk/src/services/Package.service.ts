@@ -1,22 +1,20 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import LocalStorageService from "./LocalStorage.service";
-import LTOService from "./LTO.service";
 import {
   TypedPackageCapabilities,
   TypedPackage,
   TypedPackageStub,
 } from "../interfaces/TypedPackage";
 import JSZip from "jszip";
-import mime from "mime/lite";
+import mime from "mime-lite";
 import IDBService from "./IDB.service";
 import calculateCid from "../utils/calculateCid";
 import { TypedCosmWasmMsg } from "../interfaces/TypedCosmWasmMsg";
 import TypedDict from "../interfaces/TypedDict";
-import { readRelayData } from "./Relay.service";
+import { Buffer } from "buffer";
 import { EventChain } from "@ltonetwork/lto";
 import OwnableService from "./Ownable.service";
-import asDownload from "../utils/asDownload";
+import { MessageExt } from "../interfaces/MessageInfo";
+import { RelayService } from "./Relay.service";
 
 const exampleUrl = process.env.REACT_APP_OWNABLE_EXAMPLES_URL;
 const examples: TypedPackageStub[] = exampleUrl
@@ -74,6 +72,7 @@ const capabilitiesStaticOwnable = {
   isConsumable: false,
   isConsumer: false,
   isTransferable: false,
+  isBridgeable: false,
 };
 
 export default class PackageService {
@@ -107,15 +106,14 @@ export default class PackageService {
   }
 
   private static storePackageInfo(
-    id: string,
     title: string,
     name: string,
     description: string | undefined,
     cid: string,
-    capabilities: TypedPackageCapabilities,
     keywords: string[],
-    collaborators: string[],
-    chainIds: Array<string>
+    capabilities: TypedPackageCapabilities,
+    isNotLocal?: boolean,
+    uniqueMessageHash?: string
   ): TypedPackage {
     const packages = (LocalStorageService.get("packages") ||
       []) as TypedPackage[];
@@ -123,27 +121,24 @@ export default class PackageService {
 
     if (!pkg) {
       pkg = {
-        id,
         title,
         name,
         description,
         cid,
-        ...capabilities,
-        versions: [],
         keywords,
-        collaborators,
-        chainIds,
+        isNotLocal,
+        ...capabilities,
+        uniqueMessageHash,
+        versions: [],
       };
       packages.push(pkg);
     } else {
       Object.assign(pkg, {
-        id,
         cid,
         description,
-        ...capabilities,
         keywords,
-        collaborators,
-        chainIds,
+        uniqueMessageHash,
+        ...capabilities,
       });
     }
 
@@ -153,33 +148,80 @@ export default class PackageService {
     return pkg;
   }
 
-  private static async extractAssets(zipFile: File): Promise<File[]> {
+  static async extractAssets(zipFile: File, chain?: boolean): Promise<File[]> {
     const zip = await JSZip.loadAsync(zipFile);
 
-    return await Promise.all(
+    if (chain) {
+      const chainFiles = await Promise.all(
+        Array.from(Object.entries(zip.files))
+          .filter(([filename]) => !filename.startsWith("."))
+          .map(async ([filename, file]) => {
+            const blob = await file.async("blob");
+            const type = mime.getType(filename) || "application/octet-stream";
+            return new File([blob], filename, { type });
+          })
+      );
+      return chainFiles;
+    }
+
+    const assetFiles = await Promise.all(
       Array.from(Object.entries(zip.files))
         .filter(
           ([filename]) => !filename.startsWith(".") && filename !== "chain.json"
         )
         .map(async ([filename, file]) => {
           const blob = await file.async("blob");
-          // @ts-ignore
           const type = mime.getType(filename) || "application/octet-stream";
-
           return new File([blob], filename, { type });
         })
     );
+    return assetFiles;
   }
 
   private static async storeAssets(cid: string, files: File[]): Promise<void> {
     if (await IDBService.hasStore(`package:${cid}`)) return;
-    console.log(cid);
-
     await IDBService.createStore(`package:${cid}`);
     await IDBService.setAll(
       `package:${cid}`,
       Object.fromEntries(files.map((file) => [file.name, file]))
     );
+  }
+
+  static stringToBuffer(str: string): Buffer {
+    return Buffer.from(str, "utf8");
+  }
+
+  static base64ToBuffer(base64: string): Buffer {
+    return Buffer.from(base64, "base64");
+  }
+
+  static bufferToString(buffer: Buffer): string {
+    return buffer.toString("utf8");
+  }
+
+  static async getChainJson(filename: string, files: any): Promise<any> {
+    const extractedFile = await this.extractAssets(files, true);
+    const file = extractedFile.find((file) => file.name === filename);
+    if (!file) throw new Error(`Invalid package: missing ${filename}`);
+
+    const fileContent = await file.text();
+    const json = JSON.parse(fileContent);
+
+    json.events = json.events.map((event: MessageExt) => {
+      //event.previous = this.stringToBuffer(event.previous);
+      //event.signature = this.stringToBuffer(event.signature);
+      //event.hash = this.stringToBuffer(event.hash);
+      //event.signKey.publicKey = this.stringToBuffer(event.signKey.publicKey);
+      if (event.data.startsWith("base64:")) {
+        const base64Data = event.data.slice(7);
+        const bufferData = this.base64ToBuffer(base64Data);
+        const data = JSON.parse(this.bufferToString(bufferData));
+        event.parsedData = data;
+      }
+      return event;
+    });
+
+    return json;
   }
 
   private static async getPackageJson(
@@ -188,7 +230,6 @@ export default class PackageService {
   ): Promise<any> {
     const file = files.find((file) => file.name === filename);
     if (!file) throw new Error(`Invalid package: missing ${filename}`);
-
     return JSON.parse(await file.text());
   }
 
@@ -232,153 +273,121 @@ export default class PackageService {
       "package.json",
       files
     );
-
     const name: string = packageJson.name || zipFile.name.replace(/\.\w+$/, "");
     const title = name
       .replace(/^ownable-|-ownable$/, "")
       .replace(/[-_]+/, " ")
       .replace(/\b\w/, (c) => c.toUpperCase());
     const description: string | undefined = packageJson.description;
-
     const cid = await calculateCid(files);
     const capabilities = await this.getCapabilities(files);
-    console.log(cid);
+    const keywords: string[] = packageJson.keywords || "";
+
     await this.storeAssets(cid, files);
-
-    // DC: get keywords
-    const keywords = packageJson.keywords || [];
-    // DC: get issuer AKA collaborator(s)
-    const collaborators = packageJson.collaborators || [];
-    const formattedCollaborators = collaborators.map((collab: string) =>
-      collab.split("<")[0].trim()
-    );
-
-    // DC: custom id
-    const rktId = new Date().getTime().toString();
-
     return this.storePackageInfo(
-      rktId,
       title,
       name,
       description,
       cid,
-      capabilities,
       keywords,
-      formattedCollaborators,
-      []
+      capabilities
     );
   }
 
   static async importFromRelay() {
     try {
-      const relayData = await readRelayData();
-      console.log(relayData);
-      if (!relayData || !Array.isArray(relayData)) {
-        console.error("No relay data received or invalid data format");
+      const relayData = await RelayService.readRelayData();
+      if (!relayData || !Array.isArray(relayData) || relayData.length === 0) {
         return null;
       }
 
-      const processedPackages = await Promise.all(
-        relayData.map(async (zipBuffer) => {
-          const zip = new JSZip();
-          const zipFile = await zip.loadAsync(zipBuffer.data.buffer);
-          const files = Object.values(zipFile.files);
-
-          const blobs = await Promise.all(
-            files.map(async (file) => {
-              const content = await file.async("blob");
-              return new Blob([content], {
-                type: file.dir
-                  ? "application/octet-stream"
-                  : file.name.split(".").pop(),
-              });
-            })
-          );
-
-          const processedFiles = blobs.map((blob, index) => {
-            const file = new File([blob], files[index].name, {
-              type: blob.type,
-              lastModified: Date.now(),
-            });
-            return file;
-          });
-
-          const packageJsonFile = files.find(
-            (file) => file.name === "package.json"
-          );
-          if (!packageJsonFile) {
-            console.error("No package.json found in the ZIP file");
+      const filteredMessages = await RelayService.checkDuplicateMessage(
+        relayData
+      );
+      const results = await Promise.all(
+        filteredMessages.map(async (data: any) => {
+          const { message, ...messageHash } = data;
+          const mainMessage = message;
+          const asset = await this.extractAssets(mainMessage.data.buffer);
+          const cid = await calculateCid(asset);
+          if(cid === "") {
             return null;
           }
+          const chainJson = await this.getChainJson(
+            "chain.json",
+            mainMessage.data.buffer
+          );
 
-          const packageJsonContent = await packageJsonFile.async("text");
-          const packageJson = JSON.parse(packageJsonContent);
-          const name: string =
-            packageJson.name || packageJsonFile.name.replace(/\.\w+$/, "");
+          if (await IDBService.hasStore(`package:${cid}`)) {
+            if (await this.isCurrentEvent(chainJson)) {
+              this.removeOlderPackage(chainJson.id);
+            } else {
+              return null;
+            }
+          }
+
+          // const packageJson = await this.getPackageJson("package.json", asset);
+          let file = asset.find((file) => file.name === "package.json");
+          if (!file) {
+            return null;
+          }
+          const packageJson = JSON.parse(await file.text());
+          const name = packageJson.name;
           const title = name
             .replace(/^ownable-|-ownable$/, "")
             .replace(/[-_]+/, " ")
-            .replace(/\b\w/, (c) => c.toUpperCase());
-          const description: string | undefined = packageJson.description;
+            .replace(/\b\w/, (c: any) => c.toUpperCase());
+          const description = packageJson.description;
+          const capabilities = await this.getCapabilities(asset);
+          const keywords: string[] = packageJson.keywords || "";
+          const isNotLocal = true;
+          const { ...values } = messageHash;
+          const uniqueMessageHash = values.messageHash;
 
-          // DC: get keywords
-          const keywords = packageJson.keywords || [];
-          // DC: get issuer AKA collaborator(s)
-          const collaborators = packageJson.collaborators || [];
-          const formattedCollaborators = collaborators.map((collab: string) =>
-            collab.split("<")[0].trim()
-          );
-          // DC: custom id
-          const id = new Date().getTime().toString();
-
-          const cids: any = await calculateCid(processedFiles);
-          let chain: any;
-          const handleChains = files
-            .filter((file) => file.name === "chain.json")
-            .map(async (chainFile) => {
-              let counter = 0;
-              const chainJsonContent = await chainFile.async("text");
-              chain = JSON.parse(chainJsonContent);
-              chain.networkId = LTOService.networkId;
-
-              const pkg: any = files.filter(
-                (file) => file.name === "instantiate_msg.json"
-              );
-
-              console.log(pkg);
-
-              const msg = {
-                "@context": "instantiate_msg.json",
-                ownable_id: chain.id,
-                package: calculateCid(pkg),
-                network_id: LTOService.networkId,
-              };
-              chain.events[counter].parsedData = msg;
-              counter++;
-            });
-
-          const capabilities = await this.getCapabilities(processedFiles);
-          await this.storeAssets(cids, processedFiles);
-          const detail = await this.storePackageInfo(
-            id,
+          await this.storeAssets(cid, asset);
+          const pkg = this.storePackageInfo(
             title,
             name,
             description,
-            cids,
-            capabilities,
+            cid,
             keywords,
-            formattedCollaborators,
-            // DC: empty chainIds
-            []
+            capabilities,
+            isNotLocal,
+            uniqueMessageHash
           );
-          return { detail, chain, cids };
-        })
-      );
-      return processedPackages.filter((packageInfo) => packageInfo !== null);
+          const chain = EventChain.from(chainJson);
+          pkg.chain = chain;
+          pkg.uniqueMessageHash = uniqueMessageHash;
+          return pkg;
+        }).filter((pkg) => pkg !== null)
+      )
+      return results.filter((pkg) => pkg !== null);
     } catch (error) {
       console.error("Error:", error);
       return null;
     }
+  }
+
+  static async isCurrentEvent(chainJson: EventChain) {
+    let existingChain;
+    if (await IDBService.hasStore(`ownable:${chainJson.id}`)) {
+      existingChain = await IDBService.get(`ownable:${chainJson.id}`, "chain");
+    }
+
+    if (existingChain === undefined || existingChain.events === undefined) {
+      return true;
+    }
+    if (existingChain.events?.length) {
+      if (chainJson.events.length > existingChain.events.length) {
+        return true;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  static async removeOlderPackage(id: string) {
+    await OwnableService.delete(id);
   }
 
   static async downloadExample(key: string): Promise<TypedPackage> {
@@ -447,7 +456,6 @@ export default class PackageService {
     for (const file of files) {
       zip.file(file.name, file);
     }
-
     return zip;
   }
 }

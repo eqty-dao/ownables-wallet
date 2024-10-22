@@ -81,7 +81,7 @@ export interface OwnableFrameProps {
 }
 
 export default class OwnableFrame extends Component<OwnableFrameProps> {
-  async componentDidMount(): Promise<void> {    
+  async componentDidMount(): Promise<void> {
     this.props.iframeRef.current!.srcdoc = await generate(
       this.props.id,
       this.props.packageCid,

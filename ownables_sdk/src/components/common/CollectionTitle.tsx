@@ -9,6 +9,8 @@ import { useReducerAsState } from "../../hooks/useReducerAsState";
 import { useEffect } from "react";
 import LtoDrawer from "../DetailsModal/LtoDrawer";
 import { useCollections } from "../../context/CollectionsContext";
+import { MAX_COLLECTION_NAME_LENGTH } from "../../constants";
+import { TabType } from "../OwnablesTabs";
 
 const Title = styled.span`
   color: #ffffff;
@@ -68,6 +70,12 @@ const StyledButton = styled(MButton)<StyledButtonProps>`
     `}
 `;
 
+const ClearFilterButton = styled.span`
+  color: #b770ff;
+  font-size: 14px;
+  text-decoration: underline;
+`;
+
 interface ContainerProps {
   isEditing: boolean;
 }
@@ -88,7 +96,14 @@ interface State {
 }
 
 const CollectionTitle = () => {
-  const { collection, getCollectionName, filterBy } = useFilters();
+  const {
+    collection,
+    getCollectionName,
+    filterBy,
+    setSelectedTab,
+    resetFilter,
+    changeCollection,
+  } = useFilters();
   const { remove, updateTitle, setUpdating } = useCollections();
 
   const [state, setState] = useReducerAsState<State>({
@@ -108,7 +123,7 @@ const CollectionTitle = () => {
 
   const setEditing = () => {
     setState({ isEditing: !state.isEditing });
-    setUpdating(!state.isEditing);
+    setUpdating(!state.isEditing, collection);
   };
 
   const onSaveCollection = () => {
@@ -133,6 +148,12 @@ const CollectionTitle = () => {
   const onDeleteCollection = () =>
     setState({ showDeleteDrawer: !state.showDeleteDrawer });
 
+  const clearFilter = () => {
+    resetFilter();
+    changeCollection(StaticCollections.ALL);
+    setSelectedTab(TabType.COLLECTIONS);
+  };
+
   const renderTitle = () => {
     if (
       [
@@ -142,14 +163,44 @@ const CollectionTitle = () => {
         StaticCollections.ART,
       ].includes(collection as StaticCollections)
     ) {
-      return <Title>Results</Title>;
+      <Box
+        display={"flex"}
+        flex={1}
+        flexDirection={"row"}
+        alignItems={"center"}
+        gap={1}
+      >
+        <Title>Results</Title>
+        <ClearFilterButton onClick={clearFilter}>
+          Clear Filter
+        </ClearFilterButton>
+      </Box>;
     }
 
     if (!state.isEditing) {
-      return <Title>{state.collectionTitle}</Title>;
+      return (
+        <Box
+          display={"flex"}
+          flex={1}
+          flexDirection={"row"}
+          alignItems={"center"}
+          gap={1}
+        >
+          <Title>{state.collectionTitle}</Title>
+          <ClearFilterButton onClick={clearFilter}>
+            Clear Filter
+          </ClearFilterButton>
+        </Box>
+      );
     }
 
-    return <Input value={state.collectionTitle} onChange={handleTitleChange} />;
+    return (
+      <Input
+        value={state.collectionTitle}
+        onChange={handleTitleChange}
+        maxLength={MAX_COLLECTION_NAME_LENGTH}
+      />
+    );
   };
 
   const renderRightAction = () => {

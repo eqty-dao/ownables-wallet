@@ -7,6 +7,7 @@ export interface CollectionItemType {
   value: string;
   static: number;
   items: string[];
+  isOpen: boolean;
 }
 
 export enum StaticCollections {
@@ -22,24 +23,21 @@ const staticCollections: CollectionItemType[] = [
     value: "All",
     static: 1,
     items: [],
+    isOpen: false,
   },
   {
     id: StaticCollections.FAVORITES,
-    value: "Favorites",
+    value: "Favourites",
     static: 1,
     items: [],
-  },
-  {
-    id: StaticCollections.ART,
-    value: "Art",
-    static: 1,
-    items: [],
+    isOpen: false,
   },
   {
     id: StaticCollections.CONSUMED,
     value: "Used Consumables",
     static: 1,
     items: [],
+    isOpen: false,
   },
 ];
 
@@ -108,6 +106,20 @@ class CollectionService {
 
     if (foundCollectionIndex > -1) {
       collections[foundCollectionIndex].value = newName;
+      LocalStorageService.set(KEY, collections);
+    } else {
+      console.error(`${collectionId} could not be found`);
+    }
+  }
+
+  static updateOpenState(collectionId: string, isOpen: boolean) {
+    const collections = CollectionService.getAll();
+    const foundCollectionIndex = collections.findIndex(
+      (item: CollectionItemType) => item.id === collectionId
+    );
+
+    if (foundCollectionIndex > -1) {
+      collections[foundCollectionIndex].isOpen = isOpen;
       LocalStorageService.set(KEY, collections);
     } else {
       console.error(`${collectionId} could not be found`);

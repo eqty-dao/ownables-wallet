@@ -7,6 +7,7 @@ import { ReactComponent as ConsumeIcon } from "../../assets/consume_icon.svg";
 import { ReactComponent as TransferIcon } from "../../assets/transfer_icon.svg";
 import { ReactComponent as InfoIcon } from "../../assets/info_icon.svg";
 import { ReactComponent as PlusIcon } from "../../assets/plus_icon.svg";
+import{SwapHoriz } from "@mui/icons-material"
 import { EventChain } from "@ltonetwork/lto";
 import { TypedMetadata } from "../../interfaces/TypedOwnableInfo";
 import { useState } from "react";
@@ -26,6 +27,7 @@ enum OwnableActionType {
   Delete = "Delete",
   Info = "Info",
   AddToCollection = "AddToCollection",
+  Bridge = "Bridge",
 }
 
 interface OwnableActionsFabProps {
@@ -35,6 +37,7 @@ interface OwnableActionsFabProps {
   packageCid: string;
   chain: EventChain;
   metadata?: TypedMetadata;
+  isBridgeable: boolean;
   closeModal: () => void;
   onOpen: () => void;
   onClose: () => void;
@@ -43,6 +46,7 @@ interface OwnableActionsFabProps {
   onDelete: () => void;
   onTransfer: (address: string) => void;
   onAddToCollection: (pkg: string) => void;
+  showBridge: () => void;
 }
 
 const wasConsumed = (chain: EventChain): boolean => {
@@ -114,6 +118,10 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         props.onClose();
         props.onShowInfo();
         break;
+      case OwnableActionType.Bridge:
+        props.onClose();
+        props.showBridge();
+        break
       default:
         console.error("Unknown action:", action);
     }
@@ -146,6 +154,14 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
           icon: ConsumeIcon,
         });
       }
+    }
+
+    if(props.isBridgeable) {
+      actions.push({
+        id: OwnableActionType.Bridge,
+        title: "Bridge",
+        icon: () => <SwapHoriz />,
+      });
     }
 
     if (props.isTransferable) {

@@ -24,58 +24,49 @@ Then generate a access key for this service account
 
 
 */
-const fs = require("fs");
-const path = require("path");
-const { GoogleAuth, OAuth2Client } = require("google-auth-library");
-const http = require("http");
-const url = require("url");
+const fs = require('fs');
+const path = require('path');
+const {GoogleAuth, OAuth2Client} = require('google-auth-library');
+const http = require('http');
+const url = require('url');
 
 const prnt = console.log;
 
 // Download your OAuth2 configuration from Google cloud console credentials
-var keys = {}
+var keys = {};
 
 function getOAuthKeys() {
-  keys = JSON.parse(
-    Buffer.from(process.env.GOOGLE_UPLOAD_OAUTH_KEY_B64, "base64")
-  );
+  keys = JSON.parse(Buffer.from(process.env.GOOGLE_UPLOAD_OAUTH_KEY_B64, 'base64'));
   // prnt(">> KEYS", keys);
 }
 
 // provides a delay for an async function.  useful for testing, generally not needed in production
-const delay = async (msDelay) => {
-  return new Promise((resolve) => setTimeout(() => resolve(), msDelay));
+const delay = async msDelay => {
+  return new Promise(resolve => setTimeout(() => resolve(), msDelay));
 };
 
 // Get authenticated API client
 async function getAuthClient() {
-  const serviceAccountJSONString = Buffer.from(
-    process.env.GOOGLE_UPLOAD_JSON_KEY_B64,
-    "base64"
-  ).toString("ascii");
-  let json_file_content = "";
+  const serviceAccountJSONString = Buffer.from(process.env.GOOGLE_UPLOAD_JSON_KEY_B64, 'base64').toString('ascii');
+  let json_file_content = '';
   try {
     json_file_content = JSON.parse(serviceAccountJSONString);
   } catch (_) {
-    prnt("Service account key could not be decoded!");
+    prnt('Service account key could not be decoded!');
     process.exit(-1);
   }
 
   // Authenticate with Google
   const auth = new GoogleAuth({
     credentials: json_file_content,
-    scopes: "https://www.googleapis.com/auth/drive",
+    scopes: 'https://www.googleapis.com/auth/drive',
   });
   const authClient = await auth.getClient();
   return authClient;
 }
 
 async function getOAuth2Client(refreshToken) {
-  const oAuth2Client = new OAuth2Client(
-    keys.web.client_id,
-    keys.web.client_secret,
-    keys.web.redirect_uris[0]
-  );
+  const oAuth2Client = new OAuth2Client(keys.web.client_id, keys.web.client_secret, keys.web.redirect_uris[0]);
   const result = await oAuth2Client.refreshToken(refreshToken);
   oAuth2Client.setCredentials(result.tokens);
   return oAuth2Client;
@@ -86,16 +77,15 @@ async function createDriveFile(authClient, folderID, filePath) {
   const parsedPath = path.parse(filePath);
   const filename = parsedPath.base;
 
-  const createFile =
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable";
+  const createFile = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
   const res1 = await authClient.request({
     url: createFile,
-    method: "POST",
+    method: 'POST',
     data: {
       name: filename,
       originalFilename: filename,
       parents: [folderID],
-      mimeType: "application/octet-stream",
+      mimeType: 'application/octet-stream',
     },
   });
   // prnt(res1);
@@ -119,18 +109,18 @@ async function updateDriveFile(authClient, updateURL, filePath) {
 
   // prepare upload options
   const uploadOptions = {
-    method: "PATCH",
-    headers: { ...headers, "Content-length": fileSizeInBytes },
+    method: 'PATCH',
+    headers: {...headers, 'Content-length': fileSizeInBytes},
     body: readStream,
-    duplex: "half",
+    duplex: 'half',
   };
 
   // perform upload
   return await fetch(updateURL, uploadOptions)
-    .then((data) => {
+    .then(data => {
       return data;
     })
-    .catch((err) => {
+    .catch(err => {
       return err;
     });
 }
@@ -156,7 +146,7 @@ async function makeSpace(authClient, filePath, folderID) {
         const deleteFile = `https://www.googleapis.com/drive/v3/files/${fileList[j].id}`;
         const deleteResult = await authClient.request({
           url: deleteFile,
-          method: "DELETE",
+          method: 'DELETE',
         });
 
         if (deleteResult.status >= 400) {
@@ -178,7 +168,7 @@ async function uploadFile(filePath) {
   const createResult = await createDriveFile(authClient, folderID, filePath);
   const uploadURL = createResult.headers.location;
   if (createResult.status !== 200) {
-    prnt("Error could not get upload path");
+    prnt('Error could not get upload path');
     process.exit(-1);
   }
   prnt(`Starting upload ...`);
@@ -187,10 +177,8 @@ async function uploadFile(filePath) {
   const jsonData = await updateResult.json();
   if (updateResult.status !== 200) {
     // check if error is : storage quota reached
-    if (
-      jsonData.error.errors.find((e) => e.reason === "storageQuotaExceeded")
-    ) {
-      prnt("Error: Storage quota reached");
+    if (jsonData.error.errors.find(e => e.reason === 'storageQuotaExceeded')) {
+      prnt('Error: Storage quota reached');
       makeSpace(authClient, filePath, folderID);
       // Retry upload with recursive call
       uploadFile(filePath);
@@ -204,11 +192,11 @@ async function oAuth2Upload(filePath, refreshToken) {
   const createResult = await createDriveFile(oAuth2Client, folderID, filePath);
   const uploadURL = createResult.headers.location;
   if (createResult.status !== 200) {
-    prnt("Error could not get upload path");
+    prnt('Error could not get upload path');
     process.exit(-1);
   }
 
-  prnt(">> createResult", createResult);
+  prnt('>> createResult', createResult);
 
   prnt(`Starting upload ...`);
   const updateResult = await updateDriveFile(oAuth2Client, uploadURL, filePath);
@@ -221,25 +209,21 @@ async function listDrive(folderID) {
 
   authClient = await getOAuth2Client(process.env.GOOGLE_UPLOAD_REFRESH_TOKEN);
   const queryParms = [
-    "includeTeamDriveItems=false",
-    "supportsAllDrives=false",
-    "pageSize=800",
-    "orderBy=createdTime",
+    'includeTeamDriveItems=false',
+    'supportsAllDrives=false',
+    'pageSize=800',
+    'orderBy=createdTime',
     // 'fields=files(*)',
-    "fields=files(kind,mimeType,name,size,id,createdTime,sha256Checksum)",
+    'fields=files(kind,mimeType,name,size,id,createdTime,sha256Checksum)',
     folderID
       ? `q="${folderID}"+in+parents+and+trashed=false`
-      : `q=${encodeURI(
-          'mimeType="application/vnd.google-apps.folder"'
-        )}+and+trashed=false`,
+      : `q=${encodeURI('mimeType="application/vnd.google-apps.folder"')}+and+trashed=false`,
   ];
-  const listFile = `https://www.googleapis.com/drive/v3/files?${queryParms.join(
-    "&"
-  )}`;
+  const listFile = `https://www.googleapis.com/drive/v3/files?${queryParms.join('&')}`;
 
-  let result = { status: 0, files: [] };
+  let result = {status: 0, files: []};
 
-  let res = await authClient.request({ url: listFile, method: "GET" });
+  let res = await authClient.request({url: listFile, method: 'GET'});
 
   if (res.status === 200) {
     result.status = res.status;
@@ -247,12 +231,12 @@ async function listDrive(folderID) {
 
     // if first result is good loop through other pages and join the results together
     while (res.status === 200 && res.data.nextPageToken) {
-      const moreFiles = `https://www.googleapis.com/drive/v3/files?${queryParms.join(
-        "&"
-      )}&pageToken=${res.data.nextPageToken}`;
+      const moreFiles = `https://www.googleapis.com/drive/v3/files?${queryParms.join('&')}&pageToken=${
+        res.data.nextPageToken
+      }`;
       // prnt('## moreFilesURL')
       // prnt(moreFiles);
-      res = await authClient.request({ url: moreFiles, method: "GET" });
+      res = await authClient.request({url: moreFiles, method: 'GET'});
 
       if (res.status === 200) {
         result.status = res.status;
@@ -271,49 +255,51 @@ async function listDrive(folderID) {
 }
 
 async function getFolderID(folderName) {
-  const folderResult = await listDrive("");
+  const folderResult = await listDrive('');
   if (folderResult.status !== 200) {
-    prnt("Error  getting folder list");
+    prnt('Error  getting folder list');
     process.exit(-1);
   }
 
-  const searchResult = folderResult.files.filter(
-    (item) => item.name === folderName
-  );
+  const searchResult = folderResult.files.filter(item => item.name === folderName);
   if (searchResult.length === 1) {
     return searchResult[0].id;
   }
 
-  return "";
+  return '';
 }
 
 async function getFileID(folderID, fileName) {
   const folderResult = await listDrive(folderID);
   if (folderResult.status !== 200) {
-    prnt("Error getting file list");
+    prnt('Error getting file list');
     process.exit(-1);
   }
 
-  const searchResult = folderResult.files.filter(
-    (item) => item.name === fileName
-  );
+  const searchResult = folderResult.files.filter(item => item.name === fileName);
   if (searchResult.length === 1) {
     return searchResult[0].id;
   } else if (searchResult.length > 1) {
     prnt(`Multiple files with same name in folder: ${fileName}`);
     process.exit(-1);
   } else {
-    prnt(
-      `File does not exist in Google drive folder (${process.env.GOOGLE_UPLOAD_FOLDER}):\n${fileName}`
-    );
+    prnt(`File does not exist in Google drive folder (${process.env.GOOGLE_UPLOAD_FOLDER}):\n${fileName}`);
     process.exit(-1);
   }
 
-  return "";
+  return '';
 }
 
 function checkFileArg(fileArgNumber) {
-  const filePath = process.argv[fileArgNumber];
+  //const filePath = process.argv[fileArgNumber];
+  const filePath = path.resolve(process.cwd(), process.argv[fileArgNumber]);
+  const allowedDirectory = path.resolve(process.cwd(), 'uploads');
+
+  if (!filePath.startsWith(allowedDirectory)) {
+    prnt(`Invalid file path: ${filePath}`);
+    process.exit(-1);
+  }
+
   if (!fs.existsSync(filePath)) {
     prnt(`File does not exist: ${filePath}`);
     process.exit(-1);
@@ -359,15 +345,11 @@ async function commandGetFileLink() {
 
 // Method to grant permissions
 function oAuthAuthorize() {
-  const oAuth2Client = new OAuth2Client(
-    keys.web.client_id,
-    keys.web.client_secret,
-    keys.web.redirect_uris[0]
-  );
+  const oAuth2Client = new OAuth2Client(keys.web.client_id, keys.web.client_secret, keys.web.redirect_uris[0]);
 
   const authorizeUrl = oAuth2Client.generateAuthUrl({
-    access_type: "offline",
-    scope: "https://www.googleapis.com/auth/drive",
+    access_type: 'offline',
+    scope: 'https://www.googleapis.com/auth/drive',
   });
 
   console.log(authorizeUrl);
@@ -377,12 +359,12 @@ function oAuthAuthorize() {
   const server = http
     .createServer(async (req, res) => {
       try {
-        if (req.url.indexOf("/oauth2callback") > -1) {
+        if (req.url.indexOf('/oauth2callback') > -1) {
           // acquire the code from the querystring, and close the web server.
-          const qs = new url.URL(req.url, "http://localhost:8080").searchParams;
-          const code = qs.get("code");
+          const qs = new url.URL(req.url, 'http://localhost:8080').searchParams;
+          const code = qs.get('code');
           prnt(`>> Code: ${code}`);
-          res.end("Authentication successful! Please return to the console.");
+          res.end('Authentication successful! Please return to the console.');
 
           await delay(2000);
           await getRefreshToken(code);
@@ -398,7 +380,7 @@ function oAuthAuthorize() {
     .listen(8080, () => {
       // open the browser to the authorize url to start the workflow
       // open(authorizeUrl, { wait: false }).then((cp) => cp.unref());
-      prnt(">>> Open in browser", authorizeUrl);
+      prnt('>>> Open in browser', authorizeUrl);
     });
 
   // destroyer(server);
@@ -406,23 +388,19 @@ function oAuthAuthorize() {
 }
 
 async function getRefreshToken(code) {
-  const oAuth2Client = new OAuth2Client(
-    keys.web.client_id,
-    keys.web.client_secret,
-    keys.web.redirect_uris[0]
-  );
+  const oAuth2Client = new OAuth2Client(keys.web.client_id, keys.web.client_secret, keys.web.redirect_uris[0]);
 
   const response = await oAuth2Client.getToken(code);
   const refreshToken = response.tokens.refresh_token;
   prnt(`>> Refresh Token: ${refreshToken}`);
 }
 
-getOAuthKeys()
+getOAuthKeys();
 
-if (process.argv.length == 3 && process.argv[2] === "list") {
+if (process.argv.length == 3 && process.argv[2] === 'list') {
   checkEnvironment();
   commandList();
-} else if (process.argv.length == 4 && process.argv[2] === "getlink") {
+} else if (process.argv.length == 4 && process.argv[2] === 'getlink') {
   checkEnvironment();
   // checkFileArg(3);
   commandGetFileLink();
@@ -434,18 +412,18 @@ if (process.argv.length == 3 && process.argv[2] === "list") {
   //   uploadFile(filePath).catch(console.error);
 }
 // Oauth2 authorization
-else if (process.argv.length === 3 && process.argv[2] === "oauthorize") {
+else if (process.argv.length === 3 && process.argv[2] === 'oauthorize') {
   oAuthAuthorize();
 }
 // After getting oauth2 code, use it to get refresh token
-else if (process.argv.length === 4 && process.argv[2] === "gettoken") {
+else if (process.argv.length === 4 && process.argv[2] === 'gettoken') {
   getRefreshToken(process.argv[3]);
 }
 // arg3 = file path, arg4 = refresh token
-else if (process.argv.length === 4 && process.argv[2] === "upload") {
+else if (process.argv.length === 4 && process.argv[2] === 'upload') {
   checkEnvironment();
   checkFileArg(3);
   const filePath = process.argv[3];
-  prnt("Uploading file: " + filePath);
+  prnt('Uploading file: ' + filePath);
   oAuth2Upload(filePath, process.env.GOOGLE_UPLOAD_REFRESH_TOKEN);
 }

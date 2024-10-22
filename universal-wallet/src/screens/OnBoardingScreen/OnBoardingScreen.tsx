@@ -10,7 +10,7 @@ import {navigateToWebsite} from '../../utils/redirectSocialMedia';
 export default function OnboardingScreen() {
   const {width, height} = useWindowDimensions();
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
-  const ref = useRef<string | any>();
+  const ref = useRef<FlatList>(null);
 
   const updateCurrentSlideIndex = (e: {nativeEvent: {contentOffset: {x: any}}}) => {
     const contentOffsetX = e.nativeEvent.contentOffset.x;
@@ -21,12 +21,12 @@ export default function OnboardingScreen() {
   const changeSlide = () => {
     let nextIndex = currentSlideIndex + 1;
 
-    if (currentSlideIndex === slides.length - 1) {
+    if (currentSlideIndex >= slides.length - 1) {
       nextIndex = currentSlideIndex - 1;
     }
 
     setCurrentSlideIndex(nextIndex);
-    ref?.current.scrollToIndex({index: nextIndex, animated: true});
+    ref.current?.scrollToIndex({index: nextIndex, animated: true});
   };
 
   return (

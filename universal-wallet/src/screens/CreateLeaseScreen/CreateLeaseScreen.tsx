@@ -111,13 +111,21 @@ export default function CreateLeaseScreen({navigation, route}: RootStackScreenPr
   }, [amountText]);
 
   const sendTx = async () => {
-    const account = await LTOService.getAccount();
-    await LTOService.broadcast(tx!.signWith(account));
-
-    setMessageInfo('Transaction sent successfully!');
-    setShowMessage(true);
-
-    navigation.goBack();
+    try {
+      if (!tx) {
+        throw new Error('Transaction is not defined');
+      }
+      const account = await LTOService.getAccount();
+      const signedTx = tx.signWith(account);
+      await LTOService.broadcast(signedTx);
+      setMessageInfo('Transaction sent successfully!');
+      setShowMessage(true);
+      navigation.goBack();
+    } catch (error) {
+      if (error instanceof Error) console.error(`Error sending transaction: ${error.message}`);
+      setShowMessage(true);
+      setMessageInfo(`Failed to send transaction. Please try again later`);
+    }
   };
 
   const handlePressUpArrow = () => setAmountText(((available - 2 * fee) / LTO_REPRESENTATION).toString());

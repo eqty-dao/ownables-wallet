@@ -1,7 +1,7 @@
 {
   "name": "universalWallet",
   "version": "0.2.1",
-  "versionBuildCode": "27",
+  "versionBuildCode": "31",
   "private": true,
   "scripts": {
     "start": "react-native start",
@@ -29,11 +29,13 @@
     "@tradle/react-native-http": "^2.0.1",
     "@types/styled-components-react-native": "^5.2.5",
     "axios": "^1.6.8",
+    "bip39": "^3.1.0",
     "browserify": "^17.0.0",
     "browserify-global": "^1.1.2",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
     "dns.js": "^1.0.1",
+    "dompurify": "^3.1.7",
     "events": "^3.3.0",
     "https-browserify": "^1.0.0",
     "path-browserify": "^1.0.1",
@@ -45,6 +47,7 @@
     "react-native-collapsible": "^1.6.1",
     "react-native-crypto": "^2.2.0",
     "react-native-dotenv": "^3.4.11",
+    "react-native-elements": "^3.4.3",
     "react-native-fs": "^2.20.0",
     "react-native-get-random-values": "^1.11.0",
     "react-native-inappbrowser-reborn": "^3.7.0",
@@ -58,6 +61,7 @@
     "react-native-svg": "^15.1.0",
     "react-native-tab-view": "^3.5.2",
     "react-native-udp": "^4.1.7",
+    "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.19.10",
     "react-native-webview": "^13.8.4",
     "readable-stream": "^4.5.2",
@@ -69,7 +73,8 @@
     "tty-browserify": "^0.0.1",
     "url": "^0.11.3",
     "util": "^0.12.5",
-    "vm-browserify": "^1.1.2"
+    "vm-browserify": "^1.1.2",
+    "yup": "^1.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
@@ -79,6 +84,7 @@
     "@react-native/eslint-config": "0.73.2",
     "@react-native/metro-config": "0.73.5",
     "@react-native/typescript-config": "0.73.1",
+    "@types/dompurify": "^3.0.5",
     "@types/react": "^18.2.6",
     "@types/react-test-renderer": "^18.0.0",
     "babel-jest": "^29.6.3",

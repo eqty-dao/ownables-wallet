@@ -31,6 +31,10 @@ import OwnableInfoDrawer from "./OwnableInfoDrawer";
 import TransferOwnableDrawer from "./TransferOwnableDrawer";
 import FavoriteButton from "./FavoriteButton";
 import AddToCollectionDrawer from "./AddtoCollectionDrawer";
+import BridgeOwnableDrawer from "./BridgeOwnableDrawer";
+import { BridgeService } from "../../services/Bridge.service";
+import { RelayService } from "../../services/Relay.service";
+import { enqueueSnackbar } from "notistack";
 interface OwnableDetailsModalProps {
   onClose: (shouldRefresh: boolean) => void;
   chain: EventChain;
@@ -39,6 +43,7 @@ interface OwnableDetailsModalProps {
   onError: (title: string, message: string) => void;
   onDelete: () => void;
   children?: ReactNode;
+
 }
 
 interface OwnableDetailsModalState {
@@ -52,6 +57,7 @@ interface OwnableDetailsModalState {
   info?: TypedOwnableInfo;
   metadata: TypedMetadata;
   pkgId: string;
+  showBridgeDialog: boolean;
 }
 
 const backButtonStyle = {
@@ -129,6 +135,7 @@ export default class OwnableDetailsModal extends Component<
         name: this.pkg.title,
         description: this.pkg.description,
       },
+      showBridgeDialog: false,
     };
   }
 
@@ -138,6 +145,15 @@ export default class OwnableDetailsModal extends Component<
 
   get isTransferred(): boolean {
     return !!this.state.info && this.state.info.owner !== LTOService.address;
+  }
+
+  get hasNFT(): boolean {
+    return this.pkg.keywords?.includes("hasNFT") ?? false;
+  }
+
+  get nftNetwork(): string {
+    const nftNetwork = this.state.info?.nft?.network;
+    return nftNetwork || "";
   }
 
   private async transfer(to: string): Promise<void> {
@@ -165,9 +181,9 @@ export default class OwnableDetailsModal extends Component<
     )) as TypedOwnableInfo;
     const metadata = this.pkg.hasMetadata
       ? ((await OwnableService.rpc(this.props.chain.id).query(
-          { get_metadata: {} },
-          stateDump
-        )) as TypedMetadata)
+        { get_metadata: {} },
+        stateDump
+      )) as TypedMetadata)
       : this.state.metadata;
     this.setState({ info, metadata });
   }
@@ -210,6 +226,49 @@ export default class OwnableDetailsModal extends Component<
 
     await this.refresh(stateDump);
     this.setState({ applied: this.chain.latestHash, stateDump });
+  }
+
+  private async bridge(
+    address: string,
+    fee: number | null,
+    nftNetwork?: string
+  ): Promise<void> {
+    try {
+      const bridgeAddress = await BridgeService.getBridgeAddress();
+      await this.execute({ transfer: { to: bridgeAddress } });
+      const zip = await OwnableService.zip(this.chain);
+      const content = await zip.generateAsync({
+        type: "uint8array",
+      });
+      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+        this.chain.state?.base58,
+        8,
+        ""
+      )}.zip`;
+      const transactionId = await BridgeService.payBridgingFee(
+        fee,
+        bridgeAddress
+      );
+      const contentBlob = new Blob([content], {
+        type: "application/octet-stream",
+      });
+      if (transactionId) {
+        await BridgeService.bridgeOwnableToNft(
+          address,
+          transactionId,
+          filename,
+          contentBlob
+        );
+      }
+      //remove ownable from relay's inbox
+      if (this.pkg.uniqueMessageHash) {
+        await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+      }
+      enqueueSnackbar("Successfully bridged!!", { variant: "success" });
+      this.onClose();
+    } catch (error) {
+      console.error("Error while attempting to bridge:", error);
+    }
   }
 
   private windowMessageHandler = async (event: MessageEvent) => {
@@ -367,12 +426,14 @@ export default class OwnableDetailsModal extends Component<
             packageCid={this.props.packageCid}
             isConsumable={this.pkg.isConsumable && !this.isTransferred}
             isTransferable={this.pkg.isTransferable && !this.isTransferred}
+            isBridgeable={!this.isTransferred && this.hasNFT}
             chain={this.props.chain}
             metadata={this.state.metadata}
             onShowInfo={this.toggleShowInfo}
             onConsume={this.onConsumePressed}
             onTransfer={this.toggleShowTransferDialog}
             onAddToCollection={this.toggleAddToCollection}
+            showBridge={() => this.setState({ showBridgeDialog: true })}
           />
           <OwnableInfoDrawer
             open={this.state.showInfo}
@@ -388,6 +449,16 @@ export default class OwnableDetailsModal extends Component<
             ok="Transfer"
             validate={this.onValidate}
             TextFieldProps={{ label: "Recipient address" }}
+          />
+          <BridgeOwnableDrawer
+            title="Bridge Ownable"
+            open={this.state.showBridgeDialog}
+            onClose={() => this.setState({ showBridgeDialog: false })}
+            onSubmit={(address: string, fee: number | null, nftNetwork: string) =>
+              this.bridge(address, fee, nftNetwork)
+            }
+            validate={() => ""}
+            nftNetwork={this.nftNetwork}
           />
           <AddToCollectionDrawer
             title="Add to Collection"

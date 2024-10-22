@@ -46,6 +46,7 @@ import OwnablesTabs, { TabType } from "./components/OwnablesTabs";
 import EmptyCollection from "./components/common/EmptyCollection";
 import FilterService from "./services/Filter.service";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
+import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -97,6 +98,9 @@ export default function App() {
   // DC: Collection drawer
   const [showCollectionDrawer, setShowCollectionDrawer] = useState(false);
 
+  // CST: Create ownable drawer
+  const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false);
+
   // DC: filters
   const {
     collection,
@@ -109,6 +113,7 @@ export default function App() {
     getCollectionName,
     selectedTab,
     setSelectedTab,
+    changeCollection,
   } = useFilters();
   const { getAll, addTo, isUpdatingCollection } = useCollections();
   const { getAllIssuers } = useIssuers();
@@ -122,7 +127,7 @@ export default function App() {
     setFoundOwnables(foundOwnables);
   };
 
-  const initializeCollections = () => {
+  const initializeCollections = async () => {
     CollectionService.init();
     // do a initial search to fill filteredPackages
     filterBy("", "", StaticCollections.ALL);
@@ -131,6 +136,10 @@ export default function App() {
     getAllIssuers();
     // reset filter
     resetFilter();
+    const pkgs = (await PackageService.importFromRelay())?.filter(Boolean) as TypedPackage[];
+    if(pkgs && pkgs.length > 0) {
+      relayImport(pkgs);
+    }
   };
 
   useEffect(() => {
@@ -214,7 +223,7 @@ export default function App() {
   };
 
   const forge = async (pkg: TypedPackage) => {
-    const chain = OwnableService.create(pkg);
+    const chain = await OwnableService.create(pkg);
     setOwnables([...ownables, { chain, package: pkg.cid }]);
     setShowPackages(false);
     enqueueSnackbar(`${pkg.title} forged`, {
@@ -234,36 +243,66 @@ export default function App() {
         }
       }
 
-      if (selectedTab !== TabType.ALL) {
-        filterBy(issuer, type, collection);
-      } else {
-        setSelectedTab(TabType.ALL);
-      }
+      // DC: After import an ownable, "redirect" the user to the ALL tab
+      resetFilter();
+      changeCollection(StaticCollections.ALL);
+      setSelectedTab(TabType.ALL);
+
       // update issuers
       getAllIssuers();
     }, 0);
   };
 
-  // DC: WithRelayService
-  const relayImport = async (pkg: any) => {
-    setOwnables((prevOwnables) => [
-      ...prevOwnables,
-      ...pkg.map((data: any) => {
-        console.log(data);
-        return {
-          chain: data.chain,
-          package: data.cids,
-        };
-      }),
-    ]);
-
-    if (pkg.length > 0) {
-      enqueueSnackbar(`Ownable successfully loaded!`, {
+  const relayImport = async (pkg: TypedPackage[] | null) => {
+    if (pkg != null && pkg.length > 0) {
+      setOwnables((prevOwnables) => [
+        ...prevOwnables,
+        ...pkg.map((data: any) => {
+          return {
+            chain: data.chain,
+            package: data.cid,
+          };
+        }),
+      ]);
+      enqueueSnackbar(`Ownable successfully loaded`, {
         variant: "success",
       });
+      setAlert({
+        severity: "info",
+        title: "New Ownables Detected",
+        message: "New ownables have been detected. Refreshing...",
+      });
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 4000);
+    } else {
+      enqueueSnackbar(`Nothing to Load from relay`, {
+        variant: "error",
+      });
     }
-    setShowPackages(false);
   };
+
+
+  // DC: WithRelayService
+  // const relayImport = async (pkg: any) => {
+  //   setOwnables((prevOwnables) => [
+  //     ...prevOwnables,
+  //     ...pkg.map((data: any) => {
+  //       console.log(data);
+  //       return {
+  //         chain: data.chain,
+  //         package: data.cids,
+  //       };
+  //     }),
+  //   ]);
+
+  //   if (pkg.length > 0) {
+  //     // enqueueSnackbar(`Ownable successfully loaded!`, {
+  //     //   variant: "success",
+  //     // });
+  //   }
+  //   setShowPackages(false);
+  // };
 
   const canConsume = async (consumer: {
     chain: EventChain;
@@ -416,9 +455,7 @@ export default function App() {
     const foundedOwnables = items.filter((ownable) => {
       const pkg = PackageService.info(ownable.package);
       const lowerCasedTitle = pkg.title.toLowerCase();
-      const includesPartialKeyword = pkg.keywords.some((keyword) =>
-        keyword.toLowerCase().includes(queryFormat)
-      );
+      const includesPartialKeyword = pkg && pkg.keywords ? pkg.keywords.some((keyword) => keyword.includes(queryFormat)) : false;
       const includesPartialTitle =
         lowerCasedTitle.includes(queryFormat) ||
         lowerCasedTitle.split(" ").some((part) => part.includes(queryFormat));
@@ -434,7 +471,7 @@ export default function App() {
 
   const handleSearchFilter = () => setShowFilters(!showFilters);
 
-  const handleFabItemSelected = (item: TypedFabItem) => {
+  const handleFabItemSelected = async (item: TypedFabItem) => {
     setOpenFab(false);
 
     switch (item.id) {
@@ -442,11 +479,16 @@ export default function App() {
         setShowCollectionDrawer(true);
         return;
       case HomePageEnums.CreateOwnables:
+        setShowCreateOwnableDrawer(true);
         return;
       case HomePageEnums.ImportPackage:
         setShowPackages(true);
         return;
       case HomePageEnums.ReceiveOwnables:
+        const pkgs = await PackageService.importFromRelay() as TypedPackage[];
+        if(pkgs && pkgs.length > 0) {
+          relayImport(pkgs);
+        }
         return;
       default:
         return;
@@ -478,7 +520,12 @@ export default function App() {
             keyExtractor={({ chain }) =>
               `${chain.id}-${reRenderTriggers[chain.id] || 0}`
             }
-            renderItem={({ chain, packageCid }) => (
+            renderItem={({
+              chain,
+              packageCid,
+              canDeleteOwnable,
+              collectionId,
+            }) => (
               <>
                 <OwnableThumb
                   chain={chain}
@@ -497,6 +544,13 @@ export default function App() {
                 >
                   <If condition={consuming?.chain.id === chain.id}>
                     <LtoOverlay isForDetailsScreen={false} zIndex={1000} />
+                  </If>
+                  <If condition={canDeleteOwnable!}>
+                    <DeleteOwnableOverlay
+                      deleteFromTab
+                      collectionId={collectionId}
+                      chain={chain}
+                    />
                   </If>
                   <If
                     condition={
@@ -584,11 +638,11 @@ export default function App() {
             title: "Create Collection",
             icon: CollectionIcon,
           },
-          {
-            id: HomePageEnums.ImportPackage,
-            title: "Import Package",
-            icon: CreateIcon,
-          },
+          // {
+          //   id: HomePageEnums.ImportPackage,
+          //   title: "Import Package",
+          //   icon: CreateIcon,
+          // },
           {
             id: HomePageEnums.CreateOwnables,
             title: "Create Ownables",
@@ -666,6 +720,11 @@ export default function App() {
         open={showCollectionDrawer}
         title="Create Collection"
         onClose={() => setShowCollectionDrawer(false)}
+      />
+      <CreateOwnablesDrawer
+        open={showCreateOwnableDrawer}
+        title="Create Ownable"
+        onClose={() => setShowCreateOwnableDrawer(false)}
       />
       <Loading show={!loaded} />
     </>

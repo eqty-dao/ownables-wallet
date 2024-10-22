@@ -12,7 +12,7 @@ export default function TransactionListItem(params: {direction: 'in' | 'out'; tx
   const {direction, tx} = params;
   const colorScheme = useColorScheme();
 
-  const color = Colors[colorScheme];
+  const color = Colors[colorScheme ?? 'dark'];
 
   let description = '';
   if (direction === 'out') {
@@ -45,7 +45,8 @@ export default function TransactionListItem(params: {direction: 'in' | 'out'; tx
           <List.Icon
             color={color}
             style={{...style, marginLeft: 0, marginRight: 8}}
-            icon={txTypes[tx.type].icon[direction]!}
+            // icon={txTypes[tx.type].icon[direction]!}
+            icon={"check"}
           />
         )
       }

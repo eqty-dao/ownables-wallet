@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import Loading from "./Loading";
 import useBusy from "../utils/useBusy";
 import PackagesDrawer from "./DetailsModal/PackagesDrawer";
+import { sendRNPostMessage } from "../utils/postMessage";
 
 interface PackagesFabProps {
   open: boolean;
@@ -28,7 +29,21 @@ export default function PackagesFab(props: PackagesFabProps) {
   useEffect(updatePackages, []);
 
   const importPackages = async () => {
+    // DC: Let react native know that we are opening a file dialog
+    sendRNPostMessage(
+      JSON.stringify({ type: "openFileDialog", data: { forceSignout: false } })
+    );
+
+    // DC: After 100ms, let react native know that we are closing the file dialog
+    // File dialog does not return anything when cancel button is pressed
+    setTimeout(() => {
+      sendRNPostMessage(
+        JSON.stringify({ type: "openFileDialog", data: { forceSignout: true } })
+      );
+    }, 100);
+
     const files = await selectFile({ accept: ".zip", multiple: true });
+    console.log(files);
     if (files.length === 0) return;
 
     try {
@@ -73,7 +88,6 @@ export default function PackagesFab(props: PackagesFabProps) {
         return;
       }
     }
-
     onSelect(pkg);
   };
 

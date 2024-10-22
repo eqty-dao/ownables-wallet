@@ -22,6 +22,7 @@ import { themeStyles } from "../../theme/themeStyles";
 import If from "../If";
 import { ReactComponent as CircleCheckIcon } from "../../assets/circle_check_icon.svg";
 import LtoOverlay, { LtoOverlayBanner } from "./LtoOverlay";
+import SessionStorageService from "../../services/SessionStorage.service";
 
 export interface OwnableThumbProps {
   chain: EventChain;
@@ -98,9 +99,9 @@ export default class OwnableThumb extends Component<
     )) as TypedOwnableInfo;
     const metadata = this.pkg.hasMetadata
       ? ((await OwnableService.rpc(this.chain.id).query(
-          { get_metadata: {} },
-          stateDump
-        )) as TypedMetadata)
+        { get_metadata: {} },
+        stateDump
+      )) as TypedMetadata)
       : this.state.metadata;
 
     this.setState({ info, metadata });
@@ -142,6 +143,14 @@ export default class OwnableThumb extends Component<
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
     }
   }
+
+  get isBridged() {
+    const bridgeAddress = SessionStorageService.get("bridgeAddress");
+    const currentOwner = this.state.info?.owner;
+    if (!bridgeAddress || !currentOwner) return false;
+    return currentOwner === bridgeAddress;
+  }
+
 
   private async execute(msg: TypedDict): Promise<void> {
     let stateDump: StateDump;
@@ -219,7 +228,7 @@ export default class OwnableThumb extends Component<
 
   render() {
     return (
-      <div>
+      <div onClick={this.props.onOpenModal}>
         <Paper sx={this.paperStyle}>
           <OwnableFrame
             id={this.chain.id}
@@ -229,7 +238,7 @@ export default class OwnableThumb extends Component<
             onLoad={() => this.onLoad()}
           />
           {this.props.children}
-          <If condition={this.isTransferred}>
+          <If condition={this.isTransferred && !this.isBridged}>
             <Tooltip
               title="You're unable to interact with this Ownable, because it has been transferred to a different account."
               followCursor
@@ -237,6 +246,18 @@ export default class OwnableThumb extends Component<
               <LtoOverlay isForDetailsScreen={false}>
                 <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
                   Transferred
+                </LtoOverlayBanner>
+              </LtoOverlay>
+            </Tooltip>
+          </If>
+          <If condition={this.isBridged && this.isTransferred}>
+            <Tooltip
+              title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+              followCursor
+            >
+              <LtoOverlay isForDetailsScreen={false}>
+                <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                Bridged
                 </LtoOverlayBanner>
               </LtoOverlay>
             </Tooltip>

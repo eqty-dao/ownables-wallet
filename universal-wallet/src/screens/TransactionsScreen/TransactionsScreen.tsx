@@ -13,7 +13,7 @@ import TransactionListItem from '../../components/TransactionListItem';
 import {WALLET} from '../../constants/Text';
 
 export default function TransactionsScreen({navigation}: RootStackScreenProps<'Transactions'>) {
-  const [accountAddress, setAccountAddress] = useState('');
+  const [accountAddress, setAccountAddress] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<{date: string; data: TypedTransaction[]}[]>([]);
 
   useEffect(() => {
@@ -32,12 +32,15 @@ export default function TransactionsScreen({navigation}: RootStackScreenProps<'T
     loadTransactions();
   }, [accountAddress]);
 
-  useInterval(() => {
-    loadTransactions();
-  }, 5 * 1000);
+  useInterval(
+    () => {
+      loadTransactions();
+    },
+    accountAddress ? 5 * 1000 : null,
+  );
 
   const loadTransactions = async () => {
-    if (accountAddress === '') {
+    if (accountAddress === null) {
       setTransactions([]);
       return;
     }

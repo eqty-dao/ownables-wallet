@@ -28,7 +28,6 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
   const [accountAddress, setAccountAddress] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const {setShowMessage, setMessageInfo} = useContext(MessageContext);
-
   const rnBiometrics = new ReactNativeBiometrics();
 
   useEffect(() => {
@@ -51,23 +50,29 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
     setloginForm({...loginForm, [name]: value});
   };
 
+  const isStrongPassword = (password: string) => {
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    return regex.test(password);
+  };
+
   const validateForm = (): {err?: string} => {
     if (loginForm.nickname === '') {
       return {err: 'Nickname is required!'};
     }
 
-    if (loginForm.nickname.length < 3) {
-      return {err: 'Nickname must be at least 3 characters long!'};
+    if (loginForm.nickname.length < 3 || loginForm.nickname.length > 15) {
+      return {err: 'Nickname must be more than 3 or less than 15 character!'};
     }
 
     if (loginForm.password === '') {
       return {err: 'Password is required!'};
     }
 
-    if (loginForm.password.length < 3) {
-      return {err: 'Password must be at least 3 characters long!'};
-    }
-
+    // if (!isStrongPassword(loginForm.password)) {
+    //   return {
+    //     err: 'Password must be atleast 8 characters long and include uppercase, lowercase, number and special character!',
+    //   };
+    // }
     if (loginForm.password !== loginForm.passwordConfirmation) {
       return {err: 'Passwords do not match!'};
     }

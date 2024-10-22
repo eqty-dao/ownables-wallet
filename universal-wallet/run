@@ -323,22 +323,24 @@ android_create_js_bundle() {
 android_build_apk() {
   cp -f env.stg .env
 
-  android_create_js_bundle
+  # android_create_js_bundle
 
-  cd android ; 
-  ./gradlew assembleRelease; cd ..
-  ls -alh android/app/build/outputs/apk/release/*.apk
+  # ./gradlew assembleDebug; cd ..
+  # ls -alh android/app/build/outputs/apk/release/*.apk
+  npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/ --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew assembleDebug && cd ..
+  ls -alh android/app/build/outputs/apk/debug/*.apk
 }
 
 android_build_aab() {
   ## TODO Temporary still use staging environment variables for now
   cp -f env.stg .env
 
-  android_create_js_bundle
+  # android_create_js_bundle
 
-  cd android ; ./gradlew bundleRelease ; cd ..
+  # cd android ; ./gradlew bundleRelease ; cd ..
+  # ls -alh android/app/build/outputs/bundle/release/*.aab
+  npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew bundleRelease && cd ..
   ls -alh android/app/build/outputs/bundle/release/*.aab
-  
 }
 
 android_upload_aab() {
@@ -957,10 +959,17 @@ app_patch() {
 
 
 app_prebuild() {
-  cp -R ../ownable-sdk/build/* _html/
+  echo "Prebuild tasks"
+  # generate ownables sdk
+  cd ../ownables_sdk && npm run build 
+  cd ../universal-wallet
+  echo "Copying ownables sdk to android and ios"
+  cp -R ../ownables_sdk/build/* _html/
   mkdir -p android/app/src/main/assets/html ios/external/html
   cp -R _html/* android/app/src/main/assets/html/
   cp -R _html/* ios/external/html/
+  cp -R _html/* www
+  echo "Done copying ownables sdk to android and ios"
 }
 
 app_build_common() {

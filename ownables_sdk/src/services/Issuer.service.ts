@@ -15,7 +15,7 @@ class IssuerService {
     if (packages.length === 0) return [];
 
     const filteredPackages = packages.filter(
-      (item: IssuerItemType) => item.collaborators.length > 0
+      (item: IssuerItemType) => item.collaborators && item.collaborators?.length > 0
     );
     if (filteredPackages.length === 0) return [];
 

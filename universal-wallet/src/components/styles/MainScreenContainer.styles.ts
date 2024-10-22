@@ -9,7 +9,7 @@ export const MainScreenView = styled.View`
 export const MainScreenSubContainer = styled.View`
   flex: 1;
   padding: 64px 16px;
-  gap: 64px;
+  gap: 10px;
 `;
 
 export const MainScreenMinorContainer = styled.View`

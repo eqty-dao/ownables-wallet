@@ -58,19 +58,25 @@ export default function LeaseScreen({navigation, route}: RootStackScreenProps<'L
 
   useFocusEffect(
     React.useCallback(() => {
-      LTOService.getAccount().then(account => setAccountAddress(account.address));
+      LTOService.getAccount()
+        .then(account => setAccountAddress(account.address))
+        .catch(error => console.error(`Error getting account`, error));
     }, []),
   );
 
   useFocusEffect(
     React.useCallback(() => {
-      CommunityNodesService.info(nodeAddress).then(info => setNode(info));
+      CommunityNodesService.info(nodeAddress)
+        .then(info => setNode(info))
+        .catch(error => console.error(`Error getting community node info`, error));
     }, []),
   );
 
   useFocusEffect(
     React.useCallback(() => {
-      Promise.all([loadAccountDetails(), loadLeases()]).then(() => setIsLoading(false));
+      Promise.all([loadAccountDetails(), loadLeases()])
+        .then(() => setIsLoading(false))
+        .catch(error => console.error(`Error getting loading data`, error));
     }, [accountAddress]),
   );
 
@@ -117,11 +123,21 @@ export default function LeaseScreen({navigation, route}: RootStackScreenProps<'L
   };
 
   const sendTx = async () => {
-    const account = await LTOService.getAccount();
-    await LTOService.broadcast(tx!.signWith(account));
-
-    setMessageInfo('Transaction sent successfully!');
-    setShowMessage(true);
+    try {
+      if (!tx) {
+        throw new Error('Transaction is not defined');
+      }
+      const account = await LTOService.getAccount();
+      const signedTx = tx.signWith(account);
+      await LTOService.broadcast(signedTx);
+      setMessageInfo('Transaction sent successfully!');
+      setShowMessage(true);
+      navigation.goBack();
+    } catch (error) {
+      if (error instanceof Error) console.error(`Error sending transaction: ${error.message}`);
+      setShowMessage(true);
+      setMessageInfo(`Failed to send transaction. Please try again later`);
+    }
   };
 
   const NodeDetail = (props: {value: string | undefined; description?: string | undefined; icon: string}) => (

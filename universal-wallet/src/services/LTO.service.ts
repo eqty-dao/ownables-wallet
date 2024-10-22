@@ -1,10 +1,13 @@
 import {Account, CancelLease, Lease, LTO, Transaction} from '@ltonetwork/lto';
 import LocalStorageService from './LocalStorage.service';
 import {TypedTransaction} from '../interfaces/TypedTransaction';
+import {LTO_NETWORK_ID, LTO_API_URL} from '@env';
 
-export const lto = new LTO(process.env.LTO_NETWORK_ID);
-if (process.env.LTO_API_URL) lto.nodeAddress = process.env.LTO_API_URL;
-
+console.log('LTO_NETWORK_ID', LTO_NETWORK_ID, 'LTO_API_URL', LTO_API_URL);
+export const lto = new LTO(LTO_NETWORK_ID);
+if ((LTO_API_URL as string) && lto) {
+  lto.nodeAddress = LTO_API_URL!;
+}
 export default class LTOService {
   static account?: Account;
 

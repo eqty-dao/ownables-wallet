@@ -14,16 +14,22 @@ export default function ImportSeedScreen({navigation}: RootStackScreenProps<'Imp
   const {setShowMessage, setMessageInfo} = useContext(MessageContext);
 
   const handleImportFromSeed = async () => {
-    const seed = seedPhrase.toLowerCase();
-    if (seed.split(' ').length === 15) {
-      LTOService.importAccount(seed)
-        .then(() => navigation.navigate('RegisterAccount', {data: 'seed'}))
-        .catch(error => {
-          throw new Error(`Error storing data. ${error}`);
-        });
-    } else {
+    try {
+      const seed = seedPhrase.trim().toLowerCase();
+
+      if (seed.split(' ').length === 15) {
+        await LTOService.importAccount(seed);
+        navigation.navigate('RegisterAccount', {data: 'seed'});
+      } else {
+        setShowMessage(true);
+        setMessageInfo('Seed phrase must have 15 words separated by one space!');
+      }
+    } catch (error) {
+      console.error('Error importing account - ', error);
       setShowMessage(true);
-      setMessageInfo('Seed phrase must have 15 words separated by one space!');
+      setMessageInfo('Failed to import account. Please try again.');
+    } finally {
+      setSeedPhrase('');
     }
   };
 

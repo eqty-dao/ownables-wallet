@@ -1,8 +1,10 @@
 import styled from 'styled-components';
 
 export const UserCardContainer = styled.View`
-  flex-direction: row;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  align-self: center;
 `;
 
 export const UserCardImageContainer = styled.View`

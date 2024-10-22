@@ -43,3 +43,15 @@ export const StyledSubLabel = styled.Text`
   font-size: 12px;
   font-weight: 400;
 `;
+
+
+export const StyledInputWithCopy = styled.TextInput.attrs({
+  placeholderTextColor: '#909092',
+  textAlignVertical: 'top',
+})<{disabled?: boolean}>`
+  flex: 1;
+  color: ${({disabled}) => (disabled ? '#656565' : '#fcfcf7')};
+  font-family: Inter;
+  font-size: 16px;
+  font-weight: 400;
+`;

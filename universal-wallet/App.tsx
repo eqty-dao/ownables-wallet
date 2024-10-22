@@ -7,6 +7,7 @@ import Navigation from './src/navigation';
 import {Provider as PaperProvider} from 'react-native-paper';
 import {MessageProviderWrapper} from './src/context/UserMessage.context';
 import {FabProviderWrapper} from './src/context/Fab.context';
+import { UserProvider } from './src/context/User.context';
 
 export default function App() {
   const isLoadingComplete = useCachedResources();
@@ -14,14 +15,16 @@ export default function App() {
 
   return (
     <SafeAreaProvider style={{backgroundColor: '#0D0D0D'}}>
-      <FabProviderWrapper>
-        <MessageProviderWrapper>
-          <PaperProvider>
-            <StatusBar barStyle={"light-content"} />
-            {isLoadingComplete && <Navigation colorScheme={colorScheme} />}
-          </PaperProvider>
-        </MessageProviderWrapper>
-      </FabProviderWrapper>
+      <UserProvider>
+        <FabProviderWrapper>
+          <MessageProviderWrapper>
+            <PaperProvider>
+              <StatusBar barStyle={"light-content"} />
+              {isLoadingComplete && <Navigation colorScheme={colorScheme} />}
+            </PaperProvider>
+          </MessageProviderWrapper>
+        </FabProviderWrapper>
+      </UserProvider>
     </SafeAreaProvider>
   );
 }
