@@ -130,3 +130,6 @@ universal-wallet/.env
 universal-wallet/.env.deploy
 universal-wallet/android/key.properties
 universal-wallet/android/app/src/main/assets/www/
+.vscode/
+ownables_sdk/.env
+ownables_sdk/.vscode/
