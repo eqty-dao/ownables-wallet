@@ -67,3 +67,4 @@ yarn-error.log
 _html
 android/app/src/main/assets/html/
 ios/external/html/
+.env

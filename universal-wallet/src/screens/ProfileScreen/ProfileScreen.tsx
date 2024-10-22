@@ -1,32 +1,38 @@
-import React, {useEffect, useContext, useState} from 'react';
-import {PROFILE} from '../../constants/Text';
-import {MessageContext} from '../../context/UserMessage.context';
+import React, { useEffect, useContext, useState } from 'react';
+import { PROFILE } from '../../constants/Text';
+import { MessageContext } from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
 import LTOService from '../../services/LTO.service';
-import {RootStackScreenProps} from '../../../types';
-import {ScreenContainer} from '../../components/ScreenContainer';
-import {StyledTitle} from '../../components/styles/Title.styles';
-import {BackButton} from '../../components/BackButton';
-import {Card} from '../../components/Card';
-import {StyledButton} from '../../components/StyledButton';
-import {ExpandableText} from '../../components/ExpandableText';
-import {ScreenSubView} from '../../components/styles/ScreenContainer.styles';
-import {BottomModal} from '../../components/BottomModal';
-import {InputModal} from '../../components/InputModal';
+import { RootStackScreenProps } from '../../../types';
+import { ScreenContainer } from '../../components/ScreenContainer';
+import { StyledTitle } from '../../components/styles/Title.styles';
+import { BackButton } from '../../components/BackButton';
+import { Card } from '../../components/Card';
+import { StyledButton } from '../../components/StyledButton';
+import { ExpandableText } from '../../components/ExpandableText';
+import { ScreenSubView } from '../../components/styles/ScreenContainer.styles';
+import { BottomModal } from '../../components/BottomModal';
+import { InputModal } from '../../components/InputModal';
+import { InputField } from '../../components/InputField';
+import { useWindowDimensions, View } from 'react-native';
+import Icon from '../../components/Icon';
+import PressToCopy from '../../components/PressToCopy';
+import { StyledInputWithCopy } from '../../components/styles/InputField.styles';
 
-export default function ProfileScreen({navigation}: RootStackScreenProps<'Profile'>) {
+export default function ProfileScreen({ navigation }: RootStackScreenProps<'Profile'>) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [accountInformation, setAccountInformation] = useState(Object.create(null));
   const [isKeyBlur, setIsKeyBlur] = useState<boolean>(true);
   const [isSeedBlur, setIsSeedBlur] = useState<boolean>(true);
   const [accountNickname, setAccountNickname] = useState<string>('');
   const [showConfirmDelete, setShowConfirmDelete] = useState<boolean>(false);
-  const {address, publicKey, privateKey, seed} = accountInformation;
+  const { address, publicKey, privateKey, seed } = accountInformation;
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showSeedPhrase, setShowSeedPhrase] = useState(false);
   const [showInputModal, setShowInputModal] = useState<boolean>(false);
   const [currentReveal, setCurrentReveal] = useState<'privateKey' | 'seed' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { width } = useWindowDimensions();
 
   useEffect(() => {
     readStorage();
@@ -47,7 +53,7 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
     LTOService.deleteAccount().then(() => {
       navigation.reset({
         index: 0,
-        routes: [{name: 'SignUp'}],
+        routes: [{ name: 'SignUp' }],
       });
     });
   };
@@ -106,8 +112,20 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
         <BackButton onPress={() => navigation.goBack()} />
         <StyledTitle>{PROFILE.TITLE}</StyledTitle>
         <Card label={accountNickname} subLabel={PROFILE.NICKNAME} type="secondary" />
-        <Card label={address} subLabel={PROFILE.WALLET} type="secondary" />
-        <Card label={publicKey} subLabel={PROFILE.PUBLIC_KEY} type="secondary" />
+        <PressToCopy value={address}>
+          <Card
+            label={address}
+            subLabel={PROFILE.WALLET + ' (hold to copy)'}
+            type="secondary"
+          />
+        </PressToCopy>
+        <PressToCopy value={publicKey}>
+          <Card
+            label={publicKey}
+            subLabel={PROFILE.PUBLIC_KEY + ' (hold to copy)'}
+            type="secondary"
+          />
+        </PressToCopy>
         <ExpandableText
           text="Show private key"
           content={
@@ -142,14 +160,14 @@ export default function ProfileScreen({navigation}: RootStackScreenProps<'Profil
         body={[]}
         submitText="Submit"
         submitButtonType="primary"
-        onInputChange={() => {}}
+        onInputChange={() => { }}
       />
 
       <StyledButton text={PROFILE.DELETE_ACCOUNT} onPress={() => setShowConfirmDelete(true)} type="danger" />
 
       <BottomModal
         title={PROFILE.DELETE_ACCOUNT_LABEL}
-        body={[{text: PROFILE.DELETE_ACCOUNT_MESSAGE}, {text: PROFILE.DELETE_ACCOUNT_MESSAGE_2}]}
+        body={[{ text: PROFILE.DELETE_ACCOUNT_MESSAGE }, { text: PROFILE.DELETE_ACCOUNT_MESSAGE_2 }]}
         onSubmit={deleteAccount}
         submitButtonType="danger"
         submitText="Delete Account"

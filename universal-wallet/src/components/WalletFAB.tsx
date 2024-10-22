@@ -9,6 +9,7 @@ import styled from 'styled-components/native';
 import Typography from './Typography';
 import Spacer from './Spacer';
 import {FabContext} from '../context/Fab.context';
+import { Icon as RneIcons } from 'react-native-elements'
 
 interface StyledFabProps {
   width: number;
@@ -93,9 +94,13 @@ const WalletFAB = ({transfer, lease}: FabProps): JSX.Element => {
             {
               icon: () => (
                 <StyledFabItem width={112} height={40} top={8}>
-                  <IconWrapper>
-                    <Icon icon="delete" size={24} color={Colors[colorScheme].white[100]} />
-                  </IconWrapper>
+                  <RneIcons
+                    name="bank"
+                    type='font-awesome'
+                    color={Colors[colorScheme].white[100]}
+                    size={24}
+                    style={{backgroundColor: '#35363b', borderRadius: 100, width: 40, height: 40, alignItems: 'center', justifyContent: 'center'}}
+                  />
                   <Spacer size={15} />
                   <Typography family="Satoshi" size={4} color={Colors[colorScheme].white[100]}>
                     {WALLET.LEASE}

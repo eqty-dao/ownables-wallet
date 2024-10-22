@@ -5,6 +5,7 @@ import {
   AppStateStatus,
   BackHandler,
   ImageBackground,
+  Linking,
   Text,
   useColorScheme,
   useWindowDimensions,
@@ -53,6 +54,9 @@ import Spacer from '../../components/Spacer';
 import BottomTile from './BottomTile';
 import styled from 'styled-components/native';
 import {useUserSettings} from '../../context/User.context';
+import InAppBrowser from 'react-native-inappbrowser-reborn';
+import {LTO_EXPLORER_URL} from '@env';
+const WALLET_URL = LTO_EXPLORER_URL;
 
 const ExitPopup = styled.View`
   position: absolute;
@@ -375,6 +379,12 @@ const MainTab = ({children, navigation}) => {
     };
   }, [isSignOutForced]);
 
+  const handleMoreTransactionPressed = () => {
+    //open external link
+    const url = `${WALLET_URL}/address/${accountAddress}`;
+    InAppBrowser.open(url);
+  };
+
   return (
     <>
       {isExitPopupVisible && (
@@ -502,7 +512,7 @@ const MainTab = ({children, navigation}) => {
                     />
                   </Card.Content>
                   <Card.Actions>
-                    <Button color="#9D8EE6" style={{width: '100%'}} onPress={() => navigation.navigate('Transactions')}>
+                    <Button color="#9D8EE6" style={{width: '100%'}} onPress={() => handleMoreTransactionPressed()}>
                       {WALLET.MORE}
                     </Button>
                   </Card.Actions>
