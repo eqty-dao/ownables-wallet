@@ -5,16 +5,16 @@ import {
   TypedPackageStub,
 } from "../interfaces/TypedPackage";
 import JSZip from "jszip";
-import mime from "mime-lite";
+import mime from "mime/lite";
 import IDBService from "./IDB.service";
 import calculateCid from "../utils/calculateCid";
 import { TypedCosmWasmMsg } from "../interfaces/TypedCosmWasmMsg";
 import TypedDict from "../interfaces/TypedDict";
+import { RelayService } from "./Relay.service";
 import { Buffer } from "buffer";
 import { EventChain } from "@ltonetwork/lto";
 import OwnableService from "./Ownable.service";
 import { MessageExt } from "../interfaces/MessageInfo";
-import { RelayService } from "./Relay.service";
 
 const exampleUrl = process.env.REACT_APP_OWNABLE_EXAMPLES_URL;
 const examples: TypedPackageStub[] = exampleUrl
@@ -157,6 +157,7 @@ export default class PackageService {
           .filter(([filename]) => !filename.startsWith("."))
           .map(async ([filename, file]) => {
             const blob = await file.async("blob");
+            //@ts-ignore
             const type = mime.getType(filename) || "application/octet-stream";
             return new File([blob], filename, { type });
           })
@@ -171,6 +172,7 @@ export default class PackageService {
         )
         .map(async ([filename, file]) => {
           const blob = await file.async("blob");
+          //@ts-ignore
           const type = mime.getType(filename) || "application/octet-stream";
           return new File([blob], filename, { type });
         })
@@ -229,7 +231,9 @@ export default class PackageService {
     files: File[]
   ): Promise<any> {
     const file = files.find((file) => file.name === filename);
-    if (!file) throw new Error(`Invalid package: missing ${filename}`);
+    if (!file) {
+      return null;
+    }
     return JSON.parse(await file.text());
   }
 
@@ -267,12 +271,15 @@ export default class PackageService {
     };
   }
 
-  static async import(zipFile: File): Promise<TypedPackage> {
+  static async import(zipFile: File): Promise<TypedPackage | null> {
     const files = await this.extractAssets(zipFile);
     const packageJson: TypedDict = await this.getPackageJson(
       "package.json",
       files
     );
+    if(!packageJson) {
+      return null;
+    }
     const name: string = packageJson.name || zipFile.name.replace(/\.\w+$/, "");
     const title = name
       .replace(/^ownable-|-ownable$/, "")
@@ -304,15 +311,13 @@ export default class PackageService {
       const filteredMessages = await RelayService.checkDuplicateMessage(
         relayData
       );
+
       const results = await Promise.all(
         filteredMessages.map(async (data: any) => {
           const { message, ...messageHash } = data;
           const mainMessage = message;
           const asset = await this.extractAssets(mainMessage.data.buffer);
           const cid = await calculateCid(asset);
-          if(cid === "") {
-            return null;
-          }
           const chainJson = await this.getChainJson(
             "chain.json",
             mainMessage.data.buffer
@@ -326,12 +331,10 @@ export default class PackageService {
             }
           }
 
-          // const packageJson = await this.getPackageJson("package.json", asset);
-          let file = asset.find((file) => file.name === "package.json");
-          if (!file) {
+          const packageJson = await this.getPackageJson("package.json", asset);
+          if(!packageJson) {
             return null;
           }
-          const packageJson = JSON.parse(await file.text());
           const name = packageJson.name;
           const title = name
             .replace(/^ownable-|-ownable$/, "")
@@ -359,8 +362,9 @@ export default class PackageService {
           pkg.chain = chain;
           pkg.uniqueMessageHash = uniqueMessageHash;
           return pkg;
-        }).filter((pkg) => pkg !== null)
-      )
+        })
+      );
+
       return results.filter((pkg) => pkg !== null);
     } catch (error) {
       console.error("Error:", error);
@@ -390,7 +394,7 @@ export default class PackageService {
     await OwnableService.delete(id);
   }
 
-  static async downloadExample(key: string): Promise<TypedPackage> {
+  static async downloadExample(key: string): Promise<TypedPackage | null> {
     if (!exampleUrl)
       throw new Error("Unable to download example ownable: URL not configured");
 
@@ -409,7 +413,9 @@ export default class PackageService {
     const zipFile = new File([await response.blob()], `${key}.zip`, {
       type: "application/zip",
     });
-
+    if(!zipFile) {
+      return null;
+    }
     return this.import(zipFile);
   }
 

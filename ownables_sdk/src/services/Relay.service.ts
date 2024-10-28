@@ -2,33 +2,17 @@ import { EventChain, LTO, Message, Relay } from "@ltonetwork/lto";
 import axios from "axios";
 import sendFile from "./relayhelper.service";
 import JSZip from "jszip";
+import mime from "mime/lite";
 import { MessageExt, MessageInfo } from "../interfaces/MessageInfo";
 import { sign } from "@ltonetwork/http-message-signatures";
 import LTOService from "./LTO.service";
-import mime from "mime-lite";
-import SessionStorageService from "./SessionStorage.service";
 
-const getSeedFromQuery = () => {
-  const queryParams = new URLSearchParams(window.location.search);
-  return queryParams.get("seed");
-}
-
-const seed = getSeedFromQuery();
 export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID);
-export const relayURL = process.env.REACT_APP_RELAY
-  ? process.env.REACT_APP_RELAY
-  : null;
-export const relayLocalURL = process.env.REACT_APP_RELAY;
-
-//lto.relay = new Relay("https://relay.lto.network/");
-
 
 export class RelayService {
   private static relayURL =
     process.env.REACT_APP_RELAY || process.env.REACT_APP_LOCAL;
-  private static relay = relayURL
-  ? new Relay(`${relayURL}/`)
-  : new Relay(`${relayLocalURL}/`);
+  private static relay = new Relay(`${this.relayURL}`);
 
   /**
    * Handle All Signed Requests
@@ -89,11 +73,11 @@ export class RelayService {
 
     const address = sender.address;
     const isRelayAvailable = await this.isRelayUp();
-
     if (!isRelayAvailable) return null;
     const url = `${this.relayURL}/inboxes/${address}/`;
     try {
       const responses = await this.handleSignedRequest("GET", url);
+
       if (!responses.data.length) return null;
 
       const ownableData = await Promise.all(
@@ -157,7 +141,6 @@ export class RelayService {
       return false;
     }
   }
-
   /**
    * Extract assets from a zip file.
    */
@@ -169,7 +152,8 @@ export class RelayService {
         .filter(([filename]) => !filename.startsWith("."))
         .map(async ([filename, file]) => {
           const blob = await file.async("blob");
-          const type =mime.getType(file.name) || "application/octet-stream";
+          //@ts-ignore
+          const type = mime.getType(filename) || "application/octet-stream";
           return new File([blob], filename, { type });
         })
     );

@@ -87,7 +87,7 @@ function LtoSearchBar({
       <style>
         {`
           .search-input::placeholder {
-            color: ${themeColors.subText}; 
+            color: ${themeColors.subText};
           }
         `}
       </style>

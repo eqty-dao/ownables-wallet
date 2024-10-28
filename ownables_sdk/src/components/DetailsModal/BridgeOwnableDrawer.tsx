@@ -153,7 +153,7 @@ export default function BridgeOwnableDrawer(
         sx={textFieldStyle}
         label={getChainLabel()} />
       <Typography variant="body2" color="#ffff">
-        Bridge Fee: <span style={{ color: "red" }}>-{bridgeFee} LTO</span>
+        Bridge Fee: <span style={{ color: "white" }}>{bridgeFee} LTO</span>
       </Typography>
       <Box height="32px" /><Stack direction="column" spacing={2}>
         <Button onClick={submit} sx={submitBtnStyle} variant="contained">

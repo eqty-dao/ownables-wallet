@@ -32,7 +32,6 @@ import { ReactComponent as CreateIcon } from "./assets/create_icon.svg";
 import { ReactComponent as CollectionIcon } from "./assets/collection-icon.svg";
 import { ReactComponent as ReceiveIcon } from "./assets/receive_icon.svg";
 import TypedFabItem from "./interfaces/TypedFabItem";
-import PackagesFab from "./components/PackagesFab";
 import CollectionService, {
   StaticCollections,
 } from "./services/Collection.service";
@@ -47,6 +46,7 @@ import EmptyCollection from "./components/common/EmptyCollection";
 import FilterService from "./services/Filter.service";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
 import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
+import { checkForMessages } from "./services/CheckMessages.service";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -100,6 +100,7 @@ export default function App() {
 
   // CST: Create ownable drawer
   const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false);
+  const [message, setMessages] = useState(0);
 
   // DC: filters
   const {
@@ -136,10 +137,6 @@ export default function App() {
     getAllIssuers();
     // reset filter
     resetFilter();
-    const pkgs = (await PackageService.importFromRelay())?.filter(Boolean) as TypedPackage[];
-    if(pkgs && pkgs.length > 0) {
-      relayImport(pkgs);
-    }
   };
 
   useEffect(() => {
@@ -176,6 +173,20 @@ export default function App() {
         if (LTOService.isUnlocked()) {
           console.log(`SETTING ADDRESS: ${LTOService.address}`);
         }
+        IDBService.open()
+          .then(() => OwnableService.loadAll())
+          .then((ownables) => setOwnables(ownables))
+          .then(() => setLoaded(true));
+        const intervalId = setInterval(async () => {
+          try {
+            const count = await checkForMessages.valueOfValidCids();
+            setMessages(count || 0);
+          } catch (error) {
+            console.error("Error occurred while checking messages:", error);
+          }
+        }, 10000);
+
+        return () => clearInterval(intervalId);
       } catch (error) {
         console.error("Error importing account: ", error);
       }
@@ -183,12 +194,7 @@ export default function App() {
       // DC: If something went wrong with filtering, uncomment this line
       //IDBService.deleteDatabase()
 
-      IDBService.open()
-        .then(() => OwnableService.loadAll())
-        .then((ownables) => {
-          setOwnables(ownables);
-        })
-        .then(() => setLoaded(true));
+
     } else {
       console.log("NO SEED RECEIVED");
     }
@@ -222,87 +228,6 @@ export default function App() {
     setAlert({ severity: "error", title, message });
   };
 
-  const forge = async (pkg: TypedPackage) => {
-    const chain = await OwnableService.create(pkg);
-    setOwnables([...ownables, { chain, package: pkg.cid }]);
-    setShowPackages(false);
-    enqueueSnackbar(`${pkg.title} forged`, {
-      variant: "success",
-      autoHideDuration: snackbarDuration,
-    });
-
-    // DC: Delay after the ownables are set to make sure the state is up to date
-    setTimeout(() => {
-      // add new chainId to packages local json object and filter over it
-      FilterService.updateChainId(chain.id, pkg.cid);
-      // add to the current collection selected
-      if (collection) {
-        addTo(collection, chain.id);
-        if (collection !== StaticCollections.ALL) {
-          addTo(StaticCollections.ALL, chain.id);
-        }
-      }
-
-      // DC: After import an ownable, "redirect" the user to the ALL tab
-      resetFilter();
-      changeCollection(StaticCollections.ALL);
-      setSelectedTab(TabType.ALL);
-
-      // update issuers
-      getAllIssuers();
-    }, 0);
-  };
-
-  const relayImport = async (pkg: TypedPackage[] | null) => {
-    if (pkg != null && pkg.length > 0) {
-      setOwnables((prevOwnables) => [
-        ...prevOwnables,
-        ...pkg.map((data: any) => {
-          return {
-            chain: data.chain,
-            package: data.cid,
-          };
-        }),
-      ]);
-      enqueueSnackbar(`Ownable successfully loaded`, {
-        variant: "success",
-      });
-      setAlert({
-        severity: "info",
-        title: "New Ownables Detected",
-        message: "New ownables have been detected. Refreshing...",
-      });
-      // setTimeout(() => {
-      //   window.location.reload();
-      // }, 4000);
-    } else {
-      enqueueSnackbar(`Nothing to Load from relay`, {
-        variant: "error",
-      });
-    }
-  };
-
-
-  // DC: WithRelayService
-  // const relayImport = async (pkg: any) => {
-  //   setOwnables((prevOwnables) => [
-  //     ...prevOwnables,
-  //     ...pkg.map((data: any) => {
-  //       console.log(data);
-  //       return {
-  //         chain: data.chain,
-  //         package: data.cids,
-  //       };
-  //     }),
-  //   ]);
-
-  //   if (pkg.length > 0) {
-  //     // enqueueSnackbar(`Ownable successfully loaded!`, {
-  //     //   variant: "success",
-  //     // });
-  //   }
-  //   setShowPackages(false);
-  // };
 
   const canConsume = async (consumer: {
     chain: EventChain;
@@ -471,6 +396,47 @@ export default function App() {
 
   const handleSearchFilter = () => setShowFilters(!showFilters);
 
+  const relayImport = async (pkg: TypedPackage[] | null) => {
+    if (pkg != null && pkg.length > 0) {
+      setOwnables((prevOwnables) => [
+        ...prevOwnables,
+        ...pkg.map((data: any) => {
+          return {
+            chain: data.chain,
+            package: data.cid,
+          };
+        }),
+      ]);
+      // enqueueSnackbar(`Ownable successfully loaded`, {
+      //   variant: "success",
+      // });
+      setAlert({
+        severity: "info",
+        title: "New Ownables Detected",
+        message: "New ownables have been detected. Refreshing...",
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 4000);
+    } else {
+      enqueueSnackbar(`Nothing to Load from relay`, {
+        variant: "error",
+      });
+    }
+  };
+
+  const importPackagesFromRelay = async () => {
+    try {
+      const pkg = await PackageService.importFromRelay();
+      if (pkg == null) return;
+      const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null);
+      if (filteredPackages.length === 0) return;
+      relayImport(filteredPackages);
+    } catch (error) {
+      showError("Import failed", ownableErrorMessage(error));
+    }
+  };
+
   const handleFabItemSelected = async (item: TypedFabItem) => {
     setOpenFab(false);
 
@@ -485,10 +451,7 @@ export default function App() {
         setShowPackages(true);
         return;
       case HomePageEnums.ReceiveOwnables:
-        const pkgs = await PackageService.importFromRelay() as TypedPackage[];
-        if(pkgs && pkgs.length > 0) {
-          relayImport(pkgs);
-        }
+        importPackagesFromRelay();
         return;
       default:
         return;
@@ -660,14 +623,15 @@ export default function App() {
         onSelect={handleFabItemSelected}
         openIcon={PlusIcon}
         closeIcon={CloseIcon}
+        badgeCount={message}
       />
-      <PackagesFab
+      {/* <PackagesFab
         open={showPackages}
         onClose={() => setShowPackages(false)}
         onSelect={forge}
         onImportFR={relayImport}
         onError={showError}
-      />
+      /> */}
       {isModalOpen && selectedOwnable != null && (
         <OwnableDetailsModal
           onClose={(shouldRefresh: boolean) =>

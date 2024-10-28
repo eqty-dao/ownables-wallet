@@ -3,8 +3,10 @@ import {
   Button,
   FormControlLabel,
   IconButton,
+  MenuItem,
   Radio,
   RadioGroup,
+  Select,
   Typography,
 } from "@mui/material";
 import LtoDrawer from "./DetailsModal/LtoDrawer";
@@ -35,6 +37,9 @@ import { Transfer as TransferTx } from "@ltonetwork/lto";
 import { TypedOwnable } from "../interfaces/TypedOwnableInfo";
 import { useSnackbar } from "notistack";
 import TagInputField from "./common/TagInputField";
+import Loading from "./Loading";
+import Modal from "@mui/material/Modal";
+import EventChainService from "../services/EventChain.service";
 
 interface Props {
   open: boolean;
@@ -48,8 +53,11 @@ interface Props {
 interface StyledButtonProps {
   transparent: boolean;
 }
+const contentContainerStyle = {
 
-const StyledButton = styled(Button)<StyledButtonProps>`
+};
+
+const StyledButton = styled(Button) <StyledButtonProps>`
   text-transform: none;
   height: 48px;
   color: #ffffff;
@@ -66,6 +74,7 @@ const closeModalBtnStyle = {
   padding: 0,
   color: themeColors.error,
 };
+const LTO_REPRESENTATION = 100000000;
 
 const CreateOwnablesDrawer = (props: Props) => {
   const { open, onClose } = props;
@@ -92,10 +101,7 @@ const CreateOwnablesDrawer = (props: Props) => {
     network: "ethereum",
     image: null,
   });
-  const [available, setAvailable] = useState(0);
-  const [lowBalance, setLowBalance] = useState(false);
-  const [amount, setAmount] = useState(0);
-  const [showAmount, setShowAmount] = useState<number>(0);
+
   const [recipient, setShowAddress] = useState<string | undefined>();
   const [noConnection, setNoConnection] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
@@ -103,50 +109,67 @@ const CreateOwnablesDrawer = (props: Props) => {
   const [thumbnail, setThumbnail] = useState<Blob | null>(null);
   const [blurThumbnail, setBlurThumbnail] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
+  const [availableChains, setAvailableChains] = useState<IAvailableChains | null>(null);
+  const [selectedChain, setSelectedChain] = useState<string>("");
+  const [allBuildCosts, setAllBuildCosts] = useState<any>(null);
+  const [available, setAvailable] = useState(0);
+  const [lowBalance, setLowBalance] = useState(false);
+  const [buildCost, setBuildCost] = useState<number>(0);
+  const [amount, setAmount] = useState<number>(0);
+  const [showAmount, setShowAmount] = useState<number>(0);
+  const [transactionId, setTransactionId] = useState<string | null>();
+  const [buildError, setBuildError] = useState<string | null>(null);
 
   const fetchBuildAmount = useCallback(async () => {
     try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_OBUILDER}/api/v1/templateCost?templateId=1`,
-        // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1',
-        // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
-        // 'http://localhost:3000/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
-        {
-          headers: {
-            Accept: "*/*",
-          },
-        }
-      );
-      console.log("response", response);
-      console.log("response.data", response.data[selectedNetwork]);
-      const value = +response.data[selectedNetwork];
-      console.log("BuildAmount", value);
+      const response =
+        await axios.get(
+          `${process.env.REACT_APP_OBUILDER}/api/v1/availableChains`,
+          // `${process.env.REACT_APP_OBUILDER}/api/v1/templateCost?templateId=1`,
+          // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1',
+          // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
+          // 'http://localhost:3000/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
+          // {
+          //   headers: {
+          //     Accept: "*/*",
+          //   },
+          // }
+        );
+      const allBuildCosts = response.data as any;
+      const availableChains = response.data as IAvailableChains;
+      const selectedChain = availableChains[selectedNetwork];
+      const templateCostValue = selectedChain?.templateCost["1"];
+      const value = (typeof templateCostValue === 'number' ? templateCostValue / LTO_REPRESENTATION : Number(templateCostValue) / LTO_REPRESENTATION) + 1;
+      setSelectedChain(selectedChain.name);
+      setAvailableChains(availableChains);
+      setAllBuildCosts(allBuildCosts);
+      setBuildCost(value);
       const address = await axios.get(
         `${process.env.REACT_APP_OBUILDER}/api/v1/ServerWalletAddressLTO`,
         // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/ServerWalletAddressLTO',
         // "http://localhost:3000/api/v1/ServerWalletAddressLTO",
-        {
-          headers: {
-            Accept: "*/*",
-          },
-        }
+        // {
+        //   headers: {
+        //     Accept: "*/*",
+        //   },
+        // }
       );
       console.log("address", address.data.serverWalletAddressLTO);
       const serverAddress = address.data.serverWalletAddressLTO;
       // for testing now use 3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo
       // const serverAddress = "3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo";
       console.log("serverAddress", serverAddress);
-      const LTO_REPRESENTATION = 100000000;
       const calculatesAmount =
-        parseFloat(value.toString()) / LTO_REPRESENTATION + 1;
+        parseFloat(templateCostValue.toString()) / LTO_REPRESENTATION + 1;
       console.log("calculatesAmount", calculatesAmount);
       if (calculatesAmount < 1.1) {
         console.log("error server is not ready yet");
         return;
       } else {
-        setAmount(value);
+        setBuildCost(calculatesAmount);
         setShowAmount(calculatesAmount);
         setShowAddress(serverAddress);
+        setAmount(+templateCostValue);
       }
     } catch (error) {
       console.error("Error fetching build amount:", error);
@@ -173,10 +196,22 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const { enqueueSnackbar } = useSnackbar();
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(ltoWalletAddress);
+  const handleCopy = (e: any) => {
+    const value = e.currentTarget.textContent;
+    if (value) {
+      if (window.navigator?.clipboard) {
+        window.navigator.clipboard.writeText(value);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = value;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+    }
     enqueueSnackbar("Address copied to clipboard", { variant: "success" });
-  };
+  }
 
   const handleFileUploadClick = () => {
     // fileInputRef.current?.click();
@@ -230,14 +265,13 @@ const CreateOwnablesDrawer = (props: Props) => {
     }
   }, [balance]);
 
-  const handleNetworkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+  const handleNetworkChange = (value: string) => {
     setOwnable((prevOwnable) => ({
       ...prevOwnable,
       network: value,
     }));
     fetchBuildAmount();
-  };
+  }
 
   const clearImageAndThumbnail = () => {
     setThumbnail(null);
@@ -415,6 +449,20 @@ const CreateOwnablesDrawer = (props: Props) => {
     });
   }
 
+  const getBuildCostInLTO = (chain: string) => {
+    const chainCost = allBuildCosts[chain];
+    if (chainCost) {
+      const value = chainCost?.templateCost["1"];
+      const chainCostValue = typeof value === 'number' ? value : Number(value);
+      if (chainCostValue) {
+        return (chainCostValue / LTO_REPRESENTATION) + 1;
+      } else {
+        return 0;
+      }
+    }
+    return 0;
+  }
+
   const handleCreateOwnable = async () => {
     const ownerName = nameOwnerRef.current?.value() || "";
     const ownerEmail = emailOwnerRef.current?.value() || "";
@@ -425,7 +473,6 @@ const CreateOwnablesDrawer = (props: Props) => {
 
     const requiredFields = [
       { name: "Owner name", value: ownerName },
-      { name: "Owner email", value: ownerEmail },
       { name: "Ownable name", value: ownableName },
       { name: "Image", value: image },
     ];
@@ -443,10 +490,11 @@ const CreateOwnablesDrawer = (props: Props) => {
         ? `Missing required fields: ${newMissingFields.join(", ")}`
         : null
     );
+    EventChainService.anchoring = true;
     if (newMissingFields.length > 0) {
       return;
     }
-    if (!recipient || !amount) {
+    if (!recipient || !buildCost) {
       console.error("Recipient or amount is not defined");
       setNoConnection(true);
       return;
@@ -454,12 +502,9 @@ const CreateOwnablesDrawer = (props: Props) => {
     const tx = new TransferTx(recipient, amount);
     try {
       const account = await LTOService.getAccount();
-      const info = await LTOService.broadcast(tx!.signWith(account));
-      // console.log('Transaction id', info.id);
-      console.log("Transaction info", info);
+      const transaction = await LTOService.broadcast(tx!.signWith(account));
       setTimeout(() => {
-        if (info.id) {
-          console.log("Transaction id", info.id, "ready");
+        if (transaction.id) {
           const imageType = "webp";
           const imageName = ownableName.replace(/\s+/g, "-");
           const formattedName = ownableName.toLowerCase().replace(/\s+/g, "_");
@@ -472,11 +517,11 @@ const CreateOwnablesDrawer = (props: Props) => {
               NFT_TOKEN_URI:
                 "https://black-rigid-chickadee-743.mypinata.cloud/ipfs/QmSHE3ReBy7b8kmVVbyzA2PdiYyxWsQNU89SsAnWycwMhB",
               OWNABLE_THUMBNAIL: "thumbnail.webp",
-              OWNABLE_LTO_TRANSACTION_ID: info.id,
+              OWNABLE_LTO_TRANSACTION_ID: transaction.id,
               PLACEHOLDER1_NAME: "ownable_" + formattedName,
               PLACEHOLDER1_DESCRIPTION: description,
               PLACEHOLDER1_VERSION: "0.1.0",
-              PLACEHOLDER1_AUTHORS: ownerName + " <" + ownerEmail + ">",
+              // PLACEHOLDER1_AUTHORS: ownerName + " <" + ownerEmail + ">",
               PLACEHOLDER1_KEYWORDS: tags,
               PLACEHOLDER2_TITLE: ownableName,
               PLACEHOLDER2_IMG: imageName + "." + imageType,
@@ -485,7 +530,6 @@ const CreateOwnablesDrawer = (props: Props) => {
               PLACEHOLDER4_NAME: ownableName,
             },
           ];
-
           const zip = new JSZip();
           zip.file("ownableData.json", JSON.stringify(ownableData, null, 2));
           if (ownable.image) {
@@ -496,45 +540,163 @@ const CreateOwnablesDrawer = (props: Props) => {
             const thumbnailBlob = getThumbnailBlob(thumbnail, blurThumbnail);
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
-          console.log("zip", zip);
           zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
             // for testing creating download zip file, remove for live version
             // Create a temporary link element
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(zipFile);
-            link.download = formattedName + ".zip";
-            // Simulate a click on the link to trigger the download
-            link.click();
-            // send the zip file to obuilder
-            const formData = new FormData();
-            formData.append('file', zipFile, formattedName + ".zip");
-            axios.post(
-              `${process.env.REACT_APP_OBUILDER}/api/v1/upload`,
-              // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/Ownable',
-              // 'http://localhost:3000/api/v1/Ownable',
-              formData,
-              {
-                headers: {
-                  'Content-Type': 'multipart/form-data',
-                  'Accept': '*/*'
-                }
-              }
-            ).then(response => {
-              console.log("response", response);
-            }).catch(error => {
-              console.error("Error sending zip file:", error);
-            });
+            // const link = document.createElement("a");
+            // link.href = URL.createObjectURL(zipFile);
+            // link.download = formattedName + ".zip";
+            // // Simulate a click on the link to trigger the download
+            // link.click();
 
+            // Send the zip file to oBuilder
+            const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload`;
+            const formData = new FormData();
+            formData.append("file", zipFile, formattedName + ".zip");
+            axios
+              .post(url, formData, {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                  Accept: "*/*",
+                },
+              })
+              .then((res) => {
+                console.log(res.data);
+              })
+              .catch((err) => {
+                console.log(err);
+              });
             setOpenDialog(true);
           });
-          handleCloseDialog();
+          //handleCloseDialog();
         }
       }, 1000);
     } catch (error) {
       console.error("Error sending transaction:", error);
-      setLowBalance(true);
+      setBuildError("Something went wrong. Please try again");
     }
   };
+
+  // const handleCreateOwnable = async () => {
+  //   const ownerName = nameOwnerRef.current?.value() || "";
+  //   const ownerEmail = emailOwnerRef.current?.value() || "";
+  //   const ownableName = nameOwnableRef.current?.value() || "";
+  //   const description = descriptionRef.current?.value() || "";
+  //   const image = fileInputRef.current?.files?.[0] || null;
+
+
+  //   const requiredFields = [
+  //     { name: "Owner name", value: ownerName },
+  //     { name: "Owner email", value: ownerEmail },
+  //     { name: "Ownable name", value: ownableName },
+  //     { name: "Image", value: image },
+  //   ];
+
+  //   let newMissingFields: string[] = [];
+  //   for (let field of requiredFields) {
+  //     if (!field.value) {
+  //       console.error(`Missing required field: ${field.name}`);
+  //       newMissingFields.push(field.name);
+  //     }
+  //   }
+
+  //   setErrorMessage(
+  //     newMissingFields.length > 0
+  //       ? `Missing required fields: ${newMissingFields.join(", ")}`
+  //       : null
+  //   );
+  //   if (newMissingFields.length > 0) {
+  //     return;
+  //   }
+  //   if (!recipient || !buildCost) {
+  //     console.error("Recipient or amount is not defined");
+  //     setNoConnection(true);
+  //     return;
+  //   }
+  //   const tx = new TransferTx(recipient, buildCost);
+  //   try {
+  //     const account = await LTOService.getAccount();
+  //     const info = await LTOService.broadcast(tx!.signWith(account));
+  //     // console.log('Transaction id', info.id);
+  //     console.log("Transaction info", info);
+  //     setTimeout(() => {
+  //       if (info.id) {
+  //         console.log("Transaction id", info.id, "ready");
+  //         const imageType = "webp";
+  //         const imageName = ownableName.replace(/\s+/g, "-");
+  //         const formattedName = ownableName.toLowerCase().replace(/\s+/g, "_");
+
+  //         const ownableData = [
+  //           {
+  //             template: "template1",
+  //             CREATE_NFT: "true",
+  //             NFT_BLOCKCHAIN: ownable.network,
+  //             NFT_TOKEN_URI:
+  //               "https://black-rigid-chickadee-743.mypinata.cloud/ipfs/QmSHE3ReBy7b8kmVVbyzA2PdiYyxWsQNU89SsAnWycwMhB",
+  //             OWNABLE_THUMBNAIL: "thumbnail.webp",
+  //             OWNABLE_LTO_TRANSACTION_ID: info.id,
+  //             PLACEHOLDER1_NAME: "ownable_" + formattedName,
+  //             PLACEHOLDER1_DESCRIPTION: description,
+  //             PLACEHOLDER1_VERSION: "0.1.0",
+  //             PLACEHOLDER1_AUTHORS: ownerName + " <" + ownerEmail + ">",
+  //             PLACEHOLDER1_KEYWORDS: tags,
+  //             PLACEHOLDER2_TITLE: ownableName,
+  //             PLACEHOLDER2_IMG: imageName + "." + imageType,
+  //             PLACEHOLDER4_TYPE: ownableName,
+  //             PLACEHOLDER4_DESCRIPTION: description,
+  //             PLACEHOLDER4_NAME: ownableName,
+  //           },
+  //         ];
+
+  //         const zip = new JSZip();
+  //         zip.file("ownableData.json", JSON.stringify(ownableData, null, 2));
+  //         if (ownable.image) {
+  //           zip.file(`${imageName}.${imageType}`, ownable.image);
+  //         }
+
+  //         if (thumbnail) {
+  //           const thumbnailBlob = getThumbnailBlob(thumbnail, blurThumbnail);
+  //           zip.file(`thumbnail.webp`, thumbnailBlob);
+  //         }
+  //         console.log("zip", zip);
+  //         zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
+  //           // for testing creating download zip file, remove for live version
+  //           // Create a temporary link element
+  //           const link = document.createElement("a");
+  //           link.href = URL.createObjectURL(zipFile);
+  //           link.download = formattedName + ".zip";
+  //           // Simulate a click on the link to trigger the download
+  //           link.click();
+  //           // send the zip file to obuilder
+  //           const formData = new FormData();
+  //           formData.append('file', zipFile, formattedName + ".zip");
+  //           axios.post(
+  //             `${process.env.REACT_APP_OBUILDER}/api/v1/upload`,
+  //             // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/Ownable',
+  //             // 'http://localhost:3000/api/v1/Ownable',
+  //             formData,
+  //             {
+  //               headers: {
+  //                 'Content-Type': 'multipart/form-data',
+  //                 'Accept': '*/*'
+  //               }
+  //             }
+  //           ).then(response => {
+  //             console.log("response", response);
+  //           }).catch(error => {
+  //             console.error("Error sending zip file:", error);
+  //           });
+
+  //           setOpenDialog(true);
+  //         });
+  //         handleCloseDialog();
+  //       }
+  //     }, 1000);
+  //   } catch (error) {
+  //     console.error("Error sending transaction:", error);
+  //     setLowBalance(true);
+  //   }
+  // };
 
   return (
     <LtoDrawer
@@ -559,48 +721,45 @@ const CreateOwnablesDrawer = (props: Props) => {
           <CloseDrawerIcon />
         </IconButton>
       </Box>
-      {/* <Box p={2} width={"100%"}> Make the Box full width */}
       <Box sx={{ color: "white" }}>
         <Box
           display={"flex"}
           p={2}
           flexDirection={"row"}
-          alignItems={"center"}
-          justifyContent={"space-between"}
+          alignItems={"flex-start"}
         >
-          <Box p={2} width={"100%"}>
+          <Box p={1} width={"100%"}>
             {/* <Box p={2}> */}
             <Box
               display="flex"
               justifyContent="space-between"
               alignItems="flex-start"
-              // width={"100%"} // Make the Box full width
             >
-              <Box component="div" sx={{ mt: 1, width: "100%" }}>
+              <Box component="div" sx={{ width: "100%" }}>
                 {" "}
                 {/* Make the Box full width */}
                 <Typography
                   sx={{ fontSize: 12, color: "white" }}
                   color="text.secondary"
                 >
-                  LTO Network address
+                  LTO Network Address
                 </Typography>
                 <Typography
                   sx={{ fontSize: 12, fontWeight: 600 }}
                   component="div"
-                  onClick={handleCopy}
+                  onClick={e => handleCopy(e)}
                   style={{ cursor: "pointer" }}
                 >
                   {ltoWalletAddress}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  balance: {balance !== undefined ? balance + " LTO" : ""}
+                <Typography variant="body2" sx={{}}>
+                  Balance: {balance !== undefined ? balance + " LTO" : ""}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
+                {/* <Typography variant="body2" sx={{ mt: 1 }}>
                   build cost:{" "}
                   {showAmount !== undefined ? showAmount + " LTO" : ""} (incl.
                   Fee: 1 LTO)
-                </Typography>
+                </Typography> */}
               </Box>
               <Hidden smUp>
                 <IconButton
@@ -612,94 +771,84 @@ const CreateOwnablesDrawer = (props: Props) => {
                 </IconButton>
               </Hidden>
             </Box>
-            <Box p={2} width={"100%"}>
+            <Box p={0} width={"100%"}>
               {" "}
               {/* Make the Box full width */}
               <Box
                 display="flex"
                 flexDirection="column"
-                alignItems="center"
                 width={"100%"}
               >
                 {" "}
                 {/* Make the Box full width */}
                 <Typography
-                  sx={{ fontSize: 12, color: "white" }}
-                  color="text.secondary"
-                >
-                  Choose your network
-                </Typography>
-                <RadioGroup
-                  row
-                  name="network"
-                  value={ownable.network}
-                  onChange={(event) => {
-                    handleNetworkChange(event);
-                    setSelectedNetwork(event.target.value);
-                  }}
                   sx={{
-                    justifyContent: "center",
+                    fontSize: {
+                      xs: "0.8rem",
+                      sm: "0.9rem",
+                      md: "1.1rem",
+                    },
                     color: "white",
-                    width: "100%",
-                  }} // Make the RadioGroup full width
+                    marginBottom: "5px",
+                  }}
                 >
-                  <FormControlLabel
-                    value="ethereum"
-                    control={
-                      <Radio
-                        sx={{
-                          width: { xs: "12px", sm: "16px" },
-                          height: { xs: "12px", sm: "16px" },
-                          color: "white",
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography
-                        sx={{
-                          fontSize: {
-                            xs: "0.7rem",
-                            sm: "0.9rem",
-                            md: "1.1rem",
+                  Choose NFT network
+                </Typography>
+                {!availableChains || !buildCost ? <Loading show={true} /> : <>
+                  <Select
+                    value={selectedNetwork}
+                    onChange={(e) => {
+                      handleNetworkChange(e.target.value);
+                      setSelectedNetwork(e.target.value);
+                    }}
+                    sx={{
+                      width: "100%",
+                      backgroundColor: "transparent",
+                      color: "white",
+                      border: "1px solid #3a3a3c",
+                    }}
+                    inputProps={{
+                      MenuProps: {
+                        PaperProps: {
+                          style: {
+                            backgroundColor: "#3a3a3c",
+                            color: "white",
                           },
-                          ml: 1,
-                        }}
-                      >
-                        Ethereum
-                      </Typography>
-                    }
-                  />
-                  <FormControlLabel
-                    value="arbitrum"
-                    control={
-                      <Radio
-                        sx={{
-                          width: { xs: "12px", sm: "16px" },
-                          height: { xs: "12px", sm: "16px" },
-                          color: "white",
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography
-                        sx={{
-                          fontSize: {
-                            xs: "0.7rem",
-                            sm: "0.9rem",
-                            md: "1.1rem",
-                          },
-                          ml: 1,
-                        }}
-                      >
-                        Arbitrum
-                      </Typography>
-                    }
-                  />
-                </RadioGroup>
+                        },
+                      },
+                    }}
+
+                  >
+                    {!availableChains || !buildCost ? <Loading show={true} /> : Object.keys(availableChains).map((chain) => {
+                      return (
+                        <MenuItem key={chain} value={chain}>
+                          <div style={{ display: "flex", alignItems: "center" }}>
+                            <Typography
+                              sx={{
+                                fontSize: {
+                                  xs: "0.7rem",
+                                  sm: "0.9rem",
+                                  md: "1.1rem",
+                                },
+                                color: "white",
+                              }}
+                              color="text.secondary"
+                            >{availableChains[chain]?.logo &&
+                              <img src={availableChains[chain].logo} alt={chain} style={{ width: "20px", height: "20px", marginRight: "10px" }} />}
+                              {uppercaseFirstLetter(chain)}
+                              {getBuildCostInLTO(chain) && <span style={{ marginLeft: "10px" }}>Build cost: {getBuildCostInLTO(chain)} LTO</span>} (incl. Fee: 1 LTO)
+                            </Typography>
+                          </div>
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </>
+                }
               </Box>
               <br></br>
               <LtoInput ref={nameOwnerRef} label="Owner name" />
-              <LtoInput ref={emailOwnerRef} label="Owner email" />
+              {/* <LtoInput ref={emailOwnerRef} label="Owner email" /> */}
               <LtoInput ref={nameOwnableRef} label="Ownable name" />
               <LtoInput ref={descriptionRef} label="Description" />
               <TagInputField onTagsChange={setTags} />
@@ -716,8 +865,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                 type="file"
                 accept="image/*,.heic"
                 onChange={handleImageUpload}
-                style={{ marginBottom: "10px", display: "none" }}
-              />
+                style={{ marginBottom: "10px", display: "none" }} />
               <div
                 style={{
                   display: "flex",
@@ -731,8 +879,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                     <img
                       src={URL.createObjectURL(ownable.image)}
                       alt="Selected"
-                      style={{ width: "100px", height: "auto" }}
-                    />
+                      style={{ width: "100px", height: "auto" }} />
                   </div>
                 )}
                 {thumbnail && (
@@ -750,8 +897,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                           width: "50px",
                           height: "auto",
                           filter: blurThumbnail ? "blur(5px)" : "none",
-                        }}
-                      />
+                        }} />
                     </div>
                   </>
                 )}
@@ -773,8 +919,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                     type="file"
                     accept="image/*,.heic"
                     onChange={handleThumbnailUpload}
-                    style={{ marginBottom: "10px", display: "none" }}
-                  />
+                    style={{ marginBottom: "10px", display: "none" }} />
                 </>
               )}
               {errorMessage && (
@@ -785,7 +930,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                 <StyledButton
                   transparent={false}
                   onClick={handleCreateOwnable}
-                  disabled={isNaN(amount) || amount <= 0 || amount > available}
+                  disabled={isNaN(buildCost) || buildCost <= 0 || buildCost > available}
                   size="large"
                   style={{ color: "white" }}
                 >
@@ -836,13 +981,24 @@ const CreateOwnablesDrawer = (props: Props) => {
             <DialogContent>
               <DialogContentText>
                 The ownable has been successfully sent.
+                {/* <Typography variant="body2" sx={{ mt: 1 }}>
+                  Transaction ID: <Typography variant="body2" sx={{ mt: 1 }}
+                    onClick={e => handleCopy(e)} style={{ cursor: "pointer" }}
+                  >{transactionId}</Typography>
+                </Typography> */}
               </DialogContentText>
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleClose} sx={{ color: "white" }}>
+              <Button onClick={handleClose} sx={{ color: themeColors.primary }}>
                 Close
               </Button>
             </DialogActions>
+          </Dialog>
+          <Dialog
+            open={buildError !== null}
+            onClose={() => setBuildError(null)}
+          >
+            <Alert severity="error">{buildError}</Alert>
           </Dialog>
         </Box>
       </Box>
@@ -850,3 +1006,21 @@ const CreateOwnablesDrawer = (props: Props) => {
   );
 };
 export default CreateOwnablesDrawer;
+
+export interface IAvailableChains {
+  [key: string]: {
+    name: string;
+    logo: string;
+    smartContractAddress: string;
+    totalAmountNFTs: string;
+    templateCost: {
+      [key: string]: string;
+    };
+  };
+}
+
+
+const uppercaseFirstLetter = (string: string) => {
+  if (!string) return string;
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}

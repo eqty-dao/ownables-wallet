@@ -16,7 +16,7 @@ interface StoredChainInfo {
 }
 
 export default class EventChainService {
-  private static _anchoring = !!LocalStorageService.get("anchoring");
+  private static _anchoring = true;
 
   static get anchoring(): boolean {
     return this._anchoring;

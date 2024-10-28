@@ -157,34 +157,53 @@ export default class OwnableDetailsModal extends Component<
   }
 
   private async transfer(to: string): Promise<void> {
-    await this.execute({ transfer: { to: to } });
+    try {
+      const value = await RelayService.isRelayUp();
 
-    const zip = await OwnableService.zip(this.chain);
-    const content = await zip.generateAsync({ type: "blob" });
+      if (value) {
+        await this.execute({ transfer: { to: to } });
+        const zip = await OwnableService.zip(this.chain);
+        const content = await zip.generateAsync({
+          type: "uint8array",
+        });
+        await RelayService.sendOwnable(to, content);
+        enqueueSnackbar("Ownable sent Successfully!!", { variant: "success" });
+        //Remove ownable from relay's inbox
+        if (this.pkg.uniqueMessageHash) {
+          await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+        }
+      } else {
+        enqueueSnackbar("Server is down", { variant: "error" });
+      }
 
-    const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
-      this.chain.state.base58,
-      8,
-      ""
-    )}.zip`;
-
-    asDownload(content, filename);
+      // const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+      //   this.chain.state?.base58,
+      //   8,
+      //   ""
+      // )}.zip`;
+      // asDownload(content, filename);
+    } catch (error) {
+      console.error("Error during transfer:", error);
+    }
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
     if (!stateDump) stateDump = this.state.stateDump;
+
     if (this.pkg.hasWidgetState)
-      await OwnableService.rpc(this.props.chain.id).refresh(stateDump);
-    const info = (await OwnableService.rpc(this.props.chain.id).query(
+      await OwnableService.rpc(this.chain.id).refresh(stateDump);
+
+    const info = (await OwnableService.rpc(this.chain.id).query(
       { get_info: {} },
       stateDump
     )) as TypedOwnableInfo;
     const metadata = this.pkg.hasMetadata
-      ? ((await OwnableService.rpc(this.props.chain.id).query(
-        { get_metadata: {} },
-        stateDump
-      )) as TypedMetadata)
+      ? ((await OwnableService.rpc(this.chain.id).query(
+          { get_metadata: {} },
+          stateDump
+        )) as TypedMetadata)
       : this.state.metadata;
+
     this.setState({ info, metadata });
   }
 

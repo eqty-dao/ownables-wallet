@@ -151,7 +151,6 @@ export default class OwnableThumb extends Component<
     return currentOwner === bridgeAddress;
   }
 
-
   private async execute(msg: TypedDict): Promise<void> {
     let stateDump: StateDump;
 
@@ -161,6 +160,10 @@ export default class OwnableThumb extends Component<
         msg,
         this.state.stateDump
       );
+
+      await OwnableService.store(this.chain, stateDump);
+      await this.refresh(stateDump);
+      this.setState({ applied: this.chain.latestHash, stateDump });
     } catch (error) {
       this.props.onError(
         "The Ownable returned an error",
@@ -168,12 +171,31 @@ export default class OwnableThumb extends Component<
       );
       return;
     }
-
-    await OwnableService.store(this.chain, stateDump);
-
-    await this.refresh(stateDump);
-    this.setState({ applied: this.chain.latestHash, stateDump });
   }
+
+
+  // private async execute(msg: TypedDict): Promise<void> {
+  //   let stateDump: StateDump;
+
+  //   try {
+  //     stateDump = await OwnableService.execute(
+  //       this.chain,
+  //       msg,
+  //       this.state.stateDump
+  //     );
+  //   } catch (error) {
+  //     this.props.onError(
+  //       "The Ownable returned an error",
+  //       ownableErrorMessage(error)
+  //     );
+  //     return;
+  //   }
+
+  //   await OwnableService.store(this.chain, stateDump);
+
+  //   await this.refresh(stateDump);
+  //   this.setState({ applied: this.chain.latestHash, stateDump });
+  // }
 
   private windowMessageHandler = async (event: MessageEvent) => {
     if (

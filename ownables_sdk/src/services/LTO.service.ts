@@ -1,24 +1,29 @@
-import {Account, Binary, LTO, Transaction} from "@ltonetwork/lto"
+import { Account, Binary, LTO, Transaction } from "@ltonetwork/lto";
 import LocalStorageService from "./LocalStorage.service";
 import SessionStorageService from "./SessionStorage.service";
+import CryptoJS from "crypto-js";
 
-export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID)
-if (process.env.REACT_APP_LTO_API_URL) lto.nodeAddress = process.env.REACT_APP_LTO_API_URL;
-const getSeedFromQuery = () => {
-  const queryParams = new URLSearchParams(window.location.search);
-  return queryParams.get("seed");
-}
+export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID);
+if (process.env.REACT_APP_LTO_API_URL)
+  lto.nodeAddress = process.env.REACT_APP_LTO_API_URL;
 
-const seed = getSeedFromQuery();
+const SECURE_KEY = process.env.REACT_APP_SECURE_KEY;
 
-const sessionSeed = SessionStorageService.get('@seed') || seed;
+const encryptData = (data: string, key: string): string => {
+  return CryptoJS.AES.encrypt(data, key).toString();
+};
+
+const decryptData = (encryptedData: string, key: string): string => {
+  const bytes = CryptoJS.AES.decrypt(encryptedData, key);
+  return bytes.toString(CryptoJS.enc.Utf8);
+};
 
 export default class LTOService {
   public static readonly networkId = lto.networkId;
-  private static _account?: Account = sessionSeed ? lto.account({seed: sessionSeed}) : undefined;
+  private static _account?: Account;
 
   public static accountExists(): boolean {
-    return !!LocalStorageService.get('@accountData');
+    return !!LocalStorageService.get("@accountData");
   }
 
   public static isUnlocked(): boolean {
@@ -26,31 +31,39 @@ export default class LTOService {
   }
 
   public static unlock(password: string): void {
-    const [encryptedAccount] = LocalStorageService.get('@accountData') || [];
-    this._account = lto.account({seedPassword: password, ...encryptedAccount});
-    SessionStorageService.set('@seed', this._account.seed);
+    const [encryptedAccount] = LocalStorageService.get("@accountData") || [];
+    const encryptedSeed = encryptedAccount.seed;
+    const decryptedSeed = decryptData(encryptedSeed, password + SECURE_KEY);
+    this._account = lto.account({ seed: decryptedSeed });
+    SessionStorageService.set("@pass", password);
   }
 
   public static lock(): void {
     delete this._account;
-    SessionStorageService.remove('@seed');
+    SessionStorageService.remove("@pass");
   }
 
   public static get account(): Account {
     if (!this._account) {
-      throw new Error("Not logged in");
+      const password = SessionStorageService.get("@pass");
+      if (!password) {
+        throw new Error("Not logged in");
+      }
+      const [encryptedAccount] = LocalStorageService.get("@accountData") || [];
+      const encryptedSeed = encryptedAccount.seed;
+      const decryptedSeed = decryptData(encryptedSeed, password + SECURE_KEY);
+      this._account = lto.account({ seed: decryptedSeed });
     }
-
     return this._account;
   }
 
   public static get address(): string {
-    if (!!this._account) return this._account!.address;
+    if (this._account) return this._account.address;
 
-    const [encryptedAccount] = LocalStorageService.get('@accountData') || [];
+    const [encryptedAccount] = LocalStorageService.get("@accountData") || [];
     if (encryptedAccount) return encryptedAccount.address;
 
-    return '';
+    return "";
   }
 
   public static storeAccount(nickname: string, password: string): void {
@@ -58,20 +71,31 @@ export default class LTOService {
       throw new Error("Account not created");
     }
 
-    LocalStorageService.set('@accountData', [{
-      nickname: nickname,
-      address: this._account.address,
-      seed: this._account.encryptSeed(password),
-    }]);
+    if (!this._account.seed) {
+      throw new Error("Account not created");
+    }
 
-    SessionStorageService.set('@seed', this._account.seed);
+    const encryptedSeed = encryptData(
+      this._account.seed,
+      password + SECURE_KEY
+    );
+
+    LocalStorageService.set("@accountData", [
+      {
+        nickname: nickname,
+        address: this._account.address,
+        seed: encryptedSeed,
+      },
+    ]);
+
+    SessionStorageService.set("@pass", password);
   }
 
   public static createAccount(): void {
     try {
       this._account = lto.account();
     } catch (error) {
-      throw new Error('Error creating account');
+      throw new Error("Error creating account");
     }
   }
 
@@ -79,13 +103,12 @@ export default class LTOService {
     try {
       this._account = lto.account({ seed: seed });
     } catch (error) {
-      throw new Error('Error importing account from seeds');
+      throw new Error("Error importing account from seeds");
     }
   }
 
-
   private static apiUrl(path: string): string {
-    return lto.nodeAddress.replace(/\/$/g, '') + path;
+    return lto.nodeAddress.replace(/\/$/g, "") + path;
   }
 
   public static async getBalance(address?: string) {
@@ -96,73 +119,39 @@ export default class LTOService {
       const response = await fetch(url);
       return response.json();
     } catch (error) {
-      throw new Error('Error fetching account details');
+      throw new Error("Error fetching account details");
     }
   }
 
   public static async broadcast(transaction: Transaction): Promise<any> {
-    const url = this.apiUrl('/transactions/broadcast');
+    const url = this.apiUrl("/transactions/broadcast");
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(transaction)
+      body: JSON.stringify(transaction),
     });
 
     if (response.status >= 400) {
-      throw new Error('Broadcast transaction failed: ' + await response.text());
+      throw new Error(
+        "Broadcast transaction failed: " + (await response.text())
+      );
     }
     return await response.json();
   }
 
-  // DC: Applying this change everything else seems to work
-  // https://github.com/ltonetwork/ownables-sdk/blob/WithRelayService/src/services/LTO.service.ts
   public static async anchor(
     ...anchors: Array<{ key: Binary; value: Binary }> | Array<Binary>
   ): Promise<void> {
     if (anchors[0] instanceof Uint8Array) {
       await lto.anchor(this.account, ...(anchors as Array<Binary>));
+    } else {
+      await lto.anchor(
+        this.account,
+        ...(anchors as Array<{ key: Binary; value: Binary }>)
+      );
     }
-  }
-
-  public static async verifyAnchors(...anchors: Array<{key: Binary, value: Binary}>|Array<Binary>): Promise<any> {
-    const data = anchors[0] instanceof Uint8Array
-      ? (anchors as Array<Binary>).map(anchor => anchor.hex)
-      : Object.fromEntries((anchors as Array<{key: Binary, value: Binary}>).map(({key, value}) => (
-        [key.hex, value.hex]
-      )));
-
-    const url = this.apiUrl('/index/hash/verify?encoding=hex');
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data),
-    });
-
-    return await response.json();
-  }
-
-  public static isValidAddress(address: string): boolean {
-    try {
-      return lto.isValidAddress(address);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  public static accountOf(publicKey: Binary|string): string {
-    return lto.account({publicKey: publicKey instanceof Binary ? publicKey.base58 : publicKey}).address;
-  }
-
-  public static getAccount = async (): Promise<Account> => {
-    if (!this.account) {
-        throw new Error("Not logged in")
-    }
-
-    return this.account
   }
 
   public static async transfer(recipient: string, amount: number | null) {
@@ -177,4 +166,47 @@ export default class LTOService {
     }
   }
 
+  public static async verifyAnchors(
+    ...anchors: Array<{ key: Binary; value: Binary }> | Array<Binary>
+  ): Promise<any> {
+    const data =
+      anchors[0] instanceof Uint8Array
+        ? (anchors as Array<Binary>).map((anchor) => anchor.hex)
+        : Object.fromEntries(
+            (anchors as Array<{ key: Binary; value: Binary }>).map(
+              ({ key, value }) => [key.hex, value.hex]
+            )
+          );
+    const url = this.apiUrl("/index/hash/verify?encoding=hex");
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  }
+
+  public static isValidAddress(address: string): boolean {
+    try {
+      return lto.isValidAddress(address);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  public static accountOf(publicKey: Binary | string): string {
+    return lto.account({
+      publicKey: publicKey instanceof Binary ? publicKey.base58 : publicKey,
+    }).address;
+  }
+
+  public static getAccount = async (): Promise<Account> => {
+    if (!this.account) {
+        throw new Error("Not logged in")
+    }
+
+    return this.account
+  }
 }
