@@ -27,7 +27,7 @@ export default class LTOService {
   }
 
   public static isUnlocked(): boolean {
-    return !!this._account;
+    return !!window.sessionStorage.getItem("seed");
   }
 
   public static unlock(password: string): void {
@@ -173,10 +173,10 @@ export default class LTOService {
       anchors[0] instanceof Uint8Array
         ? (anchors as Array<Binary>).map((anchor) => anchor.hex)
         : Object.fromEntries(
-            (anchors as Array<{ key: Binary; value: Binary }>).map(
-              ({ key, value }) => [key.hex, value.hex]
-            )
-          );
+          (anchors as Array<{ key: Binary; value: Binary }>).map(
+            ({ key, value }) => [key.hex, value.hex]
+          )
+        );
     const url = this.apiUrl("/index/hash/verify?encoding=hex");
     const response = await fetch(url, {
       method: "POST",
@@ -204,7 +204,7 @@ export default class LTOService {
 
   public static getAccount = async (): Promise<Account> => {
     if (!this.account) {
-        throw new Error("Not logged in")
+      throw new Error("Not logged in")
     }
 
     return this.account

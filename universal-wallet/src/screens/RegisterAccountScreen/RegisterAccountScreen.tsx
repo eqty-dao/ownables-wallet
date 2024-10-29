@@ -51,7 +51,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
   };
 
   const isStrongPassword = (password: string) => {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    const regex = new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*])(?=.{8,})');
     return regex.test(password);
   };
 

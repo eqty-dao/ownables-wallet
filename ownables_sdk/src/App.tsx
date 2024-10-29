@@ -28,7 +28,6 @@ import Fab from "./components/Fab";
 import { HomePageEnums } from "./enums/HomePageActions";
 import { ReactComponent as PlusIcon } from "./assets/plus_icon.svg";
 import { ReactComponent as CloseIcon } from "./assets/close_icon.svg";
-import { ReactComponent as CreateIcon } from "./assets/create_icon.svg";
 import { ReactComponent as CollectionIcon } from "./assets/collection-icon.svg";
 import { ReactComponent as ReceiveIcon } from "./assets/receive_icon.svg";
 import TypedFabItem from "./interfaces/TypedFabItem";
@@ -41,12 +40,12 @@ import { useCollections } from "./context/CollectionsContext";
 import CollectionTitle from "./components/common/CollectionTitle";
 import { useIssuers } from "./context/IssuersContext";
 import CreateCollectionDrawer from "./components/CreateCollectionDrawer";
-import OwnablesTabs, { TabType } from "./components/OwnablesTabs";
+import OwnablesTabs from "./components/OwnablesTabs";
 import EmptyCollection from "./components/common/EmptyCollection";
-import FilterService from "./services/Filter.service";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
 import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
 import { checkForMessages } from "./services/CheckMessages.service";
+import { sendRNPostMessage } from "./utils/postMessage";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -163,15 +162,21 @@ export default function App() {
   } | null>(null);
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const seed = queryParams.get("seed");
+    // const queryParams = new URLSearchParams(window.location.search);
+    // const seed = queryParams.get("seed");
+    const seed = window.localStorage.getItem("seed");
+    sendRNPostMessage(JSON.stringify({ type: "gotSeed!", data: seed }));
 
     if (seed) {
-      console.log(`GOT SEED: ${seed}`);
+      sendRNPostMessage(JSON.stringify({ type: "seed", data: seed }));
+      window.sessionStorage.setItem("seed", seed);
       try {
         LTOService.importAccount(seed);
         if (LTOService.isUnlocked()) {
           console.log(`SETTING ADDRESS: ${LTOService.address}`);
+          sendRNPostMessage(
+            JSON.stringify({ type: "address", data: LTOService.address })
+          );
         }
         IDBService.open()
           .then(() => OwnableService.loadAll())
@@ -197,8 +202,9 @@ export default function App() {
 
     } else {
       console.log("NO SEED RECEIVED");
+      sendRNPostMessage(JSON.stringify({ type: "ready" }));
     }
-  }, []);
+  }, [window.localStorage]);
 
   useEffect(() => {
     handleSearch("");
@@ -208,6 +214,7 @@ export default function App() {
 
   useEffect(() => {
     initializeCollections();
+    sendRNPostMessage(JSON.stringify({ type: "ready" }));
     // eslint-disable-next-line
   }, []);
 

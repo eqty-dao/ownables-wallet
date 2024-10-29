@@ -31,6 +31,7 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
   const [accountInfo, setAccountInfo] = useState<Account | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
   const { setForceSignOut } = useUserSettings();
+  const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -69,14 +70,22 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
     return null;
   }
 
-  const webMessage = (event: WebViewMessageEvent) => {
+  const webMessage = async (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
     const sanitizedData = sanitizeData(data);
     if (data.type === 'openFileDialog') {
       const { forceSignout } = data.data;
       setForceSignOut(forceSignout);
     }
-
+    if (data.type === 'ready') {
+      let seed = "";
+      if (accountInfo && accountInfo.seed) {
+        seed = accountInfo.seed;
+      } else {
+        seed = (await readStorage())?.seed as string;
+      }
+      webViewRef.current?.injectJavaScript(`window.localStorage.setItem('seed', '${seed}')`);
+    }
     AsyncStorage.setItem('webData', JSON.stringify(sanitizedData));
   };
 
@@ -110,6 +119,7 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
     }
 
     const url = await StaticWebServer.start(port, path, options);
+    // setServerUrl('http://10.0.167:3000')
     setServerUrl(url.startsWith('http') ? url : '');
   };
 
@@ -118,9 +128,6 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
   }, []);
 
   const getWebViewUrl = () => {
-    if (accountInfo && accountInfo.seed) {
-      return `${serverUrl}?seed=${encodeURIComponent(accountInfo.seed)}`;
-    }
     return serverUrl; // Fallback to just serverUrl if accountInfo or seed is not available
   };
 
@@ -147,7 +154,6 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
         <WebView
           backgroundColor="#0D0D0D"
           onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-          allowsUnsecureHttps={true}
           originWhitelist={['*']}
           allowUniversalAccessFromFileURLs={true}
           allowFileAccessFromFileURLs={true}
@@ -160,6 +166,7 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
             cacheEnabled: true,
           }}
           style={{ backgroundColor: '#0D0D0D', opacity: webViewOpacity }}
+          ref={webViewRef}
         />
       </WebViewContainer>
     </MainScreenContainer>
