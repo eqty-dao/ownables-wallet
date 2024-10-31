@@ -35,6 +35,7 @@ import BridgeOwnableDrawer from "./BridgeOwnableDrawer";
 import { BridgeService } from "../../services/Bridge.service";
 import { RelayService } from "../../services/Relay.service";
 import { enqueueSnackbar } from "notistack";
+import { sendRNPostMessage } from "../../utils/postMessage";
 interface OwnableDetailsModalProps {
   onClose: (shouldRefresh: boolean) => void;
   chain: EventChain;
@@ -199,9 +200,9 @@ export default class OwnableDetailsModal extends Component<
     )) as TypedOwnableInfo;
     const metadata = this.pkg.hasMetadata
       ? ((await OwnableService.rpc(this.chain.id).query(
-          { get_metadata: {} },
-          stateDump
-        )) as TypedMetadata)
+        { get_metadata: {} },
+        stateDump
+      )) as TypedMetadata)
       : this.state.metadata;
 
     this.setState({ info, metadata });
@@ -339,6 +340,7 @@ export default class OwnableDetailsModal extends Component<
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
+      sendRNPostMessage(JSON.stringify({ type: "sdkError", data: e }));
     }
   }
 

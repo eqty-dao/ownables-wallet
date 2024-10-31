@@ -1,5 +1,6 @@
 import { BaseBlockstore } from "blockstore-core/base";
 import { importer } from "ipfs-unixfs-importer";
+import { sendRNPostMessage } from "./postMessage";
 
 class DummyBlockstore extends BaseBlockstore {
   // @ts-ignore  // TODO:JS line below was ignored to allow successful compile
@@ -24,6 +25,7 @@ export default async function calculateCid(files: File[]): Promise<string> {
     }
   } catch (error) {
     console.error(error);
+    sendRNPostMessage(JSON.stringify({ type: 'sdkerror', data: error }));
     return '';
 
   }

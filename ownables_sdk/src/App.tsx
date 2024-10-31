@@ -47,6 +47,7 @@ import FilterService from "./services/Filter.service";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
 import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
 import { checkForMessages } from "./services/CheckMessages.service";
+import { sendRNPostMessage } from "./utils/postMessage";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -168,15 +169,20 @@ export default function App() {
 
     if (seed) {
       console.log(`GOT SEED: ${seed}`);
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seed', data: seed }));
       try {
         LTOService.importAccount(seed);
         if (LTOService.isUnlocked()) {
           console.log(`SETTING ADDRESS: ${LTOService.address}`);
+          sendRNPostMessage(JSON.stringify({ type: 'address', data: LTOService.address }));
         }
         IDBService.open()
           .then(() => OwnableService.loadAll())
           .then((ownables) => setOwnables(ownables))
-          .then(() => setLoaded(true));
+          .then(() => setLoaded(true)).finally(() => {
+            setLoaded(true);
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'loaded' }));
+          });
         const intervalId = setInterval(async () => {
           try {
             const count = await checkForMessages.valueOfValidCids();
@@ -415,9 +421,9 @@ export default function App() {
         title: "New Ownables Detected",
         message: "New ownables have been detected. Refreshing...",
       });
-      setTimeout(() => {
-        window.location.reload();
-      }, 4000);
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 4000);
     } else {
       enqueueSnackbar(`Nothing to Load from relay`, {
         variant: "error",

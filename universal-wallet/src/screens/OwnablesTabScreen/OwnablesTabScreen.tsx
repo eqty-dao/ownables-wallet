@@ -14,6 +14,7 @@ import { StyledImage } from '../../components/styles/OverviewHeader.styles';
 import { logoTitle } from '../../utils/images';
 import { useUserSettings } from '../../context/User.context';
 import { Account } from '@ltonetwork/lto';
+import { CurrentState, useAppContext } from '../../../providers/AppContext';
 
 const port = 30122; // select a random available port
 const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/www' : RNFS.DocumentDirectoryPath + '/html';
@@ -31,6 +32,7 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
   const [accountInfo, setAccountInfo] = useState<Account | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
   const { setForceSignOut } = useUserSettings();
+  const { currentAction,setCurrentAction } = useAppContext();
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -72,12 +74,20 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
   const webMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
     const sanitizedData = sanitizeData(data);
+    console.log('webMessage', data);
+    console.log('sanitizedData', sanitizedData);
     if (data.type === 'openFileDialog') {
       const { forceSignout } = data.data;
       setForceSignOut(forceSignout);
     }
-
-    AsyncStorage.setItem('webData', JSON.stringify(sanitizedData));
+    if (data.type === 'uploadFileStart') {
+      console.log('currentAction', currentAction);
+      setCurrentAction(CurrentState.CHOSE_PHOTO_DIALOG_OPEN);
+    }
+    if (data.type === 'uploadFileEnd') {
+      setCurrentAction('');
+    }
+    AsyncStorage.setItem('webData', JSON.stringify(data));
   };
 
   const [serverUrl, setServerUrl] = React.useState<string>();
@@ -155,7 +165,9 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
           onMessage={webMessage}
           onLoadEnd={onWebviewLoads}
           source={{
-            uri: getWebViewUrl(),
+            // uri: getWebViewUrl(),
+            "uri": "http://10.0.167:3000/?seed=lock visa vacuum soul awesome chuckle swing lawsuit trumpet human tiny eagle tone trust army",
+
             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
             cacheEnabled: true,
           }}

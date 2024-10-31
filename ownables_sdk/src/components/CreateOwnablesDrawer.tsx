@@ -40,6 +40,7 @@ import TagInputField from "./common/TagInputField";
 import Loading from "./Loading";
 import Modal from "@mui/material/Modal";
 import EventChainService from "../services/EventChain.service";
+import { sendRNPostMessage } from "../utils/postMessage";
 
 interface Props {
   open: boolean;
@@ -214,7 +215,10 @@ const CreateOwnablesDrawer = (props: Props) => {
   }
 
   const handleFileUploadClick = () => {
-    // fileInputRef.current?.click();
+    // let rn app know that the user wants to upload a file so to set the state
+    // properly
+    sendRNPostMessage(JSON.stringify({ type: "uploadFileStart" }));
+
     const fileInput = fileInputRef.current;
     if (fileInput) {
       fileInput.click();
@@ -307,6 +311,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       const thumbnailImage = await createThumbnail(resizedImage);
       setThumbnail(thumbnailImage);
     }
+    sendRNPostMessage(JSON.stringify({ type: "uploadFileEnd" }));
 
     setOwnable((prevOwnable) => ({
       ...prevOwnable,

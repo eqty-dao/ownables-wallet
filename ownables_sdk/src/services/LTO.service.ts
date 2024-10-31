@@ -3,6 +3,15 @@ import LocalStorageService from "./LocalStorage.service";
 import SessionStorageService from "./SessionStorage.service";
 import CryptoJS from "crypto-js";
 
+const getSeedFromQuery = () => {
+  const queryParams = new URLSearchParams(window.location.search);
+  return queryParams.get("seed");
+}
+
+const seed = getSeedFromQuery();
+
+const sessionSeed = SessionStorageService.get('@seed') || seed;
+
 export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID);
 if (process.env.REACT_APP_LTO_API_URL)
   lto.nodeAddress = process.env.REACT_APP_LTO_API_URL;
@@ -31,39 +40,19 @@ export default class LTOService {
   }
 
   public static unlock(password: string): void {
-    const [encryptedAccount] = LocalStorageService.get("@accountData") || [];
-    const encryptedSeed = encryptedAccount.seed;
-    const decryptedSeed = decryptData(encryptedSeed, password + SECURE_KEY);
-    this._account = lto.account({ seed: decryptedSeed });
-    SessionStorageService.set("@pass", password);
-  }
-
-  public static lock(): void {
-    delete this._account;
-    SessionStorageService.remove("@pass");
+    this._account = lto.account({ seed: sessionSeed });
   }
 
   public static get account(): Account {
     if (!this._account) {
-      const password = SessionStorageService.get("@pass");
-      if (!password) {
-        throw new Error("Not logged in");
-      }
-      const [encryptedAccount] = LocalStorageService.get("@accountData") || [];
-      const encryptedSeed = encryptedAccount.seed;
-      const decryptedSeed = decryptData(encryptedSeed, password + SECURE_KEY);
-      this._account = lto.account({ seed: decryptedSeed });
+      this._account = lto.account({ seed: sessionSeed });
     }
     return this._account;
   }
 
   public static get address(): string {
     if (this._account) return this._account.address;
-
-    const [encryptedAccount] = LocalStorageService.get("@accountData") || [];
-    if (encryptedAccount) return encryptedAccount.address;
-
-    return "";
+    return lto.account({ seed: sessionSeed }).address;
   }
 
   public static storeAccount(nickname: string, password: string): void {
@@ -101,7 +90,7 @@ export default class LTOService {
 
   public static importAccount(seed: string): void {
     try {
-      this._account = lto.account({ seed: seed });
+      this._account = lto.account({ seed: sessionSeed });
     } catch (error) {
       throw new Error("Error importing account from seeds");
     }
@@ -173,10 +162,10 @@ export default class LTOService {
       anchors[0] instanceof Uint8Array
         ? (anchors as Array<Binary>).map((anchor) => anchor.hex)
         : Object.fromEntries(
-            (anchors as Array<{ key: Binary; value: Binary }>).map(
-              ({ key, value }) => [key.hex, value.hex]
-            )
-          );
+          (anchors as Array<{ key: Binary; value: Binary }>).map(
+            ({ key, value }) => [key.hex, value.hex]
+          )
+        );
     const url = this.apiUrl("/index/hash/verify?encoding=hex");
     const response = await fetch(url, {
       method: "POST",
@@ -204,9 +193,8 @@ export default class LTOService {
 
   public static getAccount = async (): Promise<Account> => {
     if (!this.account) {
-        throw new Error("Not logged in")
+      return lto.account({ seed: sessionSeed });
     }
-
     return this.account
   }
 }

@@ -23,6 +23,7 @@ import If from "../If";
 import { ReactComponent as CircleCheckIcon } from "../../assets/circle_check_icon.svg";
 import LtoOverlay, { LtoOverlayBanner } from "./LtoOverlay";
 import SessionStorageService from "../../services/SessionStorage.service";
+import { sendRNPostMessage } from "../../utils/postMessage";
 
 export interface OwnableThumbProps {
   chain: EventChain;
@@ -141,6 +142,7 @@ export default class OwnableThumb extends Component<
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
+      sendRNPostMessage(JSON.stringify({ type: "sdkError", data: { error: e } }));
     }
   }
 
@@ -279,7 +281,7 @@ export default class OwnableThumb extends Component<
             >
               <LtoOverlay isForDetailsScreen={false}>
                 <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                Bridged
+                  Bridged
                 </LtoOverlayBanner>
               </LtoOverlay>
             </Tooltip>
