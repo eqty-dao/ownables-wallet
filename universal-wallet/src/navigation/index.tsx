@@ -27,6 +27,7 @@ import LeaseScreen from '../screens/LeaseScreen/LeaseScreen';
 import Icon from '../components/Icon';
 import { FabContext } from '../context/Fab.context';
 import { CurrentState, useAppContext } from '../../providers/AppContext';
+import NewOwnablesTabScreen from '../screens/OwnablesTabScreen/NewOwnablesTabScreen';
 
 const navTheme = {
   ...DefaultTheme,
@@ -60,16 +61,18 @@ function RootNavigator(): any {
 
   const handleAppStateChange = useCallback((nextAppState: any) => {
     console.log('AppState', appState.current, nextAppState);
-    let lockOutTimer: NodeJS.Timeout;
+    let lockOutTimer: any;
     if (appState.current.match(/active/) && nextAppState === 'background') {
       lockOutTimer = setTimeout(() => {
         console.log('Inactivity detected', currentAction);
-        if (currentAction !== CurrentState.CHOSE_PHOTO_DIALOG_OPEN ) {
+        console.log('App has come to the background!',appState.current);
+        if (!currentAction && !appState.current.match(/active/)) {
           navigator.navigate('SignIn');
         }
-      }, 1000);
+      }, 30*1000);
     }
     if (appState.current.match(/background/) && nextAppState === 'active') {
+      console.log('App has come to the foreground!',appState.current, nextAppState, currentAction, lockOutTimer);
       clearTimeout(lockOutTimer);
     }
 
@@ -100,7 +103,8 @@ function RootNavigator(): any {
       }
     };
 
-    skipOnboarding();
+    //skipOnboarding();
+
   }, []);
 
   useEffect(() => {
@@ -201,7 +205,7 @@ function BottomTabNavigator() {
       />
       <Tab.Screen
         name="Ownables"
-        component={OwnablesTabScreen}
+        component={NewOwnablesTabScreen}
         options={{
           headerTitle: 'Ownables',
           headerStyle: { height: 100 },

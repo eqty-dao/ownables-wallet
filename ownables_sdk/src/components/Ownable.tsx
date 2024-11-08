@@ -215,9 +215,10 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
-      sendRNPostMessage(JSON.stringify({ type: "sdkDebug", data: e }));
+      sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: ownableErrorMessage(e) }));
     }
   }
+
 
   private async execute(msg: TypedDict): Promise<void> {
     let stateDump: StateDump;

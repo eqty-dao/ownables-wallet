@@ -963,12 +963,16 @@ app_prebuild() {
   # generate ownables sdk
   cd ../ownables_sdk && npm run build 
   cd ../universal-wallet
+  echo "Removing old ownables from build"
+  rm -rf build/
+  echo "If build folder is not present, create it"
+  mkdir -p build
   echo "Copying ownables sdk to android and ios"
   cp -R ../ownables_sdk/build/* _html/
   mkdir -p android/app/src/main/assets/html ios/external/html
-  cp -R _html/* android/app/src/main/assets/html/
+  cp -R _html/* android/app/src/main/assets/build/
   cp -R _html/* ios/external/html/
-  cp -R _html/* www
+  cp -R _html/* build/
   echo "Done copying ownables sdk to android and ios"
 }
 

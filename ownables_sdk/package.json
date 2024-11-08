@@ -12,6 +12,8 @@
     "@ltonetwork/lto": "^0.15.16",
     "@mui/icons-material": "^5.11.9",
     "@mui/material": "^5.11.10",
+    "@sentry/cli": "^2.38.1",
+    "@sentry/react": "^8.36.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -51,14 +53,15 @@
   },
   "scripts": {
     "start": "npm run build:ownable.js && craco start",
-    "build": "npm run build:ownable.js && craco build",
+    "build": "npm run build:ownable.js && craco build && yarn sentry:sourcemaps",
     "test": "craco test",
     "build:ownable.js": "webpack --config ownable-js.webpack.js",
     "rustup": "curl https://sh.rustup.rs -sSf | sh; curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh; rustup default stable; rustup update stable; rustup target add wasm32-unknown-unknown",
     "ownables:build": "if test -f ./ownables/$npm_config_package/Cargo.toml; then rm -rf ./ownables/$npm_config_package/pkg/ && wasm-pack build --out-name ownable --target web ./ownables/$npm_config_package/ && cd ./ownables/$npm_config_package/ && cargo schema && cd ../../ && zip -r -j ./ownables/$npm_config_package.zip ./ownables/$npm_config_package/assets/ ./ownables/$npm_config_package/pkg/*.js ./ownables/$npm_config_package/pkg/*.wasm ./ownables/$npm_config_package/pkg/package.json ./ownables/$npm_config_package/schema/*.json; else zip -r -j ./ownables/$npm_config_package.zip ./ownables/$npm_config_package/*; fi",
     "ownables:build-all": "for DIR in $(ls ./ownables); do test -d ./ownables/$DIR && npm run ownables:build --package=$DIR; done",
     "ownables:clean": "rm -rf ./ownables/*.zip ./ownables/*/target/ ./ownables/*/pkg/ ./ownables/*/schema/ ./ownables/*/Cargo.lock",
-    "ownables:cid": "node bin/package-cid.mjs ownables/$npm_config_package.zip"
+    "ownables:cid": "node bin/package-cid.mjs ownables/$npm_config_package.zip",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org tdevs --project javascript-react ./build && sentry-cli sourcemaps upload --org tdevs --project javascript-react ./build"
   },
   "repository": {
     "type": "git",

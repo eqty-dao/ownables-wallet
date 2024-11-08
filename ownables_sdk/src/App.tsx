@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box } from "@mui/material";
+import { Box, LinearProgress } from "@mui/material";
 import IDBService from "./services/IDB.service";
 import { TypedPackage } from "./interfaces/TypedPackage";
 import Loading from "./components/Loading";
@@ -48,6 +48,8 @@ import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
 import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
 import { checkForMessages } from "./services/CheckMessages.service";
 import { sendRNPostMessage } from "./utils/postMessage";
+import AppLinearProgress from "./components/LinearProgress";
+import LocalStorageService from "./services/LocalStorage.service";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -102,6 +104,9 @@ export default function App() {
   // CST: Create ownable drawer
   const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false);
   const [message, setMessages] = useState(0);
+  const [importingOwnables, setImportingFromRelay] = useState(false);
+  const [importLabel, setImportLabel] = useState("Importing Ownables");
+
 
   // DC: filters
   const {
@@ -169,7 +174,7 @@ export default function App() {
 
     if (seed) {
       console.log(`GOT SEED: ${seed}`);
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'seed', data: seed }));
+      sendRNPostMessage(JSON.stringify({ type: 'seed', data: seed }));
       try {
         LTOService.importAccount(seed);
         if (LTOService.isUnlocked()) {
@@ -181,18 +186,20 @@ export default function App() {
           .then((ownables) => setOwnables(ownables))
           .then(() => setLoaded(true)).finally(() => {
             setLoaded(true);
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'loaded' }));
+            // window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'loaded' }));
+            sendRNPostMessage(JSON.stringify({ type: 'loaded' }));
           });
-        const intervalId = setInterval(async () => {
-          try {
-            const count = await checkForMessages.valueOfValidCids();
-            setMessages(count || 0);
-          } catch (error) {
-            console.error("Error occurred while checking messages:", error);
-          }
-        }, 10000);
+        // const intervalId = setInterval(async () => {
+        //   try {
+        //     const count = await checkForMessages.valueOfValidCids();
+        //     setMessages(count || 0);
+        //   } catch (error) {
+        //     console.error("Error occurred while checking messages:", error);
+        //   }
+        // }, 10000);
 
-        return () => clearInterval(intervalId);
+        return () => { }
+        //clearInterval(intervalId);
       } catch (error) {
         console.error("Error importing account: ", error);
       }
@@ -402,46 +409,172 @@ export default function App() {
 
   const handleSearchFilter = () => setShowFilters(!showFilters);
 
+  // const relayImport = async (pkg: TypedPackage[] | null) => {
+  //   try {
+  //     if (pkg != null && pkg.length > 0) {
+  //       setOwnables((prevOwnables) => [
+  //         ...prevOwnables,
+  //         ...pkg.map((data: any) => {
+  //           return {
+  //             chain: data.chain,
+  //             package: data.cid,
+  //           };
+  //         }),
+  //       ]);
+  //       // enqueueSnackbar(`Ownable successfully loaded`, {
+  //       //   variant: "success",
+  //       // });
+  //       setAlert({
+  //         severity: "info",
+  //         title: "New Ownables Detected",
+  //         message: "New ownables have been detected. Refreshing...",
+  //       });
+  //       // setTimeout(() => {
+  //       //   window.location.reload();
+  //       // }, 4000);
+  //     } else {
+  //       enqueueSnackbar(`Nothing to Load from relay`, {
+  //         variant: "error",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     showError("Import failed", ownableErrorMessage(error));
+  //     throw error;
+  //   }
+  // };
+
   const relayImport = async (pkg: TypedPackage[] | null) => {
-    if (pkg != null && pkg.length > 0) {
-      setOwnables((prevOwnables) => [
-        ...prevOwnables,
-        ...pkg.map((data: any) => {
-          return {
-            chain: data.chain,
-            package: data.cid,
-          };
-        }),
-      ]);
-      // enqueueSnackbar(`Ownable successfully loaded`, {
-      //   variant: "success",
-      // });
-      setAlert({
-        severity: "info",
-        title: "New Ownables Detected",
-        message: "New ownables have been detected. Refreshing...",
-      });
-      // setTimeout(() => {
-      //   window.location.reload();
-      // }, 4000);
-    } else {
-      enqueueSnackbar(`Nothing to Load from relay`, {
-        variant: "error",
-      });
+    try {
+      sendRNPostMessage(JSON.stringify({ type: 'relay Import loop', data: pkg }));
+      const isEmpty = pkg && pkg.every((item) => item === null || item === undefined);
+      sendRNPostMessage(JSON.stringify({ type: 'isEmpty', data: isEmpty }));
+      if (pkg == null || pkg.length === 0 || isEmpty) {
+        enqueueSnackbar(`Nothing to Load from relay`, {
+          variant: "error",
+        });
+        setImportingFromRelay(false);
+        return;
+      }
+      const batchNumber = 2;
+
+      // In a case where imported ownable is an update to an
+      // existing ownable, trigger refresh to delete old version
+      let triggerRefresh = false;
+
+      // Get existing packages from local storage
+      const storedPackages: TypedPackage[] =
+        LocalStorageService.get("packages") || [];
+
+      if (pkg != null && pkg.length > 0) {
+        setImportLabel(`Starting Importing Ownables : (${pkg?.length || 0})`);
+        for (let i = 0; i < pkg.length; i += batchNumber) {
+          setImportLabel(`Importing Ownables : (${i + 1}/${pkg.length}):${pkg[i]?.name || ""}`);
+          const batch = pkg.slice(i, i + batchNumber);
+          const filteredBatch = batch.filter(
+            (item) => item !== null && item !== undefined
+          );
+
+          if (
+            filteredBatch.some((data) =>
+              storedPackages.some((storedPkg) => storedPkg.cid === data.cid)
+            )
+          ) {
+            triggerRefresh = true;
+          }
+
+          setOwnables((prevOwnables) => [
+            ...prevOwnables,
+            ...filteredBatch
+              .filter((data: any) => data.chain && data.cid)
+              .map((data: any) => ({
+                chain: data.chain,
+                package: data.cid,
+              })),
+          ]);
+
+          enqueueSnackbar(`Ownable successfully loaded`, {
+            variant: "success",
+          });
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
+
+        //Trigger a refresh only if any package matched current one
+        if (triggerRefresh) {
+          setAlert({
+            severity: "info",
+            title: "New Ownables Detected",
+            message: "New ownables have been detected. Refreshing...",
+          });
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 4000);
+        } else {
+          enqueueSnackbar(`No matching packages found for refresh`, {
+            variant: "info",
+          });
+        }
+      } else {
+        enqueueSnackbar(`Nothing to Load from relay`, {
+          variant: "error",
+        });
+      }
+    } catch (error) {
+      setImportingFromRelay(false);
+      showError("Import failed", ownableErrorMessage(error));
+      throw error;
     }
   };
 
   const importPackagesFromRelay = async () => {
+    setImportingFromRelay(true);
     try {
-      const pkg = await PackageService.importFromRelay();
-      if (pkg == null) return;
-      const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null);
-      if (filteredPackages.length === 0) return;
+      setImportLabel(`Importing From Relay, please wait...`);
+      sendRNPostMessage(JSON.stringify({ type: 'import started' }));
+      let pkg = await PackageService.importFromRelay();
+      // filter out [null,null,null] from the response
+      setImportLabel(`Import from Relay Completed , processing Ownables`);
+      sendRNPostMessage(JSON.stringify({ type: 'import completed', data: pkg }));
+      if (pkg == null) {
+        setImportingFromRelay(false);
+        return;
+      }
+      setImportLabel(`Relating Ownables : (${pkg?.length || 0})`);
+      const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null && p !== undefined);
+      if (filteredPackages.length === 0) {
+        sendRNPostMessage(JSON.stringify({ type: 'import completed', data: 'No Ownables found' }));
+        setImportingFromRelay(false);
+        return;
+      }
       relayImport(filteredPackages);
     } catch (error) {
+      setImportingFromRelay(false);
       showError("Import failed", ownableErrorMessage(error));
+      throw error;
     }
   };
+
+  // const importPackagesFromRelay = async () => {
+  //   try {
+  //     setImporting(true);
+  //     const pkg = await PackageService.importFromRelay();
+  //     setImporting(false);
+  //     if (pkg == null) {
+  //       setImporting(false);
+  //       return;
+  //     }
+  //     const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null);
+  //     if (filteredPackages.length === 0) {
+  //       setImporting(false);
+  //       return;
+  //     }
+  //     relayImport(filteredPackages);
+  //   } catch (error) {
+  //     setImporting(false);
+  //     showError("Import failed", ownableErrorMessage(error));
+  //     throw error;
+  //   }
+  // };
 
   const handleFabItemSelected = async (item: TypedFabItem) => {
     setOpenFab(false);
@@ -503,14 +636,15 @@ export default function App() {
                   }}
                   packageCid={packageCid}
                   selected={consuming?.chain.id === chain.id}
-                  onOpenModal={() =>
-                    openModalWithOwnable({
-                      chain: chain,
-                      packageCid: packageCid,
-                    })
-                  }
-                  onError={showError}
-                >
+                  onOpenModal={() => openModalWithOwnable({
+                    chain: chain,
+                    packageCid: packageCid,
+                  })}
+                  onError={showError} onDelete={function (): void {
+                    throw new Error("Function not implemented.");
+                  }} onDeleted={function (): void {
+                    throw new Error("Function not implemented.");
+                  }}                >
                   <If condition={consuming?.chain.id === chain.id}>
                     <LtoOverlay isForDetailsScreen={false} zIndex={1000} />
                   </If>
@@ -564,14 +698,15 @@ export default function App() {
                   }}
                   packageCid={packageCid}
                   selected={consuming?.chain.id === chain.id}
-                  onOpenModal={() =>
-                    openModalWithOwnable({
-                      chain: chain,
-                      packageCid: packageCid,
-                    })
-                  }
-                  onError={showError}
-                >
+                  onOpenModal={() => openModalWithOwnable({
+                    chain: chain,
+                    packageCid: packageCid,
+                  })}
+                  onError={showError} onDelete={function (): void {
+                    throw new Error("Function not implemented.");
+                  }} onDeleted={function (): void {
+                    throw new Error("Function not implemented.");
+                  }}                >
                   <If condition={consuming?.chain.id === chain.id}>
                     <LtoOverlay isForDetailsScreen={false} zIndex={1000} />
                   </If>
@@ -697,6 +832,7 @@ export default function App() {
         onClose={() => setShowCreateOwnableDrawer(false)}
       />
       <Loading show={!loaded} />
+      <AppLinearProgress show={importingOwnables} label={importLabel} />
     </>
   );
 }

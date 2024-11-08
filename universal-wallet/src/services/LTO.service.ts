@@ -15,6 +15,14 @@ export default class LTOService {
     return !!this.account;
   };
 
+  public static getSeed = (): string => {
+    if (!this.account) {
+      return '';
+    }
+
+    return this.account.seed as string;
+  }
+
   public static unlock = async (password: string | undefined, signature?: string) => {
     const [encryptedAccount] = await LocalStorageService.getData('@accountData');
     const encodedSignature = signature && encodeURIComponent(signature);
