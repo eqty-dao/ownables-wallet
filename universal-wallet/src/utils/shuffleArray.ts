@@ -1,5 +1,6 @@
 import 'react-native-get-random-values';
 
+//F-2024-4519 - Insecure Random Number Generation
 export const shuffleArray = <Type>(array: Array<Type>): Array<Type> => {
   const cryptoRandom = () => {
     const randomArray = new Uint32Array(1);
