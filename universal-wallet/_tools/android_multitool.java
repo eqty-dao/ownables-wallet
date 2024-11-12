@@ -256,17 +256,16 @@ public class android_multitool {
     return contentBuilder.toString();
   }
 
+  //F-2024-4521 - Resource Leak in writeStringToFile Method
   private static boolean writeStringToFile(String filePath, String content) {
-    try {
-      BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))){
       writer.write(content);
-      writer.close();
       return true;
     } catch (IOException e) {
       System.err.println("Error writing to the file: " + e.getMessage());
       e.printStackTrace();
+      return false;
     }
-    return false;
   }
 
 }
