@@ -68,11 +68,14 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
       return {err: 'Password is required!'};
     }
 
-    // if (!isStrongPassword(loginForm.password)) {
-    //   return {
-    //     err: 'Password must be atleast 8 characters long and include uppercase, lowercase, number and special character!',
-    //   };
-    // }
+    //F-2024-4595 - Insufficient Password Complexity
+
+    if (!isStrongPassword(loginForm.password)) {
+      return {
+        err: 'Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character!',
+      };
+    }
+
     if (loginForm.password !== loginForm.passwordConfirmation) {
       return {err: 'Passwords do not match!'};
     }
