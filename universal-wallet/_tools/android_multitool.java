@@ -33,10 +33,12 @@ public class android_multitool {
       "  replace <filename>\n    Tool to perform a multiline search and replace in a file.\n" +
       "    You must export environment variables SEARCH and REPLACE before running command\n\n";
 
+      //F-2024-4523 - Improper Use of System.exit()
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
       System.out.print(USAGE_HELP);
-      System.exit(-1);
+      // System.exit(-1);
+      return;
     }
 
     String toolName = args[0];
