@@ -46,7 +46,7 @@ import EmptyCollection from "./components/common/EmptyCollection";
 import FilterService from "./services/Filter.service";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
 import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
-import { checkForMessages } from "./services/CheckMessages.service";
+import { CheckForMessages } from "./services/CheckMessages.service";
 import { sendRNPostMessage } from "./utils/postMessage";
 import AppLinearProgress from "./components/LinearProgress";
 import LocalStorageService from "./services/LocalStorage.service";
@@ -167,6 +167,23 @@ export default function App() {
     ok?: string;
     onConfirm: () => void;
   } | null>(null);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const messageCount = await CheckForMessages.getNewMessageCount();
+      setMessages(messageCount);
+    };
+    fetchMessages();
+  });
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const messageCount = await CheckForMessages.getNewMessageCount();
+      setMessages(messageCount);
+    };
+    const intervalId = setInterval(fetchMessages, 15000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -446,6 +463,9 @@ export default function App() {
   const relayImport = async (pkg: TypedPackage[] | null) => {
     try {
       sendRNPostMessage(JSON.stringify({ type: 'relay Import loop', data: pkg }));
+      //update message count
+      const updatedMessageCount = await CheckForMessages.getNewMessageCount();
+      setMessages(updatedMessageCount);
       const isEmpty = pkg && pkg.every((item) => item === null || item === undefined);
       sendRNPostMessage(JSON.stringify({ type: 'isEmpty', data: isEmpty }));
       if (pkg == null || pkg.length === 0 || isEmpty) {
@@ -506,9 +526,9 @@ export default function App() {
             message: "New ownables have been detected. Refreshing...",
           });
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 4000);
+          // setTimeout(() => {
+          //   window.location.reload();
+          // }, 4000);
         } else {
           enqueueSnackbar(`No matching packages found for refresh`, {
             variant: "info",

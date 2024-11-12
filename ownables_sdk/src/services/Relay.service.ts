@@ -60,6 +60,55 @@ export class RelayService {
       console.error("Error sending message:", error);
     }
   }
+  /**
+   * Return just message hashes
+   */
+  static async readInboxHashes() {
+    const sender = LTOService.account;
+    if (!sender) {
+      console.error("Account not initialized");
+      return [];
+    }
+
+    const address = sender.address;
+    const isRelayAvailable = await this.isRelayUp();
+    if (!isRelayAvailable) return [];
+
+    const url = `${this.relayURL}/inboxes/${address}/`;
+
+    try {
+      const responses = await this.handleSignedRequest("GET", url);
+
+      if (!responses || !responses.data || responses.data.length === 0) {
+        return [];
+      }
+
+      const serverHashes = await Promise.all(
+        responses.data.map(async (response: MessageInfo) => {
+          const messageUrl = `${this.relayURL}/inboxes/${address}/${response.hash}`;
+          const infoResponse = await this.handleSignedRequest(
+            "GET",
+            messageUrl
+          );
+
+          if (infoResponse && infoResponse.data && infoResponse.data.hash) {
+            return infoResponse.data.hash;
+          } else {
+            console.warn(
+              "Failed to retrieve message hash for response:",
+              response
+            );
+            return null;
+          }
+        })
+      );
+
+      return serverHashes.filter(Boolean);
+    } catch (error) {
+      console.error("Failed to read relay data:", error);
+      return [];
+    }
+  }
 
   /**
    * Read relay data for the current sender.

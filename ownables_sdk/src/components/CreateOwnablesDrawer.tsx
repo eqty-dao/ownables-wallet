@@ -1,8 +1,11 @@
 import {
   Box,
   Button,
+  CircularProgress,
   FormControlLabel,
+  Icon,
   IconButton,
+  Input,
   MenuItem,
   Radio,
   RadioGroup,
@@ -41,6 +44,7 @@ import Loading from "./Loading";
 import Modal from "@mui/material/Modal";
 import EventChainService from "../services/EventChain.service";
 import { sendRNPostMessage } from "../utils/postMessage";
+import { FileCopy, FileCopyOutlined } from "@mui/icons-material";
 
 interface Props {
   open: boolean;
@@ -118,7 +122,9 @@ const CreateOwnablesDrawer = (props: Props) => {
   const [buildCost, setBuildCost] = useState<number>(0);
   const [amount, setAmount] = useState<number>(0);
   const [showAmount, setShowAmount] = useState<number>(0);
-  const [transactionId, setTransactionId] = useState<string | null>();
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [transactionIdMessage, setTransactionIdMessage] = useState<string | null>(null);
+  const [createOwnableMessage, setCreateOwnableMessage] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
 
   const fetchBuildAmount = useCallback(async () => {
@@ -514,10 +520,14 @@ const CreateOwnablesDrawer = (props: Props) => {
       setNoConnection(true);
       return;
     }
+    setOpenDialog(true);
+    setCreateOwnableMessage("Creating ownable...");
     const tx = new TransferTx(recipient, amount);
+    setCreateOwnableMessage("Sending transaction...");
     try {
       const account = await LTOService.getAccount();
       const transaction = await LTOService.broadcast(tx!.signWith(account));
+      setCreateOwnableMessage("Contacting oBuilder...");
       setTimeout(() => {
         if (transaction.id) {
           const imageType = "webp";
@@ -556,15 +566,6 @@ const CreateOwnablesDrawer = (props: Props) => {
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
           zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-            // for testing creating download zip file, remove for live version
-            // Create a temporary link element
-            // const link = document.createElement("a");
-            // link.href = URL.createObjectURL(zipFile);
-            // link.download = formattedName + ".zip";
-            // // Simulate a click on the link to trigger the download
-            // link.click();
-
-            // Send the zip file to oBuilder
             const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload`;
             const formData = new FormData();
             formData.append("file", zipFile, formattedName + ".zip");
@@ -577,141 +578,24 @@ const CreateOwnablesDrawer = (props: Props) => {
               })
               .then((res) => {
                 console.log(res.data);
+                if (res.data.error) {
+                  setBuildError(res.data.error);
+                  return;
+                }
+                setTransactionId(res.data.rid);
               })
               .catch((err) => {
                 console.log(err);
               });
-            setOpenDialog(true);
           });
-          //handleCloseDialog();
         }
       }, 1000);
     } catch (error) {
+      setOpenDialog(false);
       console.error("Error sending transaction:", error);
       setBuildError("Something went wrong. Please try again");
     }
   };
-
-  // const handleCreateOwnable = async () => {
-  //   const ownerName = nameOwnerRef.current?.value() || "";
-  //   const ownerEmail = emailOwnerRef.current?.value() || "";
-  //   const ownableName = nameOwnableRef.current?.value() || "";
-  //   const description = descriptionRef.current?.value() || "";
-  //   const image = fileInputRef.current?.files?.[0] || null;
-
-
-  //   const requiredFields = [
-  //     { name: "Owner name", value: ownerName },
-  //     { name: "Owner email", value: ownerEmail },
-  //     { name: "Ownable name", value: ownableName },
-  //     { name: "Image", value: image },
-  //   ];
-
-  //   let newMissingFields: string[] = [];
-  //   for (let field of requiredFields) {
-  //     if (!field.value) {
-  //       console.error(`Missing required field: ${field.name}`);
-  //       newMissingFields.push(field.name);
-  //     }
-  //   }
-
-  //   setErrorMessage(
-  //     newMissingFields.length > 0
-  //       ? `Missing required fields: ${newMissingFields.join(", ")}`
-  //       : null
-  //   );
-  //   if (newMissingFields.length > 0) {
-  //     return;
-  //   }
-  //   if (!recipient || !buildCost) {
-  //     console.error("Recipient or amount is not defined");
-  //     setNoConnection(true);
-  //     return;
-  //   }
-  //   const tx = new TransferTx(recipient, buildCost);
-  //   try {
-  //     const account = await LTOService.getAccount();
-  //     const info = await LTOService.broadcast(tx!.signWith(account));
-  //     // console.log('Transaction id', info.id);
-  //     console.log("Transaction info", info);
-  //     setTimeout(() => {
-  //       if (info.id) {
-  //         console.log("Transaction id", info.id, "ready");
-  //         const imageType = "webp";
-  //         const imageName = ownableName.replace(/\s+/g, "-");
-  //         const formattedName = ownableName.toLowerCase().replace(/\s+/g, "_");
-
-  //         const ownableData = [
-  //           {
-  //             template: "template1",
-  //             CREATE_NFT: "true",
-  //             NFT_BLOCKCHAIN: ownable.network,
-  //             NFT_TOKEN_URI:
-  //               "https://black-rigid-chickadee-743.mypinata.cloud/ipfs/QmSHE3ReBy7b8kmVVbyzA2PdiYyxWsQNU89SsAnWycwMhB",
-  //             OWNABLE_THUMBNAIL: "thumbnail.webp",
-  //             OWNABLE_LTO_TRANSACTION_ID: info.id,
-  //             PLACEHOLDER1_NAME: "ownable_" + formattedName,
-  //             PLACEHOLDER1_DESCRIPTION: description,
-  //             PLACEHOLDER1_VERSION: "0.1.0",
-  //             PLACEHOLDER1_AUTHORS: ownerName + " <" + ownerEmail + ">",
-  //             PLACEHOLDER1_KEYWORDS: tags,
-  //             PLACEHOLDER2_TITLE: ownableName,
-  //             PLACEHOLDER2_IMG: imageName + "." + imageType,
-  //             PLACEHOLDER4_TYPE: ownableName,
-  //             PLACEHOLDER4_DESCRIPTION: description,
-  //             PLACEHOLDER4_NAME: ownableName,
-  //           },
-  //         ];
-
-  //         const zip = new JSZip();
-  //         zip.file("ownableData.json", JSON.stringify(ownableData, null, 2));
-  //         if (ownable.image) {
-  //           zip.file(`${imageName}.${imageType}`, ownable.image);
-  //         }
-
-  //         if (thumbnail) {
-  //           const thumbnailBlob = getThumbnailBlob(thumbnail, blurThumbnail);
-  //           zip.file(`thumbnail.webp`, thumbnailBlob);
-  //         }
-  //         console.log("zip", zip);
-  //         zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-  //           // for testing creating download zip file, remove for live version
-  //           // Create a temporary link element
-  //           const link = document.createElement("a");
-  //           link.href = URL.createObjectURL(zipFile);
-  //           link.download = formattedName + ".zip";
-  //           // Simulate a click on the link to trigger the download
-  //           link.click();
-  //           // send the zip file to obuilder
-  //           const formData = new FormData();
-  //           formData.append('file', zipFile, formattedName + ".zip");
-  //           axios.post(
-  //             `${process.env.REACT_APP_OBUILDER}/api/v1/upload`,
-  //             // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/Ownable',
-  //             // 'http://localhost:3000/api/v1/Ownable',
-  //             formData,
-  //             {
-  //               headers: {
-  //                 'Content-Type': 'multipart/form-data',
-  //                 'Accept': '*/*'
-  //               }
-  //             }
-  //           ).then(response => {
-  //             console.log("response", response);
-  //           }).catch(error => {
-  //             console.error("Error sending zip file:", error);
-  //           });
-
-  //           setOpenDialog(true);
-  //         });
-  //         handleCloseDialog();
-  //       }
-  //     }, 1000);
-  //   } catch (error) {
-  //     console.error("Error sending transaction:", error);
-  //     setLowBalance(true);
-  //   }
-  // };
 
   // only allow alphanumeric characters and spaces
   const validateInput = (value: string) => {
@@ -997,21 +881,74 @@ const CreateOwnablesDrawer = (props: Props) => {
               Please top up.
             </Alert>
           </Dialog>
-          <Dialog open={openDialog} onClose={handleCloseDialog}>
-            <DialogTitle>Ownable Sent</DialogTitle>
+          <Dialog open={openDialog} onClose={handleCloseDialog} sx={{
+            "& .MuiDialog-paper": {
+              backgroundColor: "#3a3a3c",
+              color: "white",
+              borderRadius: "10px",
+              width: "100%",
+            },
+            "& .MuiDialogTitle-root": {
+              borderBottom: "1px solid #3a3a3c",
+              color: "white",
+            },
+            "& .MuiDialogActions-root": {
+              padding: "10px",
+              justifyContent: "center",
+            },
+            "& .MuiDialogContent-root": {
+              padding: "20px",
+            },
+          }}
+          >
             <DialogContent>
-              <DialogContentText>
-                The ownable has been successfully sent.
-                {/* <Typography variant="body2" sx={{ mt: 1 }}>
-                  Transaction ID: <Typography variant="body2" sx={{ mt: 1 }}
-                    onClick={e => handleCopy(e)} style={{ cursor: "pointer" }}
-                  >{transactionId}</Typography>
-                </Typography> */}
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/brand_logo.png'}
+                    alt={"oBuilder Logo"}
+                    style={{ width: "2.5rem", height: "2rem", marginBottom: "10px" }}
+                  />
+                  <b>oBuilder Status</b>
+                </div>
+                {transactionId && <div style={{ display: "flex", flexDirection: "row", width: '100%' }}>
+                  <Input
+                    disabled
+                    placeholder=""
+                    value={transactionId}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#656565',
+                      borderRadius: 10,
+                      color: 'white',
+                      padding: '5px',
+                      margin: '10px 0',
+                    }}
+                  />
+                  <IconButton
+                    onClick={() => {
+                      console.log("transactionId", transactionId);
+                      navigator.clipboard.writeText(transactionId || '');
+                      setTransactionIdMessage("Copied to clipboard");
+                      setTimeout(() => setTransactionIdMessage(null), 2000);
+                    }}
+                  >
+                    <FileCopyOutlined style={{ color: 'white' }} />
+                  </IconButton>
+                </div>}
+                {
+                  !transactionId &&
+                  <div>
+                    <p style={{ color: 'green', fontSize: '0.8rem', marginLeft: 10 }}>{createOwnableMessage}</p>
+                    <CircularProgress />
+                  </div>
+                }
+                <p style={{ color: 'green', fontSize: '0.8rem', marginLeft: 10 }}>{transactionIdMessage}</p>
               </DialogContentText>
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleClose} sx={{ color: themeColors.primary }}>
-                Close
+              <Button onClick={handleClose} sx={{ backgroundColor: themeColors.primary, color: "white" }} disabled={transactionId === null}>
+                Done
               </Button>
             </DialogActions>
           </Dialog>
