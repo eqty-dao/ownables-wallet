@@ -95,6 +95,7 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
     }
   };
 
+  //F-2024-4554 - Lack of Input Validation for Recipient Address
   const handleSend = () => {
     if (!LTOService.isValidAddress(recipient)) {
       setMessageInfo('Invalid recipient address');
