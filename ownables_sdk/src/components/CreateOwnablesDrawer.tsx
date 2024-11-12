@@ -483,6 +483,7 @@ const CreateOwnablesDrawer = (props: Props) => {
     ];
 
     let newMissingFields: string[] = [];
+    let newInvalidFields: string[] = [];
     for (let field of requiredFields) {
       if (!field.value) {
         console.error(`Missing required field: ${field.name}`);
@@ -490,9 +491,18 @@ const CreateOwnablesDrawer = (props: Props) => {
       }
     }
 
+    for (let field of [ownerName, ownableName, description]) {
+      if (!validateInput(field)) {
+        console.error(`Invalid characters in field: ${field}`);
+        newInvalidFields.push(field);
+      }
+    }
+
+
+
     setErrorMessage(
-      newMissingFields.length > 0
-        ? `Missing required fields: ${newMissingFields.join(", ")}`
+      newMissingFields.length > 0 || newInvalidFields.length > 0
+        ? `Missing required fields: ${newMissingFields.join(", ")} ${newInvalidFields.length > 0 ? `and Invalid characters in fields: ${newInvalidFields.join(", ")}` : ""}`
         : null
     );
     EventChainService.anchoring = true;
@@ -703,6 +713,12 @@ const CreateOwnablesDrawer = (props: Props) => {
   //   }
   // };
 
+  // only allow alphanumeric characters and spaces
+  const validateInput = (value: string) => {
+    if (!value) return true;
+    return /^[a-zA-Z0-9\s]*$/.test(value);
+  };
+
   return (
     <LtoDrawer
       open={open}
@@ -852,10 +868,10 @@ const CreateOwnablesDrawer = (props: Props) => {
                 }
               </Box>
               <br></br>
-              <LtoInput ref={nameOwnerRef} label="Owner name" />
+              <LtoInput ref={nameOwnerRef} label="Owner name" validation={(value) => validateInput(value)} />
               {/* <LtoInput ref={emailOwnerRef} label="Owner email" /> */}
-              <LtoInput ref={nameOwnableRef} label="Ownable name" />
-              <LtoInput ref={descriptionRef} label="Description" />
+              <LtoInput ref={nameOwnableRef} label="Ownable name" validation={(value) => validateInput(value)} />
+              <LtoInput ref={descriptionRef} label="Description" validation={(value) => validateInput(value)} />
               <TagInputField onTagsChange={setTags} />
               <br></br>
               <br></br>

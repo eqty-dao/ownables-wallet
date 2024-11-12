@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 
 const Label = styled.label`
   color: #fcfcf7;
@@ -32,6 +32,7 @@ interface Props {
   label: string;
   value?: string;
   maxLength?: number;
+  validation?: (value: string) => boolean;
 }
 
 export interface LtoInputRefMethods {
@@ -40,6 +41,21 @@ export interface LtoInputRefMethods {
 
 const LtoInput = forwardRef<LtoInputRefMethods, Props>((props, ref) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
+
+  const handleValueChange = () => {
+    console.log("handleValueChange");
+    if (inputRef.current) {
+      const value = inputRef.current.value;
+      if (props.validation) {
+        if (props.validation(value)) {
+          setError("");
+        } else {
+          setError("Only alphanumeric characters are allowed");
+        }
+      }
+    }
+  }
 
   useImperativeHandle(ref, () => ({
     value: () => {
@@ -53,7 +69,8 @@ const LtoInput = forwardRef<LtoInputRefMethods, Props>((props, ref) => {
   return (
     <Container>
       <Label>{props.label}</Label>
-      <Input ref={inputRef} maxLength={props.maxLength || undefined} />
+      <Input ref={inputRef} maxLength={props.maxLength || undefined} onChange={() => { handleValueChange() }} />
+      {error && <span style={{ color: "#ff4d4f" }}>{error}</span>}
     </Container>
   );
 });

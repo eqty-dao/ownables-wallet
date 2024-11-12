@@ -9,10 +9,6 @@ import { logoTitle } from '../../utils/images';
 import { useNavigation } from '@react-navigation/native';
 import styled from 'styled-components/native';
 
-const WebViewContainer = styled.View`
-  flex: 1;
-  background-color: #0d0d0d;
-`;
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -96,7 +92,7 @@ const NewOwnablesTabScreen = () => {
                     hideQR={true}
                     input={<StyledImage testID="logo-title" source={logoTitle} />}
                 />
-                <WebViewContainer>
+                <>
                     <WebView
                         ref={webViewRef}
                         backgroundColor="#0D0D0D"
@@ -119,9 +115,11 @@ const NewOwnablesTabScreen = () => {
                             console.warn('WebView error: ', nativeEvent);
                             setErrorMessage(JSON.stringify(nativeEvent));
                             setWebViewError(true);
+                            restartServer();
                         }}
+                        style={{ flex: 1 , backgroundColor: '#0D0D0D'}}
                     />
-                </WebViewContainer>
+                </>
             </MainScreenContainer>
             {webViewError && (
                 <View style={styles.errorOverlay}>
@@ -147,6 +145,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'transparent',
     },
     loaderOverlay: {
         position: 'absolute',
@@ -156,7 +155,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'white',
+        backgroundColor: 'transparent',
         zIndex: 1,
     },
     errorContainer: {
@@ -167,7 +166,7 @@ const styles = StyleSheet.create({
     errorOverlay: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'white',
+        backgroundColor: 'transparent',
         padding: 16,
         zIndex: 1,
     },
