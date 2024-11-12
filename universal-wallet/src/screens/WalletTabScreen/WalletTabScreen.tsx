@@ -151,10 +151,6 @@ const MainTab = ({children, navigation}) => {
     try {
       const account = await LTOService.getAccount();
       setAccountAddress(account.address);
-      // console.log('---------------------');
-      // console.log(account.address);
-      // console.log(account.seed);
-      // console.log('---------------------');
     } catch (error) {
       console.error('Error loading account:', error);
     }
