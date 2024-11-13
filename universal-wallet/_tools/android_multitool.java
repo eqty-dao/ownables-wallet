@@ -267,5 +267,4 @@ public class android_multitool {
       return false;
     }
   }
-
 }
