@@ -13,6 +13,7 @@ import {StyledButton} from '../../components/StyledButton';
 import {FormContainer} from '../../components/styles/FormContainer.styles';
 import {CheckBoxCard} from '../../components/CheckBoxCard';
 import {BottomModal} from '../../components/BottomModal';
+import DOMPurify from 'dompurify';
 
 export default function RegisterAccountScreen({navigation, route}: RootStackScreenProps<'RegisterAccount'>) {
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -46,8 +47,10 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
       });
   };
 
+  //F-2024-4597 - Lack of Input Sanitization in handleInputChange
   const handleInputChange = (name: string, value: string) => {
-    setloginForm({...loginForm, [name]: value});
+    const sanitizedValue = DOMPurify.sanitize(value);
+    setloginForm({...loginForm, [name]: sanitizedValue});
   };
 
   const isStrongPassword = (password: string) => {
