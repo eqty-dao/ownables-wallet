@@ -120,6 +120,7 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
         navigation.navigate('Root');
       }, 1000);
     } catch (error) {
+      console.log(error);
       throw new Error(`Error storing account data. ${error}`);
     }
   };

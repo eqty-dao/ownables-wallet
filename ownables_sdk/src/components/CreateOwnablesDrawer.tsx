@@ -5,7 +5,6 @@ import {
   FormControlLabel,
   Icon,
   IconButton,
-  Input,
   MenuItem,
   Radio,
   RadioGroup,
@@ -45,6 +44,7 @@ import Modal from "@mui/material/Modal";
 import EventChainService from "../services/EventChain.service";
 import { sendRNPostMessage } from "../utils/postMessage";
 import { FileCopy, FileCopyOutlined } from "@mui/icons-material";
+import { activityLogService } from "../services/ActivityLog.service";
 
 interface Props {
   open: boolean;
@@ -73,6 +73,22 @@ const StyledButton = styled(Button) <StyledButtonProps>`
         `}
 `;
 
+const Input = styled.input`
+  height: 42px;
+  width: 100%;
+  border: 1px solid #2d2c2e;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 16px;
+  background-color: transparent;
+  padding: 0 16px;
+  appearance: none;
+  outline: none;
+  &:disabled {
+    background-color: #2d2c2e;
+    color: #ffffff !important;
+  }
+`;
 const titleStyle = { ...themeStyles.fs24fw600lh29, textAlign: "center" };
 
 const closeModalBtnStyle = {
@@ -475,6 +491,8 @@ const CreateOwnablesDrawer = (props: Props) => {
   }
 
   const handleCreateOwnable = async () => {
+
+
     const ownerName = nameOwnerRef.current?.value() || "";
     const ownerEmail = emailOwnerRef.current?.value() || "";
     const ownableName = nameOwnableRef.current?.value() || "";
@@ -520,6 +538,10 @@ const CreateOwnablesDrawer = (props: Props) => {
       setNoConnection(true);
       return;
     }
+    activityLogService.logActivity({
+      activity: `Creating ownable ${ownableName}`,
+      timestamp: Date.now(),
+    });
     setOpenDialog(true);
     setCreateOwnableMessage("Creating ownable...");
     const tx = new TransferTx(recipient, amount);
@@ -583,6 +605,10 @@ const CreateOwnablesDrawer = (props: Props) => {
                   return;
                 }
                 setTransactionId(res.data.rid);
+                activityLogService.logActivity({
+                  activity: `Ownable ${ownableName} created id: ${res.data.rid}`,
+                  timestamp: Date.now(),
+                });
               })
               .catch((err) => {
                 console.log(err);
@@ -881,48 +907,44 @@ const CreateOwnablesDrawer = (props: Props) => {
               Please top up.
             </Alert>
           </Dialog>
-          <Dialog open={openDialog} onClose={handleCloseDialog} sx={{
-            "& .MuiDialog-paper": {
-              backgroundColor: "#3a3a3c",
-              color: "white",
-              borderRadius: "10px",
-              width: "100%",
-            },
-            "& .MuiDialogTitle-root": {
-              borderBottom: "1px solid #3a3a3c",
-              color: "white",
-            },
-            "& .MuiDialogActions-root": {
-              padding: "10px",
-              justifyContent: "center",
-            },
-            "& .MuiDialogContent-root": {
-              padding: "20px",
-            },
-          }}
+          <Dialog open={openDialog} onClose={handleCloseDialog}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
           >
             <DialogContent>
               <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                   <img
-                    src={'/brand_logo.png'}
+                    src={'/logo_popup.png'}
                     alt={"oBuilder Logo"}
-                    style={{ width: "2.5rem", height: "2rem", marginBottom: "10px" }}
+                    style={{}}
                   />
                   <b>oBuilder Status</b>
                 </div>
-                {transactionId && <div style={{ display: "flex", flexDirection: "row", width: '100%' }}>
+                {transactionId && <div style={{ display: "flex", flexDirection: "row", width: '100%', color: 'white', justifyContent: 'center', alignItems: 'center' }}>
                   <Input
                     disabled
                     placeholder=""
                     value={transactionId}
                     style={{
-                      width: '100%',
-                      backgroundColor: '#656565',
-                      borderRadius: 10,
-                      color: 'white',
-                      padding: '5px',
-                      margin: '10px 0',
+
                     }}
                   />
                   <IconButton
@@ -943,14 +965,14 @@ const CreateOwnablesDrawer = (props: Props) => {
                     <CircularProgress />
                   </div>
                 }
-                <p style={{ color: 'green', fontSize: '0.8rem', marginLeft: 10 }}>{transactionIdMessage}</p>
+                <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{transactionIdMessage}</p>
+
+                {transactionId && <Button onClick={handleClose} sx={{ backgroundColor: themeColors.primary, color: "white" }} disabled={transactionId === null}>
+                  Done
+                </Button>
+                }
               </DialogContentText>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={handleClose} sx={{ backgroundColor: themeColors.primary, color: "white" }} disabled={transactionId === null}>
-                Done
-              </Button>
-            </DialogActions>
           </Dialog>
           <Dialog
             open={buildError !== null}

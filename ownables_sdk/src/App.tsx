@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, LinearProgress } from "@mui/material";
+import { Box, Dialog, DialogContent, DialogContentText, LinearProgress } from "@mui/material";
 import IDBService from "./services/IDB.service";
 import { TypedPackage } from "./interfaces/TypedPackage";
 import Loading from "./components/Loading";
@@ -50,6 +50,9 @@ import { CheckForMessages } from "./services/CheckMessages.service";
 import { sendRNPostMessage } from "./utils/postMessage";
 import AppLinearProgress from "./components/LinearProgress";
 import LocalStorageService from "./services/LocalStorage.service";
+import { InfoSharp } from "@mui/icons-material";
+import ActivityLogDrawer from "./components/ActivityLogs";
+import { activityLogService } from "./services/ActivityLog.service";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -103,6 +106,7 @@ export default function App() {
 
   // CST: Create ownable drawer
   const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false);
+  const [showActivityLogDrawer, setShowActivityLogDrawer] = useState(false);
   const [message, setMessages] = useState(0);
   const [importingOwnables, setImportingFromRelay] = useState(false);
   const [importLabel, setImportLabel] = useState("Importing Ownables");
@@ -203,28 +207,13 @@ export default function App() {
           .then((ownables) => setOwnables(ownables))
           .then(() => setLoaded(true)).finally(() => {
             setLoaded(true);
-            // window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'loaded' }));
             sendRNPostMessage(JSON.stringify({ type: 'loaded' }));
           });
-        // const intervalId = setInterval(async () => {
-        //   try {
-        //     const count = await checkForMessages.valueOfValidCids();
-        //     setMessages(count || 0);
-        //   } catch (error) {
-        //     console.error("Error occurred while checking messages:", error);
-        //   }
-        // }, 10000);
-
         return () => { }
         //clearInterval(intervalId);
       } catch (error) {
         console.error("Error importing account: ", error);
       }
-
-      // DC: If something went wrong with filtering, uncomment this line
-      //IDBService.deleteDatabase()
-
-
     } else {
       console.log("NO SEED RECEIVED");
     }
@@ -426,46 +415,10 @@ export default function App() {
 
   const handleSearchFilter = () => setShowFilters(!showFilters);
 
-  // const relayImport = async (pkg: TypedPackage[] | null) => {
-  //   try {
-  //     if (pkg != null && pkg.length > 0) {
-  //       setOwnables((prevOwnables) => [
-  //         ...prevOwnables,
-  //         ...pkg.map((data: any) => {
-  //           return {
-  //             chain: data.chain,
-  //             package: data.cid,
-  //           };
-  //         }),
-  //       ]);
-  //       // enqueueSnackbar(`Ownable successfully loaded`, {
-  //       //   variant: "success",
-  //       // });
-  //       setAlert({
-  //         severity: "info",
-  //         title: "New Ownables Detected",
-  //         message: "New ownables have been detected. Refreshing...",
-  //       });
-  //       // setTimeout(() => {
-  //       //   window.location.reload();
-  //       // }, 4000);
-  //     } else {
-  //       enqueueSnackbar(`Nothing to Load from relay`, {
-  //         variant: "error",
-  //       });
-  //     }
-  //   } catch (error) {
-  //     showError("Import failed", ownableErrorMessage(error));
-  //     throw error;
-  //   }
-  // };
-
   const relayImport = async (pkg: TypedPackage[] | null) => {
     try {
-      sendRNPostMessage(JSON.stringify({ type: 'relay Import loop', data: pkg }));
-      //update message count
-      const updatedMessageCount = await CheckForMessages.getNewMessageCount();
-      setMessages(updatedMessageCount);
+
+      sendRNPostMessage(JSON.stringify({ type: 'relay Import loop', data: "pkg" }));
       const isEmpty = pkg && pkg.every((item) => item === null || item === undefined);
       sendRNPostMessage(JSON.stringify({ type: 'isEmpty', data: isEmpty }));
       if (pkg == null || pkg.length === 0 || isEmpty) {
@@ -517,6 +470,7 @@ export default function App() {
           });
           await new Promise((resolve) => setTimeout(resolve, 3000));
         }
+        setImportingFromRelay(false);
 
         //Trigger a refresh only if any package matched current one
         if (triggerRefresh) {
@@ -549,6 +503,10 @@ export default function App() {
   const importPackagesFromRelay = async () => {
     setImportingFromRelay(true);
     try {
+      activityLogService.logActivity({
+        activity: "Importing Ownables from Relay",
+        timestamp: Date.now(),
+      });
       setImportLabel(`Importing From Relay, please wait...`);
       sendRNPostMessage(JSON.stringify({ type: 'import started' }));
       let pkg = await PackageService.importFromRelay();
@@ -574,28 +532,6 @@ export default function App() {
     }
   };
 
-  // const importPackagesFromRelay = async () => {
-  //   try {
-  //     setImporting(true);
-  //     const pkg = await PackageService.importFromRelay();
-  //     setImporting(false);
-  //     if (pkg == null) {
-  //       setImporting(false);
-  //       return;
-  //     }
-  //     const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null);
-  //     if (filteredPackages.length === 0) {
-  //       setImporting(false);
-  //       return;
-  //     }
-  //     relayImport(filteredPackages);
-  //   } catch (error) {
-  //     setImporting(false);
-  //     showError("Import failed", ownableErrorMessage(error));
-  //     throw error;
-  //   }
-  // };
-
   const handleFabItemSelected = async (item: TypedFabItem) => {
     setOpenFab(false);
 
@@ -611,6 +547,9 @@ export default function App() {
         return;
       case HomePageEnums.ReceiveOwnables:
         importPackagesFromRelay();
+        return;
+      case HomePageEnums.ActivityLogs:
+        setShowActivityLogDrawer(true);
         return;
       default:
         return;
@@ -777,6 +716,11 @@ export default function App() {
             title: "Receive Ownables",
             icon: ReceiveIcon,
           },
+          {
+            id: HomePageEnums.ActivityLogs,
+            title: "Activity",
+            icon: InfoSharp,
+          },
         ]}
         open={openFab}
         onOpen={() => setOpenFab(true)}
@@ -851,8 +795,52 @@ export default function App() {
         title="Create Ownable"
         onClose={() => setShowCreateOwnableDrawer(false)}
       />
+      <ActivityLogDrawer
+        open={showActivityLogDrawer}
+        title="Activity Logs"
+        onClose={() => setShowActivityLogDrawer(false)}
+        isPersistent={true}
+      />
+      <Dialog
+        open={importingOwnables}
+        onClose={() => setImportingFromRelay(false)}
+        sx={{
+          "& .MuiDialog-paper": {
+            backgroundColor: "#141414",
+            color: "white",
+            borderRadius: "10px",
+            width: "100%",
+          },
+          "& .MuiDialogTitle-root": {
+            borderBottom: "1px solid #141414",
+            color: "white",
+          },
+          "& .MuiDialogActions-root": {
+            padding: "10px",
+            justifyContent: "center",
+          },
+          "& .MuiDialogContent-root": {
+            padding: "20px",
+          },
+        }}
+      >
+        <DialogContent>
+          <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <img
+                src={'/logo_popup.png'}
+                alt={"oBuilder Logo"}
+                style={{}}
+              />
+              <b>Importing Ownables</b>
+            </div>
+            <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{importLabel}</p>
+          </DialogContentText>
+          <LinearProgress />
+        </DialogContent>
+
+      </Dialog>
       <Loading show={!loaded} />
-      <AppLinearProgress show={importingOwnables} label={importLabel} />
     </>
   );
 }

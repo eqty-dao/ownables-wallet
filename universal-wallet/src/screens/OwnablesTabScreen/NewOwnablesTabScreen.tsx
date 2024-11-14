@@ -121,7 +121,8 @@ const NewOwnablesTabScreen = () => {
                     />
                 </>
             </MainScreenContainer>
-            {webViewError && (
+            {/* BT: Left it here for debugging purposes */}
+            {/* {webViewError && (
                 <View style={styles.errorOverlay}>
                     <Text style={styles.errorText}>Error from Ownable SDK</Text>
                     <Button
@@ -135,7 +136,7 @@ const NewOwnablesTabScreen = () => {
                     />
                     <Text style={styles.errorText}>{errorMessage}</Text>
                 </View>
-            )}
+            )} */}
         </View>
     );
 };

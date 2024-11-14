@@ -16,7 +16,7 @@ const Container = styled.div`
   width: 100%;
 `;
 
-const Input = styled.input`
+export const Input = styled.input`
   height: 62px;
   border: 1px solid #3a3a3c;
   border-radius: 8px;
