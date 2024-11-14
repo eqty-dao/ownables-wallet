@@ -47,9 +47,14 @@ export default function RegisterAccountScreen({navigation, route}: RootStackScre
       });
   };
 
+  const sanitize = (value: string) => {
+    const sanitizedRegex = /[^a-zA-Z0-9@!$%*?&#]/g;
+    return value.replace(sanitizedRegex, '');
+  }
+
   //F-2024-4597 - Lack of Input Sanitization in handleInputChange
   const handleInputChange = (name: string, value: string) => {
-    const sanitizedValue = DOMPurify.sanitize(value);
+    const sanitizedValue = sanitize(value);
     setloginForm({...loginForm, [name]: sanitizedValue});
   };
 
