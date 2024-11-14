@@ -8,6 +8,7 @@ import {ImageBackground, Pressable, useWindowDimensions} from 'react-native';
 import {TypedCommunityNode} from '../../interfaces/TypedCommunityNode';
 import {TypedTransaction} from '../../interfaces/TypedTransaction';
 import LTOService from '../../services/LTO.service';
+import LocalStorageService from '../../services/LocalStorage.service';
 import CommunityNodesService from '../../services/CommunityNodes.service';
 import {useFocusEffect} from '@react-navigation/native';
 import {formatDate} from '../../utils/formatDate';
@@ -66,11 +67,17 @@ export default function LeaseScreen({navigation, route}: RootStackScreenProps<'L
 
   useFocusEffect(
     React.useCallback(() => {
-      CommunityNodesService.info(nodeAddress)
-        .then(info => setNode(info))
-        .catch(error => console.error(`Error getting community node info`, error));
-    }, []),
+      checkAuthorizationAndFetchNode();
+    }, [accountAddress]),
   );
+
+  // useFocusEffect(
+  //   React.useCallback(() => {
+  //     CommunityNodesService.info(nodeAddress)
+  //       .then(info => setNode(info))
+  //       .catch(error => console.error(`Error getting community node info`, error));
+  //   }, []),
+  // );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -79,6 +86,42 @@ export default function LeaseScreen({navigation, route}: RootStackScreenProps<'L
         .catch(error => console.error(`Error getting loading data`, error));
     }, [accountAddress]),
   );
+
+  //F-2024-4551 - Improper Address Validation
+  const checkAuthorizationAndFetchNode = async () => {
+    try {
+      const storedAccount = await LocalStorageService.getData('@accountData');
+
+      if (!storedAccount || !storedAccount.address) {
+        navigation.navigate('SignIn');
+        setMessageInfo('Please log in to access this information');
+        setShowMessage(true);
+        return;
+      }
+
+      // Fetch the current account from LTOService
+      const currentUser = await LTOService.getAccount();
+
+      if (currentUser.address !== storedAccount.address) {
+        navigation.goBack();
+        setMessageInfo('Unauthorized access');
+        setShowMessage(true);
+        return;
+      }
+      fetchNodeInfo();
+    } catch (error) {
+      console.error('Error during authorization check:', error);
+      navigation.goBack();
+      setMessageInfo('Error during authorization check');
+      setShowMessage(true);
+    }
+  };
+
+  const fetchNodeInfo = () => {
+    CommunityNodesService.info(nodeAddress)
+      .then(info => setNode(info))
+      .catch(error => console.error(`Error getting community node info`, error));
+  };
 
   useInterval(() => {
     loadAccountDetails();
