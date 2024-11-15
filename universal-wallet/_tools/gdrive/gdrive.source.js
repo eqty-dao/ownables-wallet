@@ -290,6 +290,7 @@ async function getFileID(folderID, fileName) {
   return '';
 }
 
+//F-2024-4520 - Path Traversal in File System Access
 function checkFileArg(fileArgNumber) {
   //const filePath = process.argv[fileArgNumber];
   const filePath = path.resolve(process.cwd(), process.argv[fileArgNumber]);
