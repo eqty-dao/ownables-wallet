@@ -1,7 +1,11 @@
 export default class LocalStorageService {
   static get(key: string): any {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : undefined;
+    try {
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : undefined;
+    } catch (error) {
+      console.error(`Unable to get value from local storage: ${error}`);
+    }
   }
 
   static set(key: string, value: any): void {

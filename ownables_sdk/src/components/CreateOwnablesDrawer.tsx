@@ -35,7 +35,7 @@ import JSZip from "jszip";
 import axios from "axios";
 import heic2any from "heic2any";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
-import { Transfer as TransferTx } from "@ltonetwork/lto";
+import { getNetwork, Transfer as TransferTx } from "@ltonetwork/lto";
 import { TypedOwnable } from "../interfaces/TypedOwnableInfo";
 import { useSnackbar } from "notistack";
 import TagInputField from "./common/TagInputField";
@@ -45,6 +45,7 @@ import EventChainService from "../services/EventChain.service";
 import { sendRNPostMessage } from "../utils/postMessage";
 import { FileCopy, FileCopyOutlined } from "@mui/icons-material";
 import { activityLogService } from "../services/ActivityLog.service";
+import { sign } from "@ltonetwork/http-message-signatures";
 
 interface Props {
   open: boolean;
@@ -158,17 +159,24 @@ const CreateOwnablesDrawer = (props: Props) => {
           //   },
           // }
         );
-      const allBuildCosts = response.data as any;
-      const availableChains = response.data as IAvailableChains;
+      let _ = new Object();
+      Object.keys(response.data).forEach((key) => {
+        //@ts-ignore
+        _[key] = response.data[key].testnet;
+      });
+      const allBuildCosts = _;
+      const availableChains = _ as IAvailableChains;
+      //@ts-ignore
       const selectedChain = availableChains[selectedNetwork];
+      console.log("selectedChain", selectedChain);
+      setSelectedChain(selectedChain.name);
       const templateCostValue = selectedChain?.templateCost["1"];
       const value = (typeof templateCostValue === 'number' ? templateCostValue / LTO_REPRESENTATION : Number(templateCostValue) / LTO_REPRESENTATION) + 1;
-      setSelectedChain(selectedChain.name);
       setAvailableChains(availableChains);
       setAllBuildCosts(allBuildCosts);
       setBuildCost(value);
       const address = await axios.get(
-        `${process.env.REACT_APP_OBUILDER}/api/v1/ServerWalletAddressLTO`,
+        `${process.env.REACT_APP_OBUILDER}/api/v1/ServerLtoWalletAddresses`,
         // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/ServerWalletAddressLTO',
         // "http://localhost:3000/api/v1/ServerWalletAddressLTO",
         // {
@@ -177,8 +185,8 @@ const CreateOwnablesDrawer = (props: Props) => {
         //   },
         // }
       );
-      console.log("address", address.data.serverWalletAddressLTO);
-      const serverAddress = address.data.serverWalletAddressLTO;
+      console.log("address", address.data.serverLtoWalletAddress_T);
+      const serverAddress = address.data.serverLtoWalletAddress_T;
       // for testing now use 3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo
       // const serverAddress = "3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo";
       console.log("serverAddress", serverAddress);
@@ -206,6 +214,8 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    setCreateOwnableMessage(null);
+    setTransactionId(null);
     onClose();
   };
 
@@ -325,7 +335,10 @@ const CreateOwnablesDrawer = (props: Props) => {
         file = new File([blob], file.name, { type: "image/webp" });
       }
     }
-
+    setOwnable((prevOwnable) => ({
+      ...prevOwnable,
+      image: file,
+    }));
     if (file) {
       const resizedImage = await resizeImage(file);
       file = new File([resizedImage], file.name, { type: "image/webp" });
@@ -335,10 +348,7 @@ const CreateOwnablesDrawer = (props: Props) => {
     }
     sendRNPostMessage(JSON.stringify({ type: "uploadFileEnd" }));
 
-    setOwnable((prevOwnable) => ({
-      ...prevOwnable,
-      image: file,
-    }));
+
   };
 
   async function createThumbnail(blob: Blob): Promise<Blob> {
@@ -479,7 +489,7 @@ const CreateOwnablesDrawer = (props: Props) => {
   const getBuildCostInLTO = (chain: string) => {
     const chainCost = allBuildCosts[chain];
     if (chainCost) {
-      const value = chainCost?.templateCost["1"];
+      const value = chainCost?.testnet?.templateCost["1"];
       const chainCostValue = typeof value === 'number' ? value : Number(value);
       if (chainCostValue) {
         return (chainCostValue / LTO_REPRESENTATION) + 1;
@@ -550,6 +560,23 @@ const CreateOwnablesDrawer = (props: Props) => {
       const account = await LTOService.getAccount();
       const transaction = await LTOService.broadcast(tx!.signWith(account));
       setCreateOwnableMessage("Contacting oBuilder...");
+      const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload`;
+      const request = {
+        headers: {},
+        method: "POST",
+        url,
+      };
+      const signedRequest = await sign(request, { signer: account });
+      request.url =
+        request.url + `?ltoNetworkId=${getNetwork(account.address)}`;
+      console.log("signedRequest", signedRequest);
+      const headers1 = {
+        "Content-Type": "multipart/form-data",
+        Accept: "*/*",
+      };
+      const combinedHeaders = { ...signedRequest.headers, ...headers1 };
+      // const combinedHeaders = headers1;
+      console.log("combinedHeaders", combinedHeaders);
       setTimeout(() => {
         if (transaction.id) {
           const imageType = "webp";
@@ -588,15 +615,19 @@ const CreateOwnablesDrawer = (props: Props) => {
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
           zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-            const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload`;
+            const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload?ltoNetworkId=T`;
             const formData = new FormData();
             formData.append("file", zipFile, formattedName + ".zip");
+
             axios
-              .post(url, formData, {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                  Accept: "*/*",
-                },
+              // .post(url, formData, {
+              //   headers: {
+              //     "Content-Type": "multipart/form-data",
+              //     Accept: "*/*",
+              //   },
+              // })
+              .post(request.url, formData, {
+                headers: combinedHeaders,
               })
               .then((res) => {
                 console.log(res.data);
@@ -612,6 +643,8 @@ const CreateOwnablesDrawer = (props: Props) => {
               })
               .catch((err) => {
                 console.log(err);
+                setOpenDialog(false);
+                setBuildError("Something went wrong. Please try again");
               });
           });
         }

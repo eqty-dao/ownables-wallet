@@ -6,6 +6,7 @@ import mime from "mime/lite";
 import { MessageExt, MessageInfo } from "../interfaces/MessageInfo";
 import { sign } from "@ltonetwork/http-message-signatures";
 import LTOService from "./LTO.service";
+import { activityLogService } from "./ActivityLog.service";
 
 export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID);
 
@@ -126,6 +127,10 @@ export class RelayService {
     const url = `${this.relayURL}/inboxes/${address}/`;
     try {
       const responses = await this.handleSignedRequest("GET", url);
+      activityLogService.logActivity({
+        activity: "Read Relay Data",
+        timestamp: Date.now(),
+      })
 
       if (!responses.data.length) return null;
 

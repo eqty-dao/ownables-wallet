@@ -20,7 +20,10 @@ class ActivityLogService {
         window.localStorage.getItem('activityLog') ?
           JSON.parse(window.localStorage.getItem('activityLog') || '[]') : [];
     }
-    return this.activityLog;
+    const _ = this.activityLog;
+    //sort the logs by timestamp
+    _.sort((a, b) => b.timestamp - a.timestamp);
+    return _;
   }
 
 }

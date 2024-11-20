@@ -34,23 +34,39 @@ export default class EventChainService {
       keywords: string[];
     }>
   > {
-    const ids = (await IDBService.listStores())
-      .filter((name) => name.match(/^ownable:\w+$/))
-      .map((name) => name.replace(/^ownable:(\w+)$/, "$1"));
+    try {
+      const ids = (await IDBService.listStores())
+        .filter((name) => name.match(/^ownable:\w+$/))
+        .map((name) => name.replace(/^ownable:(\w+)$/, "$1"));
 
-    return (
-      await Promise.all(
-        ids.map(async (id) => {
-          const {
-            chain,
-            package: packageCid,
-            created,
-            keywords,
-          } = await this.load(id);
-          return { chain, package: packageCid, created, keywords };
-        })
-      )
-    ).sort(({ created: a }, { created: b }) => a.getTime() - b.getTime());
+      const chains =
+        await Promise.all(
+          ids.map(async (id) => {
+            const res = await this.load(id);
+            if(res){
+            const {
+              chain,
+              package: packageCid,
+              created,
+              keywords,
+            } = res;
+            return { chain, package: packageCid, created, keywords };
+            }
+            return null;
+          }).filter((res) => res !== null)
+        )
+      // .sort(({ created: a }, { created: b }) => a.getTime() - b.getTime());
+      //@ts-ignore
+      return chains.filter((res) => res !== null).sort(({ created: a }, { created: b }) => a.getTime() - b.getTime()) as Array<{
+        chain: EventChain;
+        package: string;
+        created: Date;
+        keywords: string[];
+      }>;
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
   }
 
   static async load(id: string): Promise<{
@@ -58,24 +74,29 @@ export default class EventChainService {
     package: string;
     created: Date;
     keywords: string[];
-  }> {
-    const chainInfo = (await IDBService.getMap(`ownable:${id}`).then((map) =>
-      Object.fromEntries(map.entries())
-    )) as StoredChainInfo;
+  } | null> {
+    try {
+      const chainInfo = (await IDBService.getMap(`ownable:${id}`).then((map) =>
+        Object.fromEntries(map.entries())
+      )) as StoredChainInfo;
 
-    const {
-      chain: chainJson,
-      package: packageCid,
-      created,
-      keywords,
-    } = chainInfo;
+      const {
+        chain: chainJson,
+        package: packageCid,
+        created,
+        keywords,
+      } = chainInfo;
 
-    return {
-      chain: EventChain.from(chainJson),
-      package: packageCid,
-      created,
-      keywords,
-    };
+      return {
+        chain: EventChain.from(chainJson),
+        package: packageCid,
+        created,
+        keywords,
+      };
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
   }
 
   static async store(

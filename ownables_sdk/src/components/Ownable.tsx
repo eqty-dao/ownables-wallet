@@ -162,23 +162,27 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
-    if (!stateDump) stateDump = this.state.stateDump;
+    try {
+      if (!stateDump) stateDump = this.state.stateDump;
 
-    if (this.pkg.hasWidgetState)
-      await OwnableService.rpc(this.chain.id).refresh(stateDump);
+      if (this.pkg.hasWidgetState)
+        await OwnableService.rpc(this.chain.id).refresh(stateDump);
 
-    const info = (await OwnableService.rpc(this.chain.id).query(
-      { get_info: {} },
-      stateDump
-    )) as TypedOwnableInfo;
-    const metadata = this.pkg.hasMetadata
-      ? ((await OwnableService.rpc(this.chain.id).query(
-          { get_metadata: {} },
-          stateDump
-        )) as TypedMetadata)
-      : this.state.metadata;
+      const info = (await OwnableService.rpc(this.chain.id).query(
+        { get_info: {} },
+        stateDump
+      )) as TypedOwnableInfo;
+      const metadata = this.pkg.hasMetadata
+        ? ((await OwnableService.rpc(this.chain.id).query(
+            { get_metadata: {} },
+            stateDump
+          )) as TypedMetadata)
+        : this.state.metadata;
 
-    this.setState({ info, metadata });
+      this.setState({ info, metadata });
+    } catch (error) {
+      console.error("Error during refresh:", error);
+    }
   }
 
   private async apply(partialChain: EventChain): Promise<void> {

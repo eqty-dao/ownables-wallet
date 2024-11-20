@@ -105,6 +105,19 @@ export default class PackageService {
     return found;
   }
 
+  static getOwner(nameOrCid: string): string {
+    const packages = (LocalStorageService.get("packages") ||
+      []) as TypedPackage[];
+    const found = packages.find(
+      (pkg) =>
+        pkg.name === nameOrCid ||
+        pkg.versions.map((v) => v.cid).includes(nameOrCid)
+    );
+
+    if (!found) throw new Error(`Package not found: ${nameOrCid}`);
+    return found.versions[0].cid;
+  }
+
   private static storePackageInfo(
     title: string,
     name: string,

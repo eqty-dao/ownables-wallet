@@ -76,7 +76,14 @@ export default class OwnableService {
       keywords: string[];
     }>
   > {
-    return EventChainService.loadAll();
+    try {
+      const _ = (await EventChainService.loadAll()).filter((res) => res !== null);
+      console.log(_);
+      return _;
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
   }
 
   static rpc(id: string): OwnableRPC {
@@ -127,24 +134,30 @@ export default class OwnableService {
   }
 
   static async init(chain: any, cid: string, rpc: OwnableRPC): Promise<void> {
-    if (this._rpc.has(chain.id)) {
-      try {
-        delete (this._rpc.get(chain.id) as any).handler;
-      } catch (e) {}
+    try {
+      if (this._rpc.has(chain.id)) {
+        try {
+          delete (this._rpc.get(chain.id) as any).handler;
+        } catch (e) {
+          console.error(e);
+         }
+      }
+
+      this._rpc.set(chain.id, rpc);
+      const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
+      const js = workerJsSource + moduleJs;
+
+      const wasm = (await PackageService.getAsset(
+        cid,
+        "ownable_bg.wasm",
+        (fr, file) => fr.readAsArrayBuffer(file)
+      )) as ArrayBuffer;
+      await rpc.init(chain.id, js, new Uint8Array(wasm));
+      const stateDump = await this.apply(chain, []);
+      await this.initStore(chain, cid, stateDump);
+    } catch (error) {
+      console.error(error);
     }
-
-    this._rpc.set(chain.id, rpc);
-    const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
-    const js = workerJsSource + moduleJs;
-
-    const wasm = (await PackageService.getAsset(
-      cid,
-      "ownable_bg.wasm",
-      (fr, file) => fr.readAsArrayBuffer(file)
-    )) as ArrayBuffer;
-    await rpc.init(chain.id, js, new Uint8Array(wasm));
-    const stateDump = await this.apply(chain, []);
-    await this.initStore(chain, cid, stateDump);
   }
 
   static async apply(

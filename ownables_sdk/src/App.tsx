@@ -131,22 +131,30 @@ export default function App() {
 
   const computeFilters = (packages: Array<string>) => {
     //const flatMap = packages.flatMap(item => item)
-    const foundOwnables = ownables.filter((item: any) =>
-      packages.some((chainId: string) => chainId === item.chain.id)
-    );
-    setFilteredOwnables(foundOwnables);
-    setFoundOwnables(foundOwnables);
+    try {
+      const foundOwnables = ownables.filter((item: any) =>
+        packages.some((chainId: string) => chainId === item.chain.id)
+      );
+      setFilteredOwnables(foundOwnables);
+      setFoundOwnables(foundOwnables);
+    } catch (error) {
+      console.error("Error filtering ownables", error);
+    }
   };
 
   const initializeCollections = async () => {
-    CollectionService.init();
-    // do a initial search to fill filteredPackages
-    filterBy("", "", StaticCollections.ALL);
-    // get all collections after initialize
-    getAll();
-    getAllIssuers();
-    // reset filter
-    resetFilter();
+    try {
+      CollectionService.init();
+      // do a initial search to fill filteredPackages
+      filterBy("", "", StaticCollections.ALL);
+      // get all collections after initialize
+      getAll();
+      getAllIssuers();
+      // reset filter
+      resetFilter();
+    } catch (error) {
+      console.error("Error initializing collections", error);
+    }
   };
 
   useEffect(() => {
@@ -172,22 +180,6 @@ export default function App() {
     onConfirm: () => void;
   } | null>(null);
 
-  useEffect(() => {
-    const fetchMessages = async () => {
-      const messageCount = await CheckForMessages.getNewMessageCount();
-      setMessages(messageCount);
-    };
-    fetchMessages();
-  });
-
-  useEffect(() => {
-    const fetchMessages = async () => {
-      const messageCount = await CheckForMessages.getNewMessageCount();
-      setMessages(messageCount);
-    };
-    const intervalId = setInterval(fetchMessages, 15000);
-    return () => clearInterval(intervalId);
-  }, []);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -210,7 +202,7 @@ export default function App() {
             sendRNPostMessage(JSON.stringify({ type: 'loaded' }));
           });
         return () => { }
-        //clearInterval(intervalId);
+        // check for messages every 5 seconds
       } catch (error) {
         console.error("Error importing account: ", error);
       }
@@ -423,7 +415,7 @@ export default function App() {
       sendRNPostMessage(JSON.stringify({ type: 'isEmpty', data: isEmpty }));
       if (pkg == null || pkg.length === 0 || isEmpty) {
         enqueueSnackbar(`Nothing to Load from relay`, {
-          variant: "error",
+          variant: "info"
         });
         setImportingFromRelay(false);
         return;
@@ -440,8 +432,20 @@ export default function App() {
 
       if (pkg != null && pkg.length > 0) {
         setImportLabel(`Starting Importing Ownables : (${pkg?.length || 0})`);
+        activityLogService.logActivity({
+          activity: `Importing Ownables from Relay : ${pkg?.length || 0}`,
+          timestamp: Date.now(),
+        });
         for (let i = 0; i < pkg.length; i += batchNumber) {
           setImportLabel(`Importing Ownables : (${i + 1}/${pkg.length}):${pkg[i]?.name || ""}`);
+          activityLogService.logActivity({
+            activity: `Importing Ownables from Relay : ${i + 1}/${pkg.length}`,
+            timestamp: Date.now(),
+          });
+          activityLogService.logActivity({
+            activity: `Importing Ownables from Relay : ${JSON.stringify(pkg[i])}`,
+            timestamp: Date.now(),
+          });
           const batch = pkg.slice(i, i + batchNumber);
           const filteredBatch = batch.filter(
             (item) => item !== null && item !== undefined
@@ -496,6 +500,10 @@ export default function App() {
     } catch (error) {
       setImportingFromRelay(false);
       showError("Import failed", ownableErrorMessage(error));
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay failed`,
+        timestamp: Date.now(),
+      });
       throw error;
     }
   };
@@ -504,7 +512,7 @@ export default function App() {
     setImportingFromRelay(true);
     try {
       activityLogService.logActivity({
-        activity: "Importing Ownables from Relay",
+        activity: "Importing Ownables from Relay start api call",
         timestamp: Date.now(),
       });
       setImportLabel(`Importing From Relay, please wait...`);
@@ -513,6 +521,14 @@ export default function App() {
       // filter out [null,null,null] from the response
       setImportLabel(`Import from Relay Completed , processing Ownables`);
       sendRNPostMessage(JSON.stringify({ type: 'import completed', data: pkg }));
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay completed`,
+        timestamp: Date.now(),
+      });
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay : ${JSON.stringify(pkg)}`,
+        timestamp: Date.now(),
+      });
       if (pkg == null) {
         setImportingFromRelay(false);
         return;
@@ -528,6 +544,10 @@ export default function App() {
     } catch (error) {
       setImportingFromRelay(false);
       showError("Import failed", ownableErrorMessage(error));
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay failed`,
+        timestamp: Date.now(),
+      });
       throw error;
     }
   };
@@ -599,10 +619,9 @@ export default function App() {
                     chain: chain,
                     packageCid: packageCid,
                   })}
-                  onError={showError} onDelete={function (): void {
-                    throw new Error("Function not implemented.");
-                  }} onDeleted={function (): void {
-                    throw new Error("Function not implemented.");
+                  onError={showError}
+                  onDeleted={function (): void {
+                    deleteOwnable(chain.id, packageCid);
                   }}                >
                   <If condition={consuming?.chain.id === chain.id}>
                     <LtoOverlay isForDetailsScreen={false} zIndex={1000} />
@@ -661,9 +680,8 @@ export default function App() {
                     chain: chain,
                     packageCid: packageCid,
                   })}
-                  onError={showError} onDelete={function (): void {
-                    throw new Error("Function not implemented.");
-                  }} onDeleted={function (): void {
+                  onError={showError}
+                  onDeleted={function (): void {
                     throw new Error("Function not implemented.");
                   }}                >
                   <If condition={consuming?.chain.id === chain.id}>

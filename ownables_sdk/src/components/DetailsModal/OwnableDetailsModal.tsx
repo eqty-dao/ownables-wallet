@@ -258,23 +258,27 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
-    if (!stateDump) stateDump = this.state.stateDump;
+    try {
+      if (!stateDump) stateDump = this.state.stateDump;
 
-    if (this.pkg.hasWidgetState)
-      await OwnableService.rpc(this.chain.id).refresh(stateDump);
+      if (this.pkg.hasWidgetState)
+        await OwnableService.rpc(this.chain.id).refresh(stateDump);
 
-    const info = (await OwnableService.rpc(this.chain.id).query(
-      { get_info: {} },
-      stateDump
-    )) as TypedOwnableInfo;
-    const metadata = this.pkg.hasMetadata
-      ? ((await OwnableService.rpc(this.chain.id).query(
-        { get_metadata: {} },
+      const info = (await OwnableService.rpc(this.chain.id).query(
+        { get_info: {} },
         stateDump
-      )) as TypedMetadata)
-      : this.state.metadata;
+      )) as TypedOwnableInfo;
+      const metadata = this.pkg.hasMetadata
+        ? ((await OwnableService.rpc(this.chain.id).query(
+          { get_metadata: {} },
+          stateDump
+        )) as TypedMetadata)
+        : this.state.metadata;
 
-    this.setState({ info, metadata });
+      this.setState({ info, metadata });
+    } catch (error) {
+      console.error("Error during refresh:", error);
+    }
   }
 
   private async apply(partialChain: EventChain): Promise<void> {
@@ -295,24 +299,29 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   async onLoad(): Promise<void> {
-    if (!this.pkg.isDynamic) {
-      await OwnableService.initStore(this.chain, this.pkg.cid);
-      return;
-    }
-
-    const iframeWindow = this.iframeRef.current!.contentWindow;
-    const rpc = rpcConnect<Required<OwnableRPC>>(window, iframeWindow, "*", {
-      timeout: 5000,
-    });
-
     try {
-      await OwnableService.init(this.chain, this.pkg.cid, rpc);
-      this.setState({ initialized: true });
-    } catch (e) {
-      if (e instanceof Cancelled) return;
-      this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
-      sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: ownableErrorMessage(e) }));
-      throw e;
+      if (!this.pkg.isDynamic) {
+        await OwnableService.initStore(this.chain, this.pkg.cid);
+        return;
+      }
+
+      const iframeWindow = this.iframeRef.current!.contentWindow;
+      const rpc = rpcConnect<Required<OwnableRPC>>(window, iframeWindow, "*", {
+        timeout: 5000,
+      });
+
+      try {
+        await OwnableService.init(this.chain, this.pkg.cid, rpc);
+        this.setState({ initialized: true });
+      } catch (e) {
+        if (e instanceof Cancelled) return;
+        this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
+        sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: ownableErrorMessage(e) }));
+        console.error("Error during onLoad:", e);
+      }
+    } catch (error) {
+      console.error("Error during onLoad:", error);
+
     }
   }
 

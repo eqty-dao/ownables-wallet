@@ -108,7 +108,8 @@ export default class LTOService {
       const response = await fetch(url);
       return response.json();
     } catch (error) {
-      throw new Error("Error fetching account details");
+      console.error(error);
+      // throw new Error("Error fetching account details");
     }
   }
 
