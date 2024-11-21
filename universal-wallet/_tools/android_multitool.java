@@ -242,19 +242,20 @@ public class android_multitool {
     String newContent = content.replace(searchString, replaceString);
     writeStringToFile(filePath, newContent);
   }
-
-  private static String readFileToString(String filePath) {
-    StringBuilder contentBuilder = new StringBuilder();
-    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-      String sCurrentLine;
-      while ((sCurrentLine = br.readLine()) != null) {
-        contentBuilder.append(sCurrentLine).append("\n");
-      }
-    } catch (IOException e) {
-      return "";
-    }
-    return contentBuilder.toString();
-  }
+//F-2024-4522 - Unrestricted Resource Consumption In Multiline_replace Method - Info
+private static String readFileToString(String filePath) {
+StringBuilder contentBuilder = new StringBuilder();
+try (BufferedReader br = new BufferedReader(new FileReader(filePath
+))) {
+String sCurrentLine;
+while ((sCurrentLine = br.readLine()) != null) {
+contentBuilder.append(sCurrentLine).append("\n");
+}
+} catch (IOException e) {
+return "";
+}
+return contentBuilder.toString();
+}
 
   //F-2024-4521 - Resource Leak in writeStringToFile Method
   private static boolean writeStringToFile(String filePath, String content) {
