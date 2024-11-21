@@ -23,7 +23,32 @@ import If from "../If";
 import { ReactComponent as CircleCheckIcon } from "../../assets/circle_check_icon.svg";
 import LtoOverlay, { LtoOverlayBanner } from "./LtoOverlay";
 import SessionStorageService from "../../services/SessionStorage.service";
+import { sendRNPostMessage } from "../../utils/postMessage";
+import { BridgeService } from "../../services/Bridge.service";
+import { RelayService } from "../../services/Relay.service";
+import { enqueueSnackbar } from "notistack";
+import shortId from "../../utils/shortId";
 
+
+interface OwnableProps {
+  chain: EventChain;
+  packageCid: string;
+  selected: boolean;
+  onDelete: () => void;
+  onConsume: (info: TypedOwnableInfo) => void;
+  onError: (title: string, message: string) => void;
+  children?: ReactNode;
+  onOpenModal: () => void;
+  onDeleted: () => void;
+}
+
+interface OwnableState {
+  initialized: boolean;
+  applied: Binary;
+  stateDump: StateDump;
+  info?: TypedOwnableInfo;
+  metadata: TypedMetadata;
+}
 export interface OwnableThumbProps {
   chain: EventChain;
   packageCid: string;
@@ -58,17 +83,13 @@ const ownableDescStyle = {
 
 const checkIcon = <CircleCheckIcon style={{ width: "20px", height: "20px" }} />;
 
-export default class OwnableThumb extends Component<
-  OwnableThumbProps,
-  OwnableThumbState
-> {
+export default class OwnableThumb extends Component<OwnableProps, OwnableState> {
   private readonly pkg: TypedPackage;
   private readonly iframeRef: RefObject<HTMLIFrameElement>;
   private busy = false;
 
-  constructor(props: OwnableThumbProps) {
+  constructor(props: OwnableProps) {
     super(props);
-
     this.pkg = PackageService.info(props.packageCid);
     this.iframeRef = createRef();
     this.state = {
@@ -85,6 +106,97 @@ export default class OwnableThumb extends Component<
 
   get isTransferred(): boolean {
     return !!this.state.info && this.state.info.owner !== LTOService.address;
+  }
+
+  get isBridged() {
+    const bridgeAddress = SessionStorageService.get("bridgeAddress");
+    const currentOwner = this.state.info?.owner;
+    if (!bridgeAddress || !currentOwner) return false;
+    return currentOwner === bridgeAddress;
+  }
+
+  get hasNFT(): boolean {
+    return this.pkg.keywords?.includes("hasNFT") ?? false;
+  }
+
+  get nftNetwork(): string {
+    const nftNetwork = this.state.info?.nft?.network;
+    return nftNetwork || "";
+  }
+
+  private async transfer(to: string): Promise<void> {
+    try {
+      const value = await RelayService.isRelayUp();
+
+      if (value) {
+        await this.execute({ transfer: { to: to } });
+        const zip = await OwnableService.zip(this.chain);
+        const content = await zip.generateAsync({
+          type: "uint8array",
+        });
+        const messageHash = await RelayService.sendOwnable(to, content);
+        enqueueSnackbar(`Ownable ${messageHash} sent Successfully!!`, {
+          variant: "success",
+        });
+        //Remove ownable from relay's inbox
+        if (this.pkg.uniqueMessageHash) {
+          await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+        }
+      } else {
+        enqueueSnackbar("Server is down", { variant: "error" });
+      }
+
+      // const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+      //   this.chain.state?.base58,
+      //   8,
+      //   ""
+      // )}.zip`;
+      // asDownload(content, filename);
+    } catch (error) {
+      console.error("Error during transfer:", error);
+    }
+  }
+
+  private async bridge(
+    address: string,
+    fee: number | null,
+    nftNetwork?: string
+  ): Promise<void> {
+    try {
+      const bridgeAddress = await BridgeService.getBridgeAddress();
+      await this.execute({ transfer: { to: bridgeAddress } });
+      const zip = await OwnableService.zip(this.chain);
+      const content = await zip.generateAsync({
+        type: "uint8array",
+      });
+      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+        this.chain.state?.base58,
+        8,
+        ""
+      )}.zip`;
+      const transactionId = await BridgeService.payBridgingFee(
+        fee,
+        bridgeAddress
+      );
+      const contentBlob = new Blob([content], {
+        type: "application/octet-stream",
+      });
+      if (transactionId) {
+        await BridgeService.bridgeOwnableToNft(
+          address,
+          transactionId,
+          filename,
+          contentBlob
+        );
+      }
+      //remove ownable from relay's inbox
+      if (this.pkg.uniqueMessageHash) {
+        await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+      }
+      enqueueSnackbar("Successfully bridged!!", { variant: "success" });
+    } catch (error) {
+      console.error("Error while attempting to bridge:", error);
+    }
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
@@ -141,14 +253,9 @@ export default class OwnableThumb extends Component<
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
+      sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: e }));
+      throw e;
     }
-  }
-
-  get isBridged() {
-    const bridgeAddress = SessionStorageService.get("bridgeAddress");
-    const currentOwner = this.state.info?.owner;
-    if (!bridgeAddress || !currentOwner) return false;
-    return currentOwner === bridgeAddress;
   }
 
   private async execute(msg: TypedDict): Promise<void> {
@@ -173,30 +280,6 @@ export default class OwnableThumb extends Component<
     }
   }
 
-
-  // private async execute(msg: TypedDict): Promise<void> {
-  //   let stateDump: StateDump;
-
-  //   try {
-  //     stateDump = await OwnableService.execute(
-  //       this.chain,
-  //       msg,
-  //       this.state.stateDump
-  //     );
-  //   } catch (error) {
-  //     this.props.onError(
-  //       "The Ownable returned an error",
-  //       ownableErrorMessage(error)
-  //     );
-  //     return;
-  //   }
-
-  //   await OwnableService.store(this.chain, stateDump);
-
-  //   await this.refresh(stateDump);
-  //   this.setState({ applied: this.chain.latestHash, stateDump });
-  // }
-
   private windowMessageHandler = async (event: MessageEvent) => {
     if (
       !isObject(event.data) ||
@@ -212,21 +295,27 @@ export default class OwnableThumb extends Component<
 
   async componentDidMount() {
     window.addEventListener("message", this.windowMessageHandler);
+
+    let bridgeAddress = SessionStorageService.get("bridgeAddress");
+
+    if (!bridgeAddress) {
+      bridgeAddress = await BridgeService.getBridgeAddress();
+      if (bridgeAddress) {
+        SessionStorageService.set("bridgeAddress", bridgeAddress); // Ensure it's stored in sessionStorage after fetching
+      }
+    }
+    //this.setState({ bridgeAddress });
   }
 
   shouldComponentUpdate(
-    nextProps: OwnableThumbProps,
-    nextState: OwnableThumbState
+    nextProps: OwnableProps,
+    nextState: OwnableState
   ): boolean {
     return nextState.initialized;
   }
 
-  async componentDidUpdate(
-    _: OwnableThumbProps,
-    prev: OwnableThumbState
-  ): Promise<void> {
+  async componentDidUpdate(_: OwnableProps, prev: OwnableState): Promise<void> {
     const partial = this.chain.startingAfter(this.state.applied);
-
     if (partial.events.length > 0) await this.apply(partial);
     else if (
       this.state.initialized !== prev.initialized ||
@@ -239,6 +328,184 @@ export default class OwnableThumb extends Component<
     OwnableService.clearRpc(this.chain.id);
     window.removeEventListener("message", this.windowMessageHandler);
   }
+  // private readonly pkg: TypedPackage;
+  // private readonly iframeRef: RefObject<HTMLIFrameElement>;
+  // private busy = false;
+
+  // constructor(props: OwnableThumbProps) {
+  //   super(props);
+
+  //   this.pkg = PackageService.info(props.packageCid);
+  //   this.iframeRef = createRef();
+  //   this.state = {
+  //     initialized: false,
+  //     applied: new EventChain(this.chain.id).latestHash,
+  //     stateDump: [],
+  //     metadata: { name: this.pkg.title, description: this.pkg.description },
+  //   };
+  // }
+
+  // get chain(): EventChain {
+  //   return this.props.chain;
+  // }
+
+  // get isTransferred(): boolean {
+  //   return !!this.state.info && this.state.info.owner !== LTOService.address;
+  // }
+
+  // private async refresh(stateDump?: StateDump): Promise<void> {
+  //   if (!stateDump) stateDump = this.state.stateDump;
+
+  //   if (this.pkg.hasWidgetState)
+  //     await OwnableService.rpc(this.chain.id).refresh(stateDump);
+
+  //   const info = (await OwnableService.rpc(this.chain.id).query(
+  //     { get_info: {} },
+  //     stateDump
+  //   )) as TypedOwnableInfo;
+  //   const metadata = this.pkg.hasMetadata
+  //     ? ((await OwnableService.rpc(this.chain.id).query(
+  //       { get_metadata: {} },
+  //       stateDump
+  //     )) as TypedMetadata)
+  //     : this.state.metadata;
+
+  //   this.setState({ info, metadata });
+  // }
+
+  // private async apply(partialChain: EventChain): Promise<void> {
+  //   if (this.busy) return;
+  //   this.busy = true;
+
+  //   const stateDump =
+  //     (await EventChainService.getStateDump(
+  //       this.chain.id,
+  //       partialChain.state
+  //     )) || // Use stored state dump if available
+  //     (await OwnableService.apply(partialChain, this.state.stateDump));
+
+  //   await this.refresh(stateDump);
+
+  //   this.setState({ applied: this.chain.latestHash, stateDump });
+  //   this.busy = false;
+  // }
+
+  // async onLoad(): Promise<void> {
+  //   if (!this.pkg.isDynamic) {
+  //     await OwnableService.initStore(this.chain, this.pkg.cid);
+  //     return;
+  //   }
+
+  //   const iframeWindow = this.iframeRef.current!.contentWindow;
+  //   const rpc = rpcConnect<Required<OwnableRPC>>(window, iframeWindow, "*", {
+  //     timeout: 5000,
+  //   });
+
+  //   try {
+  //     await OwnableService.init(this.chain, this.pkg.cid, rpc);
+  //     this.setState({ initialized: true });
+  //   } catch (e) {
+  //     if (e instanceof Cancelled) return;
+  //     this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
+  //     sendRNPostMessage(JSON.stringify({ type: "sdkerror", data: { error: e } }));
+  //   }
+  // }
+
+  // get isBridged() {
+  //   const bridgeAddress = SessionStorageService.get("bridgeAddress");
+  //   const currentOwner = this.state.info?.owner;
+  //   if (!bridgeAddress || !currentOwner) return false;
+  //   return currentOwner === bridgeAddress;
+  // }
+
+  // private async execute(msg: TypedDict): Promise<void> {
+  //   let stateDump: StateDump;
+
+  //   try {
+  //     stateDump = await OwnableService.execute(
+  //       this.chain,
+  //       msg,
+  //       this.state.stateDump
+  //     );
+
+  //     await OwnableService.store(this.chain, stateDump);
+  //     await this.refresh(stateDump);
+  //     this.setState({ applied: this.chain.latestHash, stateDump });
+  //   } catch (error) {
+  //     this.props.onError(
+  //       "The Ownable returned an error",
+  //       ownableErrorMessage(error)
+  //     );
+  //     return;
+  //   }
+  // }
+
+
+  // // private async execute(msg: TypedDict): Promise<void> {
+  // //   let stateDump: StateDump;
+
+  // //   try {
+  // //     stateDump = await OwnableService.execute(
+  // //       this.chain,
+  // //       msg,
+  // //       this.state.stateDump
+  // //     );
+  // //   } catch (error) {
+  // //     this.props.onError(
+  // //       "The Ownable returned an error",
+  // //       ownableErrorMessage(error)
+  // //     );
+  // //     return;
+  // //   }
+
+  // //   await OwnableService.store(this.chain, stateDump);
+
+  // //   await this.refresh(stateDump);
+  // //   this.setState({ applied: this.chain.latestHash, stateDump });
+  // // }
+
+  // private windowMessageHandler = async (event: MessageEvent) => {
+  //   if (
+  //     !isObject(event.data) ||
+  //     !("ownable_id" in event.data) ||
+  //     event.data.ownable_id !== this.chain.id
+  //   )
+  //     return;
+  //   if (this.iframeRef.current!.contentWindow !== event.source)
+  //     throw Error("Not allowed to execute msg on other Ownable");
+
+  //   await this.execute(event.data.msg);
+  // };
+
+  // async componentDidMount() {
+  //   window.addEventListener("message", this.windowMessageHandler);
+  // }
+
+  // shouldComponentUpdate(
+  //   nextProps: OwnableThumbProps,
+  //   nextState: OwnableThumbState
+  // ): boolean {
+  //   return nextState.initialized;
+  // }
+
+  // async componentDidUpdate(
+  //   _: OwnableThumbProps,
+  //   prev: OwnableThumbState
+  // ): Promise<void> {
+  //   const partial = this.chain.startingAfter(this.state.applied);
+
+  //   if (partial.events.length > 0) await this.apply(partial);
+  //   else if (
+  //     this.state.initialized !== prev.initialized ||
+  //     this.state.applied.hex !== prev.applied.hex
+  //   )
+  //     await this.refresh();
+  // }
+
+  // componentWillUnmount() {
+  //   OwnableService.clearRpc(this.chain.id);
+  //   window.removeEventListener("message", this.windowMessageHandler);
+  // }
 
   paperStyle = {
     aspectRatio: "1/1",
@@ -279,7 +546,7 @@ export default class OwnableThumb extends Component<
             >
               <LtoOverlay isForDetailsScreen={false}>
                 <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                Bridged
+                  Bridged
                 </LtoOverlayBanner>
               </LtoOverlay>
             </Tooltip>

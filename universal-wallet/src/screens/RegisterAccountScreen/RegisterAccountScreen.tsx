@@ -46,8 +46,15 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
       });
   };
 
+  const sanitize = (value: string) => {
+    const sanitizedRegex = /[^a-zA-Z0-9@!$%*?&#]/g;
+    return value.replace(sanitizedRegex, '');
+  }
+
+  //F-2024-4597 - Lack of Input Sanitization in handleInputChange
   const handleInputChange = (name: string, value: string) => {
-    setloginForm({ ...loginForm, [name]: value });
+    const sanitizedValue = sanitize(value);
+    setloginForm({...loginForm, [name]: sanitizedValue});
   };
 
   const isStrongPassword = (password: string) => {
@@ -71,6 +78,13 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
     if (!isStrongPassword(loginForm.password)) {
       return {
         err: 'Password must be atleast 8 characters long and include uppercase, lowercase, number and special character!',
+      };
+    }
+    //F-2024-4595 - Insufficient Password Complexity
+
+    if (!isStrongPassword(loginForm.password)) {
+      return {
+        err: 'Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character!',
       };
     }
     if (loginForm.password !== loginForm.passwordConfirmation) {
@@ -117,6 +131,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
         navigation.navigate('Root');
       }, 1000);
     } catch (error) {
+      console.log(error);
       throw new Error(`Error storing account data. ${error}`);
     }
   };

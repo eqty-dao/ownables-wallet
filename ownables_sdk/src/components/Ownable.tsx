@@ -27,6 +27,7 @@ import { enqueueSnackbar } from "notistack";
 import { BridgeService } from "../services/Bridge.service";
 import shortId from "../utils/shortId";
 import SessionStorageService from "../services/SessionStorage.service";
+import { sendRNPostMessage } from "../utils/postMessage";
 
 interface OwnableProps {
   chain: EventChain;
@@ -214,8 +215,10 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
+      sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: ownableErrorMessage(e) }));
     }
   }
+
 
   private async execute(msg: TypedDict): Promise<void> {
     let stateDump: StateDump;

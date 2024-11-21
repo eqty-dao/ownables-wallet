@@ -94,7 +94,16 @@ export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'
 
       <StyledButton disabled={loading} onPress={handleSignIn} text={loading ? 'Please wait' : SIGNIN.BUTTON_SIGNIN} />
       {isEnrolled && (
-        <StyledButton onPress={() => authenticateWithBiometrics({navigation})} text={SIGNIN.BUTTON_BIOMETRICS} />
+        // F-2024-4598 - Biometric Authentication Without Fallback
+        <StyledButton
+          onPress={() =>
+            authenticateWithBiometrics({navigation}).catch(() => {
+              setMessageInfo('Biometric authentication failed. Please use your password.');
+              setShowMessage(true);
+            })
+          }
+          text={SIGNIN.BUTTON_BIOMETRICS}
+        />
       )}
     </ScreenContainer>
   );

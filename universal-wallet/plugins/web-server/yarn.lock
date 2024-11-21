@@ -8565,7 +8565,7 @@ react-native-fs@^2.20.0:
     buffer "^4.9.1"
     sjcl "^1.0.3"
 
-"react-native-rl-web-server-example@file:/home/peter/Projects/LTO/lto-universal-wallet-develop/universal-wallet/plugins/web-server/example":
+"react-native-rl-web-server-example@file:/Users/peter/Documents/Projects/LTO/lto-universal-wallet-develop/universal-wallet/plugins/web-server/example":
   version "0.0.1"
   resolved "file:example"
   dependencies:

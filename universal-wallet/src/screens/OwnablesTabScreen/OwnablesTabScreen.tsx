@@ -1,19 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Linking, Platform } from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {BackHandler, Linking, Platform} from 'react-native';
 import LTOService from '../../services/LTO.service';
-import { RootTabScreenProps } from '../../../types';
+import {RootTabScreenProps} from '../../../types';
 import OverviewHeader from '../../components/OverviewHeader';
-import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
+import {WebView, WebViewMessageEvent, WebViewNavigation} from 'react-native-webview';
 import styled from 'styled-components/native';
-import { useFocusEffect } from '@react-navigation/native';
+import {useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
 import StaticWebServer from 'react-native-rl-web-server';
-import { MainScreenContainer } from '../../components/MainScreenContainer';
-import { StyledImage } from '../../components/styles/OverviewHeader.styles';
-import { logoTitle } from '../../utils/images';
-import { useUserSettings } from '../../context/User.context';
-import { Account } from '@ltonetwork/lto';
+import {MainScreenContainer} from '../../components/MainScreenContainer';
+import {StyledImage} from '../../components/styles/OverviewHeader.styles';
+import {logoTitle} from '../../utils/images';
+import {useUserSettings} from '../../context/User.context';
+import {Account} from '@ltonetwork/lto';
+import {CurrentState, useAppContext} from '../../../providers/AppContext';
+import * as pathModule from 'path';
 
 const port = 30122; // select a random available port
 const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/www' : RNFS.DocumentDirectoryPath + '/html';
@@ -27,11 +29,12 @@ const WebViewContainer = styled.View`
   background-color: #0d0d0d;
 `;
 
-export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ownables'>) {
+export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Ownables'>) {
   const [accountInfo, setAccountInfo] = useState<Account | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
-  const { setForceSignOut } = useUserSettings();
   const webViewRef = useRef<WebView>(null);
+  const {setForceSignOut} = useUserSettings();
+  const {currentAction, setCurrentAction} = useAppContext();
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -68,13 +71,15 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
       return data.type === 'openFileDialog' && typeof data.data === 'object' ? data : null;
     }
     return null;
-  }
+  };
 
   const webMessage = async (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
     const sanitizedData = sanitizeData(data);
+    console.log('webMessage', data);
+    console.log('sanitizedData', sanitizedData);
     if (data.type === 'openFileDialog') {
-      const { forceSignout } = data.data;
+      const {forceSignout} = data.data;
       setForceSignOut(forceSignout);
     }
     if (data.type === 'ready') {
@@ -87,20 +92,28 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
       webViewRef.current?.injectJavaScript(`window.localStorage.setItem('seed', '${seed}')`);
     }
     AsyncStorage.setItem('webData', JSON.stringify(sanitizedData));
+    if (data.type === 'uploadFileStart') {
+      console.log('currentAction', currentAction);
+      setCurrentAction(CurrentState.CHOSE_PHOTO_DIALOG_OPEN);
+    }
+    if (data.type === 'uploadFileEnd') {
+      setCurrentAction('');
+    }
+    AsyncStorage.setItem('webData', JSON.stringify(data));
   };
 
   const [serverUrl, setServerUrl] = React.useState<string>();
 
   const copyWWWBuildFiles = async (directory: string) => {
-    // If the directory does not exist, proceed with copying
-    (await RNFS.readDirAssets(directory)).forEach(async (file: { isDirectory: () => any; path: string }) => {
+    (await RNFS.readDirAssets(directory)).forEach(async (file: {isDirectory: () => any; path: string}) => {
       if (file.isDirectory()) {
-        await RNFS.mkdir(RNFS.DocumentDirectoryPath + '/' + file.path);
+        const dirPath = pathModule.join(RNFS.DocumentDirectoryPath, file.path);
+        await RNFS.mkdir(dirPath);
         return copyWWWBuildFiles(file.path);
       } else {
-        //await RNFS.copyFileAssets(file.path, RNFS.DocumentDirectoryPath + '/' + file.path);
-        const sanitizedPath = file.path;
-        const targetPath = `${RNFS.DocumentDirectoryPath}/${sanitizedPath}`;
+        //F-2024-4593 - Potential Path Traversal
+        const sanitizedPath = pathModule.normalize(file.path).replace(/^(\.\.[\/\\])+/, ''); // Prevents path traversal
+        const targetPath = pathModule.join(RNFS.DocumentDirectoryPath, sanitizedPath);
         await RNFS.copyFileAssets(file.path, targetPath);
       }
     });
@@ -161,7 +174,9 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
           onMessage={webMessage}
           onLoadEnd={onWebviewLoads}
           source={{
-            uri: getWebViewUrl(),
+            // uri: getWebViewUrl(),
+            uri: 'http://10.0.167:3000/?seed=lock visa vacuum soul awesome chuckle swing lawsuit trumpet human tiny eagle tone trust army',
+
             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
             cacheEnabled: true,
           }}

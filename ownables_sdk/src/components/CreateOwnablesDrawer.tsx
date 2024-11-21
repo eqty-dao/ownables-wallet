@@ -1,7 +1,9 @@
 import {
   Box,
   Button,
+  CircularProgress,
   FormControlLabel,
+  Icon,
   IconButton,
   MenuItem,
   Radio,
@@ -40,6 +42,9 @@ import TagInputField from "./common/TagInputField";
 import Loading from "./Loading";
 import Modal from "@mui/material/Modal";
 import EventChainService from "../services/EventChain.service";
+import { sendRNPostMessage } from "../utils/postMessage";
+import { FileCopy, FileCopyOutlined } from "@mui/icons-material";
+import { activityLogService } from "../services/ActivityLog.service";
 
 interface Props {
   open: boolean;
@@ -68,6 +73,22 @@ const StyledButton = styled(Button) <StyledButtonProps>`
         `}
 `;
 
+const Input = styled.input`
+  height: 42px;
+  width: 100%;
+  border: 1px solid #2d2c2e;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 16px;
+  background-color: transparent;
+  padding: 0 16px;
+  appearance: none;
+  outline: none;
+  &:disabled {
+    background-color: #2d2c2e;
+    color: #ffffff !important;
+  }
+`;
 const titleStyle = { ...themeStyles.fs24fw600lh29, textAlign: "center" };
 
 const closeModalBtnStyle = {
@@ -117,7 +138,9 @@ const CreateOwnablesDrawer = (props: Props) => {
   const [buildCost, setBuildCost] = useState<number>(0);
   const [amount, setAmount] = useState<number>(0);
   const [showAmount, setShowAmount] = useState<number>(0);
-  const [transactionId, setTransactionId] = useState<string | null>();
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [transactionIdMessage, setTransactionIdMessage] = useState<string | null>(null);
+  const [createOwnableMessage, setCreateOwnableMessage] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
 
   const fetchBuildAmount = useCallback(async () => {
@@ -214,7 +237,10 @@ const CreateOwnablesDrawer = (props: Props) => {
   }
 
   const handleFileUploadClick = () => {
-    // fileInputRef.current?.click();
+    // let rn app know that the user wants to upload a file so to set the state
+    // properly
+    sendRNPostMessage(JSON.stringify({ type: "uploadFileStart" }));
+
     const fileInput = fileInputRef.current;
     if (fileInput) {
       fileInput.click();
@@ -307,6 +333,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       const thumbnailImage = await createThumbnail(resizedImage);
       setThumbnail(thumbnailImage);
     }
+    sendRNPostMessage(JSON.stringify({ type: "uploadFileEnd" }));
 
     setOwnable((prevOwnable) => ({
       ...prevOwnable,
@@ -464,6 +491,8 @@ const CreateOwnablesDrawer = (props: Props) => {
   }
 
   const handleCreateOwnable = async () => {
+
+
     const ownerName = nameOwnerRef.current?.value() || "";
     const ownerEmail = emailOwnerRef.current?.value() || "";
     const ownableName = nameOwnableRef.current?.value() || "";
@@ -478,6 +507,7 @@ const CreateOwnablesDrawer = (props: Props) => {
     ];
 
     let newMissingFields: string[] = [];
+    let newInvalidFields: string[] = [];
     for (let field of requiredFields) {
       if (!field.value) {
         console.error(`Missing required field: ${field.name}`);
@@ -485,9 +515,18 @@ const CreateOwnablesDrawer = (props: Props) => {
       }
     }
 
+    for (let field of [ownerName, ownableName, description]) {
+      if (!validateInput(field)) {
+        console.error(`Invalid characters in field: ${field}`);
+        newInvalidFields.push(field);
+      }
+    }
+
+
+
     setErrorMessage(
-      newMissingFields.length > 0
-        ? `Missing required fields: ${newMissingFields.join(", ")}`
+      newMissingFields.length > 0 || newInvalidFields.length > 0
+        ? `Missing required fields: ${newMissingFields.join(", ")} ${newInvalidFields.length > 0 ? `and Invalid characters in fields: ${newInvalidFields.join(", ")}` : ""}`
         : null
     );
     EventChainService.anchoring = true;
@@ -499,10 +538,18 @@ const CreateOwnablesDrawer = (props: Props) => {
       setNoConnection(true);
       return;
     }
+    activityLogService.logActivity({
+      activity: `Creating ownable ${ownableName}`,
+      timestamp: Date.now(),
+    });
+    setOpenDialog(true);
+    setCreateOwnableMessage("Creating ownable...");
     const tx = new TransferTx(recipient, amount);
+    setCreateOwnableMessage("Sending transaction...");
     try {
       const account = await LTOService.getAccount();
       const transaction = await LTOService.broadcast(tx!.signWith(account));
+      setCreateOwnableMessage("Contacting oBuilder...");
       setTimeout(() => {
         if (transaction.id) {
           const imageType = "webp";
@@ -541,15 +588,6 @@ const CreateOwnablesDrawer = (props: Props) => {
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
           zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-            // for testing creating download zip file, remove for live version
-            // Create a temporary link element
-            // const link = document.createElement("a");
-            // link.href = URL.createObjectURL(zipFile);
-            // link.download = formattedName + ".zip";
-            // // Simulate a click on the link to trigger the download
-            // link.click();
-
-            // Send the zip file to oBuilder
             const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload`;
             const formData = new FormData();
             formData.append("file", zipFile, formattedName + ".zip");
@@ -562,141 +600,34 @@ const CreateOwnablesDrawer = (props: Props) => {
               })
               .then((res) => {
                 console.log(res.data);
+                if (res.data.error) {
+                  setBuildError(res.data.error);
+                  return;
+                }
+                setTransactionId(res.data.rid);
+                activityLogService.logActivity({
+                  activity: `Ownable ${ownableName} created id: ${res.data.rid}`,
+                  timestamp: Date.now(),
+                });
               })
               .catch((err) => {
                 console.log(err);
               });
-            setOpenDialog(true);
           });
-          //handleCloseDialog();
         }
       }, 1000);
     } catch (error) {
+      setOpenDialog(false);
       console.error("Error sending transaction:", error);
       setBuildError("Something went wrong. Please try again");
     }
   };
 
-  // const handleCreateOwnable = async () => {
-  //   const ownerName = nameOwnerRef.current?.value() || "";
-  //   const ownerEmail = emailOwnerRef.current?.value() || "";
-  //   const ownableName = nameOwnableRef.current?.value() || "";
-  //   const description = descriptionRef.current?.value() || "";
-  //   const image = fileInputRef.current?.files?.[0] || null;
-
-
-  //   const requiredFields = [
-  //     { name: "Owner name", value: ownerName },
-  //     { name: "Owner email", value: ownerEmail },
-  //     { name: "Ownable name", value: ownableName },
-  //     { name: "Image", value: image },
-  //   ];
-
-  //   let newMissingFields: string[] = [];
-  //   for (let field of requiredFields) {
-  //     if (!field.value) {
-  //       console.error(`Missing required field: ${field.name}`);
-  //       newMissingFields.push(field.name);
-  //     }
-  //   }
-
-  //   setErrorMessage(
-  //     newMissingFields.length > 0
-  //       ? `Missing required fields: ${newMissingFields.join(", ")}`
-  //       : null
-  //   );
-  //   if (newMissingFields.length > 0) {
-  //     return;
-  //   }
-  //   if (!recipient || !buildCost) {
-  //     console.error("Recipient or amount is not defined");
-  //     setNoConnection(true);
-  //     return;
-  //   }
-  //   const tx = new TransferTx(recipient, buildCost);
-  //   try {
-  //     const account = await LTOService.getAccount();
-  //     const info = await LTOService.broadcast(tx!.signWith(account));
-  //     // console.log('Transaction id', info.id);
-  //     console.log("Transaction info", info);
-  //     setTimeout(() => {
-  //       if (info.id) {
-  //         console.log("Transaction id", info.id, "ready");
-  //         const imageType = "webp";
-  //         const imageName = ownableName.replace(/\s+/g, "-");
-  //         const formattedName = ownableName.toLowerCase().replace(/\s+/g, "_");
-
-  //         const ownableData = [
-  //           {
-  //             template: "template1",
-  //             CREATE_NFT: "true",
-  //             NFT_BLOCKCHAIN: ownable.network,
-  //             NFT_TOKEN_URI:
-  //               "https://black-rigid-chickadee-743.mypinata.cloud/ipfs/QmSHE3ReBy7b8kmVVbyzA2PdiYyxWsQNU89SsAnWycwMhB",
-  //             OWNABLE_THUMBNAIL: "thumbnail.webp",
-  //             OWNABLE_LTO_TRANSACTION_ID: info.id,
-  //             PLACEHOLDER1_NAME: "ownable_" + formattedName,
-  //             PLACEHOLDER1_DESCRIPTION: description,
-  //             PLACEHOLDER1_VERSION: "0.1.0",
-  //             PLACEHOLDER1_AUTHORS: ownerName + " <" + ownerEmail + ">",
-  //             PLACEHOLDER1_KEYWORDS: tags,
-  //             PLACEHOLDER2_TITLE: ownableName,
-  //             PLACEHOLDER2_IMG: imageName + "." + imageType,
-  //             PLACEHOLDER4_TYPE: ownableName,
-  //             PLACEHOLDER4_DESCRIPTION: description,
-  //             PLACEHOLDER4_NAME: ownableName,
-  //           },
-  //         ];
-
-  //         const zip = new JSZip();
-  //         zip.file("ownableData.json", JSON.stringify(ownableData, null, 2));
-  //         if (ownable.image) {
-  //           zip.file(`${imageName}.${imageType}`, ownable.image);
-  //         }
-
-  //         if (thumbnail) {
-  //           const thumbnailBlob = getThumbnailBlob(thumbnail, blurThumbnail);
-  //           zip.file(`thumbnail.webp`, thumbnailBlob);
-  //         }
-  //         console.log("zip", zip);
-  //         zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-  //           // for testing creating download zip file, remove for live version
-  //           // Create a temporary link element
-  //           const link = document.createElement("a");
-  //           link.href = URL.createObjectURL(zipFile);
-  //           link.download = formattedName + ".zip";
-  //           // Simulate a click on the link to trigger the download
-  //           link.click();
-  //           // send the zip file to obuilder
-  //           const formData = new FormData();
-  //           formData.append('file', zipFile, formattedName + ".zip");
-  //           axios.post(
-  //             `${process.env.REACT_APP_OBUILDER}/api/v1/upload`,
-  //             // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/Ownable',
-  //             // 'http://localhost:3000/api/v1/Ownable',
-  //             formData,
-  //             {
-  //               headers: {
-  //                 'Content-Type': 'multipart/form-data',
-  //                 'Accept': '*/*'
-  //               }
-  //             }
-  //           ).then(response => {
-  //             console.log("response", response);
-  //           }).catch(error => {
-  //             console.error("Error sending zip file:", error);
-  //           });
-
-  //           setOpenDialog(true);
-  //         });
-  //         handleCloseDialog();
-  //       }
-  //     }, 1000);
-  //   } catch (error) {
-  //     console.error("Error sending transaction:", error);
-  //     setLowBalance(true);
-  //   }
-  // };
+  // only allow alphanumeric characters and spaces
+  const validateInput = (value: string) => {
+    if (!value) return true;
+    return /^[a-zA-Z0-9\s]*$/.test(value);
+  };
 
   return (
     <LtoDrawer
@@ -847,10 +778,10 @@ const CreateOwnablesDrawer = (props: Props) => {
                 }
               </Box>
               <br></br>
-              <LtoInput ref={nameOwnerRef} label="Owner name" />
+              <LtoInput ref={nameOwnerRef} label="Owner name" validation={(value) => validateInput(value)} />
               {/* <LtoInput ref={emailOwnerRef} label="Owner email" /> */}
-              <LtoInput ref={nameOwnableRef} label="Ownable name" />
-              <LtoInput ref={descriptionRef} label="Description" />
+              <LtoInput ref={nameOwnableRef} label="Ownable name" validation={(value) => validateInput(value)} />
+              <LtoInput ref={descriptionRef} label="Description" validation={(value) => validateInput(value)} />
               <TagInputField onTagsChange={setTags} />
               <br></br>
               <br></br>
@@ -976,23 +907,72 @@ const CreateOwnablesDrawer = (props: Props) => {
               Please top up.
             </Alert>
           </Dialog>
-          <Dialog open={openDialog} onClose={handleCloseDialog}>
-            <DialogTitle>Ownable Sent</DialogTitle>
+          <Dialog open={openDialog} onClose={handleCloseDialog}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
+          >
             <DialogContent>
-              <DialogContentText>
-                The ownable has been successfully sent.
-                {/* <Typography variant="body2" sx={{ mt: 1 }}>
-                  Transaction ID: <Typography variant="body2" sx={{ mt: 1 }}
-                    onClick={e => handleCopy(e)} style={{ cursor: "pointer" }}
-                  >{transactionId}</Typography>
-                </Typography> */}
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <b>oBuilder Status</b>
+                </div>
+                {transactionId && <div style={{ display: "flex", flexDirection: "row", width: '100%', color: 'white', justifyContent: 'center', alignItems: 'center' }}>
+                  <Input
+                    disabled
+                    placeholder=""
+                    value={transactionId}
+                    style={{
+
+                    }}
+                  />
+                  <IconButton
+                    onClick={() => {
+                      console.log("transactionId", transactionId);
+                      navigator.clipboard.writeText(transactionId || '');
+                      setTransactionIdMessage("Copied to clipboard");
+                      setTimeout(() => setTransactionIdMessage(null), 2000);
+                    }}
+                  >
+                    <FileCopyOutlined style={{ color: 'white' }} />
+                  </IconButton>
+                </div>}
+                {
+                  !transactionId &&
+                  <div>
+                    <p style={{ color: 'green', fontSize: '0.8rem', marginLeft: 10 }}>{createOwnableMessage}</p>
+                    <CircularProgress />
+                  </div>
+                }
+                <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{transactionIdMessage}</p>
+
+                {transactionId && <Button onClick={handleClose} sx={{ backgroundColor: themeColors.primary, color: "white" }} disabled={transactionId === null}>
+                  Done
+                </Button>
+                }
               </DialogContentText>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={handleClose} sx={{ color: themeColors.primary }}>
-                Close
-              </Button>
-            </DialogActions>
           </Dialog>
           <Dialog
             open={buildError !== null}

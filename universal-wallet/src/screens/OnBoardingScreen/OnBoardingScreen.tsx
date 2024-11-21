@@ -6,6 +6,9 @@ import Slide from '../../components/Slide';
 import slides from '../../utils/slideList';
 import {StyledSafeAreaView} from './OnBoardingScreen.styles';
 import {navigateToWebsite} from '../../utils/redirectSocialMedia';
+import {Dimensions} from 'react-native';
+
+const ITEM_WIDTH = Dimensions.get('window').width;
 
 export default function OnboardingScreen() {
   const {width, height} = useWindowDimensions();
@@ -32,6 +35,7 @@ export default function OnboardingScreen() {
   return (
     <StyledSafeAreaView>
       <Header moreInfo={navigateToWebsite} changeSlide={changeSlide} currentSlideIndex={currentSlideIndex} />
+      {/* F-2024-4586 - Potential Performance Issue With FlatList  */}
       <FlatList
         ref={ref}
         onMomentumScrollEnd={updateCurrentSlideIndex}
@@ -42,6 +46,8 @@ export default function OnboardingScreen() {
         pagingEnabled
         renderItem={({item}) => <Slide item={item} />}
         bounces={false}
+        initialNumToRender={3}
+        getItemLayout={(data, index) => ({length: ITEM_WIDTH, offset: ITEM_WIDTH * index, index})}
       />
       <Footer currentSlideIndex={currentSlideIndex} />
     </StyledSafeAreaView>
