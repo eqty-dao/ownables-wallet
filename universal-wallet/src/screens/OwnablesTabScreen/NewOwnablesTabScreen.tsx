@@ -7,7 +7,6 @@ import OverviewHeader from '../../components/OverviewHeader';
 import { StyledImage } from '../../components/styles/OverviewHeader.styles';
 import { logoTitle } from '../../utils/images';
 import { useNavigation } from '@react-navigation/native';
-import styled from 'styled-components/native';
 
 
 const NewOwnablesTabScreen = () => {
@@ -98,6 +97,7 @@ const NewOwnablesTabScreen = () => {
                         backgroundColor="#0D0D0D"
                         source={{
                             uri: webviewUrl,
+                            //@ts-ignore
                             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
                             cacheEnabled: true
                         }}
