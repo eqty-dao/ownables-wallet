@@ -5,17 +5,19 @@ import LocalStorageService from '../../services/LocalStorage.service';
 import { REGISTER, TERMS_AND_CONDITIONS_CONTENT } from '../../constants/Text';
 import LTOService from '../../services/LTO.service';
 import ReactNativeBiometrics from 'react-native-biometrics';
-import { ScreenContainer } from '../../components/ScreenContainer';
-import { Title } from '../../components/Title';
-import { InputField } from '../../components/InputField';
-import { BackButton } from '../../components/BackButton';
-import { StyledButton } from '../../components/StyledButton';
-import { FormContainer } from '../../components/styles/FormContainer.styles';
-import { CheckBoxCard } from '../../components/CheckBoxCard';
-import { BottomModal } from '../../components/BottomModal';
+import {ScreenContainer} from '../../components/ScreenContainer';
+import {Title} from '../../components/Title';
+import {InputField} from '../../components/InputField';
+import {BackButton} from '../../components/BackButton';
+import {StyledButton} from '../../components/StyledButton';
+import {FormContainer} from '../../components/styles/FormContainer.styles';
+import {CheckBoxCard} from '../../components/CheckBoxCard';
+import {BottomModal} from '../../components/BottomModal';
 
 export default function RegisterAccountScreen({ navigation, route }: RootStackScreenProps<'RegisterAccount'>) {
   const [dialogVisible, setDialogVisible] = useState(false);
+  const [showPinFallback, setShowPinFallback] = useState(false);
+  const [pin, setPin] = useState('');
 
   const [loginForm, setloginForm] = useState({
     nickname: '',
@@ -49,7 +51,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
   const sanitize = (value: string) => {
     const sanitizedRegex = /[^a-zA-Z0-9@!$%*?&#]/g;
     return value.replace(sanitizedRegex, '');
-  }
+  };
 
   //F-2024-4597 - Lack of Input Sanitization in handleInputChange
   const handleInputChange = (name: string, value: string) => {
@@ -142,7 +144,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
       setDialogVisible(true);
       return true;
     } else {
-      handleAccount();
+      setShowPinFallback(true);
     }
   };
 
@@ -167,6 +169,19 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
     }
 
     return signatureResult.signature;
+  };
+
+  //"F-2024-4596 - Potential Biometric Authentication Bypass"
+  const handlePinAuthentication = () => {
+    const pinRegex = /^\d{8}$/;
+
+    if (!pinRegex.test(pin)) {
+      setMessageInfo('PIN must be exactly 8 numeric characters.');
+      setShowMessage(true);
+      return;
+    }
+
+    handleAccount();
   };
 
   return (
@@ -200,6 +215,25 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
           placeholder={REGISTER.INPUT_PASSWORD_REPEAT.PLACEHOLDER}
         />
       </FormContainer>
+
+      {showPinFallback ? (
+        <>
+          <InputField
+            label="Enter your PIN"
+            value={pin}
+            onChangeText={setPin}
+            placeholder="Enter a 8-digit PIN"
+            secureTextEntry={true}
+          />
+          <StyledButton text="Submit PIN" disabled={loading} onPress={handlePinAuthentication} />
+        </>
+      ) : (
+        <StyledButton
+          text={loading ? 'Please wait' : REGISTER.BUTTON_CREATE}
+          disabled={loading}
+          onPress={checkForBiometrics}
+        />
+      )}
 
       <CheckBoxCard
         label={REGISTER.CHECKBOX}
