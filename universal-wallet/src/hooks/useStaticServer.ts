@@ -40,14 +40,14 @@ const useStaticServer = () => {
     setServer(_server);
     try {
       const seed = LTOService.getSeed();
-      console.log('seed:', seed);
       if (!seed) {
         navigation.navigate('Root');
         return;
       }
       const serverUrl = debugUrl ? debugUrl : await _server.start();
-      console.log('Server started at:', serverUrl);
-      setUrl(`${serverUrl}?seed=${seed}`);
+      // console.log('Server started at:', serverUrl);
+      // setUrl(`${serverUrl}?seed=${seed}`);
+      setUrl(`${serverUrl}`);
     } catch (error) {
       console.error('Failed to start server:', error);
     } finally {

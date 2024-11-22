@@ -957,11 +957,6 @@ PODS:
     - React-Core
   - react-native-randombytes (3.6.1):
     - React-Core
-  - react-native-rl-web-server (0.1.0):
-    - GCDWebServer (~> 3.0)
-    - glog
-    - RCT-Folly (= 2022.05.16.00)
-    - React-Core
   - react-native-safe-area-context (4.9.0):
     - React-Core
   - react-native-static-server (0.6.0-alpha.8):
@@ -1219,7 +1214,6 @@ DEPENDENCIES:
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-randombytes (from `../node_modules/react-native-randombytes`)
-  - react-native-rl-web-server (from `../node_modules/react-native-rl-web-server`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-static-server (from `../node_modules/@dr.pogodin/react-native-static-server`)"
   - react-native-udp (from `../node_modules/react-native-udp`)
@@ -1334,8 +1328,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-pager-view"
   react-native-randombytes:
     :path: "../node_modules/react-native-randombytes"
-  react-native-rl-web-server:
-    :path: "../node_modules/react-native-rl-web-server"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-static-server:
@@ -1446,7 +1438,6 @@ SPEC CHECKSUMS:
   react-native-get-random-values: 21325b2244dfa6b58878f51f9aa42821e7ba3d06
   react-native-pager-view: 0eb900a8c5d83c02a74b0125d4b5f9fdcc5b8f44
   react-native-randombytes: 421f1c7d48c0af8dbcd471b0324393ebf8fe7846
-  react-native-rl-web-server: ac5a87d1fbcb4356cb98bc49fa371651a4249c96
   react-native-safe-area-context: b97eb6f9e3b7f437806c2ce5983f479f8eb5de4b
   react-native-static-server: c51fb090a6fd0babf703d4cdb65f45062cdabfac
   react-native-udp: df79c3cb72c4e71240cd3ce4687bfb8a137140d5

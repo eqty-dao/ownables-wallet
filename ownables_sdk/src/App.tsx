@@ -181,32 +181,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      const messageCount = await CheckForMessages.getNewMessageCount();
-      setMessages(messageCount);
-    };
-    fetchMessages();
-  });
-
-  useEffect(() => {
-    const fetchMessages = async () => {
-      const messageCount = await CheckForMessages.getNewMessageCount();
-      setMessages(messageCount);
-    };
-    const intervalId = setInterval(fetchMessages, 15000);
-    return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    // const queryParams = new URLSearchParams(window.location.search);
-    // const seed = queryParams.get("seed");
     const seed = window.localStorage.getItem("seed");
     sendRNPostMessage(JSON.stringify({ type: "gotSeed!", data: seed }));
-
     if (seed) {
       sendRNPostMessage(JSON.stringify({ type: "seed", data: seed }));
-      window.sessionStorage.setItem("seed", seed);
+      window.sessionStorage.setItem("@seed", seed);
       console.log(`GOT SEED: ${seed}`);
+      // remove from the local storage
+      window.localStorage.removeItem("@seed");
       sendRNPostMessage(JSON.stringify({ type: 'seed', data: seed }));
       try {
         LTOService.importAccount(seed);
@@ -225,7 +207,6 @@ export default function App() {
             sendRNPostMessage(JSON.stringify({ type: 'loaded' }));
           });
         return () => { }
-        //clearInterval(intervalId);
       } catch (error) {
         console.error("Error importing account: ", error);
       }
