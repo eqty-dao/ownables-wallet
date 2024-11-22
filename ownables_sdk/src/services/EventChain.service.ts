@@ -16,7 +16,7 @@ interface StoredChainInfo {
 }
 
 export default class EventChainService {
-  private static _anchoring = !!LocalStorageService.get("anchoring");
+  private static _anchoring = true;
 
   static get anchoring(): boolean {
     return this._anchoring;
@@ -136,7 +136,9 @@ export default class EventChainService {
   }
 
   static async delete(id: string): Promise<void> {
-    await IDBService.deleteStore(new RegExp(`^ownable:${id}(\\..+)?$`));
+    //F-2024-4526 - Dynamic Regular Expression Leading To Potential ReDoS - Info
+    const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '');
+    await IDBService.deleteStore(new RegExp(`^ownable:${safeId}(\\..+)?$`));
   }
 
   static async deleteAll(): Promise<void> {

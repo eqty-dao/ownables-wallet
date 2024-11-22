@@ -76,19 +76,19 @@ export default function PackagesFab(props: PackagesFabProps) {
   };
 
   const selectPackage = async (pkg: TypedPackage | TypedPackageStub) => {
-    if ("stub" in pkg) {
-      try {
-        pkg = await busy(PackageService.downloadExample(pkg.name));
-        updatePackages();
-      } catch (error) {
-        onError(
-          "Failed to import package",
-          (error as Error).message || (error as string)
-        );
-        return;
-      }
-    }
-    onSelect(pkg);
+    // if ("stub" in pkg) {
+    //   try {
+    //     pkg = await busy(PackageService.downloadExample(pkg.name));
+    //     updatePackages();
+    //   } catch (error) {
+    //     onError(
+    //       "Failed to import package",
+    //       (error as Error).message || (error as string)
+    //     );
+    //     return;
+    //   }
+    // }
+    // onSelect(pkg);
   };
 
   return (
@@ -99,7 +99,7 @@ export default function PackagesFab(props: PackagesFabProps) {
         onClose={onClose}
         onSelect={selectPackage}
         onImport={importPackages}
-        //fetchPkgFromRelay={importPackagesFromRelay}
+      //fetchPkgFromRelay={importPackagesFromRelay}
       />
       <Loading show={isBusy} />
     </>

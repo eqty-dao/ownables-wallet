@@ -45,8 +45,8 @@ export default function TransactionListItem(params: {direction: 'in' | 'out'; tx
           <List.Icon
             color={color}
             style={{...style, marginLeft: 0, marginRight: 8}}
-            // icon={txTypes[tx.type].icon[direction]!}
-            icon={"check"}
+            icon={txTypes[tx.type].icon[direction]!}
+            // icon={"check"}
           />
         )
       }

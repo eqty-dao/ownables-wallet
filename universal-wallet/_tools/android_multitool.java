@@ -33,10 +33,12 @@ public class android_multitool {
       "  replace <filename>\n    Tool to perform a multiline search and replace in a file.\n" +
       "    You must export environment variables SEARCH and REPLACE before running command\n\n";
 
+      //F-2024-4523 - Improper Use of System.exit()
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
       System.out.print(USAGE_HELP);
-      System.exit(-1);
+      // System.exit(-1);
+      return;
     }
 
     String toolName = args[0];
@@ -240,31 +242,30 @@ public class android_multitool {
     String newContent = content.replace(searchString, replaceString);
     writeStringToFile(filePath, newContent);
   }
+//F-2024-4522 - Unrestricted Resource Consumption In Multiline_replace Method - Info
+private static String readFileToString(String filePath) {
+StringBuilder contentBuilder = new StringBuilder();
+try (BufferedReader br = new BufferedReader(new FileReader(filePath
+))) {
+String sCurrentLine;
+while ((sCurrentLine = br.readLine()) != null) {
+contentBuilder.append(sCurrentLine).append("\n");
+}
+} catch (IOException e) {
+return "";
+}
+return contentBuilder.toString();
+}
 
-  private static String readFileToString(String filePath) {
-    StringBuilder contentBuilder = new StringBuilder();
-    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-      String sCurrentLine;
-      while ((sCurrentLine = br.readLine()) != null) {
-        contentBuilder.append(sCurrentLine).append("\n");
-      }
-    } catch (IOException e) {
-      return "";
-    }
-    return contentBuilder.toString();
-  }
-
+  //F-2024-4521 - Resource Leak in writeStringToFile Method
   private static boolean writeStringToFile(String filePath, String content) {
-    try {
-      BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))){
       writer.write(content);
-      writer.close();
       return true;
     } catch (IOException e) {
       System.err.println("Error writing to the file: " + e.getMessage());
       e.printStackTrace();
+      return false;
     }
-    return false;
   }
-
 }

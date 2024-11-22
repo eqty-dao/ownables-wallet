@@ -79,8 +79,8 @@ android {
         applicationId "com.ltonetwork.universal"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 31
-        versionName "0.2.1"
+        versionCode 33
+        versionName "0.2.3"
     }
     signingConfigs {
         debug {
@@ -90,15 +90,21 @@ android {
             keyPassword 'android'
         }
         release {
-            Properties keyProperties = new Properties()
-            def keystorePropertiesFile = rootProject.file('key.properties')
-            if (keystorePropertiesFile.exists()) {
-                keyProperties.load(keystorePropertiesFile.newDataInputStream())
-                keyAlias keyProperties.getProperty('keyAlias')
-                keyPassword keyProperties.getProperty('keyPassword')
-                storeFile keyProperties['storeFile'] ? file(keyProperties['storeFile']) : null
-                storePassword keyProperties.getProperty('storePassword')
+            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
             }
+            // Properties keyProperties = new Properties()
+            // def keystorePropertiesFile = rootProject.file('key.properties')
+            // if (keystorePropertiesFile.exists()) {
+            //     keyProperties.load(keystorePropertiesFile.newDataInputStream())
+            //     keyAlias keyProperties.getProperty('keyAlias')
+            //     keyPassword keyProperties.getProperty('keyPassword')
+            //     storeFile keyProperties['storeFile'] ? file(keyProperties['storeFile']) : null
+            //     storePassword keyProperties.getProperty('storePassword')
+            // }
         }
     }
     buildTypes {

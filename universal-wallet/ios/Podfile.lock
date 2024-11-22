@@ -957,17 +957,15 @@ PODS:
     - React-Core
   - react-native-randombytes (3.6.1):
     - React-Core
-  - react-native-rl-web-server (0.1.0):
-    - GCDWebServer (~> 3.0)
-    - glog
-    - RCT-Folly (= 2022.05.16.00)
-    - React-Core
   - react-native-safe-area-context (4.9.0):
+    - React-Core
+  - react-native-static-server (0.6.0-alpha.8):
+    - GCDWebServer (~> 3.0)
     - React-Core
   - react-native-udp (4.1.7):
     - CocoaAsyncSocket
     - React-Core
-  - react-native-webview (13.8.5):
+  - react-native-webview (13.12.3):
     - glog
     - RCT-Folly (= 2022.05.16.00)
     - React-Core
@@ -1216,8 +1214,8 @@ DEPENDENCIES:
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-randombytes (from `../node_modules/react-native-randombytes`)
-  - react-native-rl-web-server (from `../node_modules/react-native-rl-web-server`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
+  - "react-native-static-server (from `../node_modules/@dr.pogodin/react-native-static-server`)"
   - react-native-udp (from `../node_modules/react-native-udp`)
   - react-native-webview (from `../node_modules/react-native-webview`)
   - React-nativeconfig (from `../node_modules/react-native/ReactCommon`)
@@ -1330,10 +1328,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-pager-view"
   react-native-randombytes:
     :path: "../node_modules/react-native-randombytes"
-  react-native-rl-web-server:
-    :path: "../node_modules/react-native-rl-web-server"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
+  react-native-static-server:
+    :path: "../node_modules/@dr.pogodin/react-native-static-server"
   react-native-udp:
     :path: "../node_modules/react-native-udp"
   react-native-webview:
@@ -1440,10 +1438,10 @@ SPEC CHECKSUMS:
   react-native-get-random-values: 21325b2244dfa6b58878f51f9aa42821e7ba3d06
   react-native-pager-view: 0eb900a8c5d83c02a74b0125d4b5f9fdcc5b8f44
   react-native-randombytes: 421f1c7d48c0af8dbcd471b0324393ebf8fe7846
-  react-native-rl-web-server: ac5a87d1fbcb4356cb98bc49fa371651a4249c96
   react-native-safe-area-context: b97eb6f9e3b7f437806c2ce5983f479f8eb5de4b
+  react-native-static-server: c51fb090a6fd0babf703d4cdb65f45062cdabfac
   react-native-udp: df79c3cb72c4e71240cd3ce4687bfb8a137140d5
-  react-native-webview: 2323bfa8c5d4c204db4304ce7112955b317d7e59
+  react-native-webview: 0dccd9eaf4a0986f94fd3410d4b291ee8f3562f6
   React-nativeconfig: b4d4e9901d4cabb57be63053fd2aa6086eb3c85f
   React-NativeModulesApple: cd26e56d56350e123da0c1e3e4c76cb58a05e1ee
   React-perflogger: 5f49905de275bac07ac7ea7f575a70611fa988f2
@@ -1476,4 +1474,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 60728df0a19ffe8fb1fc3e5aa0b99ee665eb58c8
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
