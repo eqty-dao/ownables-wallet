@@ -1,48 +1,39 @@
-import { Component, createRef, ReactNode, RefObject, useEffect, useState } from "react";
-import { Card, CircularProgress, Paper, Tooltip } from "@mui/material";
-import OwnableFrame from "../OwnableFrame";
-import { Cancelled, connect as rpcConnect } from "simple-iframe-rpc";
-import PackageService from "../../services/Package.service";
 import { Binary, EventChain } from "@ltonetwork/lto";
-import OwnableService, {
-  OwnableRPC,
-  StateDump,
-} from "../../services/Ownable.service";
-import {
-  TypedMetadata,
-  TypedOwnableInfo,
-} from "../../interfaces/TypedOwnableInfo";
-import isObject from "../../utils/isObject";
-import ownableErrorMessage from "../../utils/ownableErrorMessage";
-import TypedDict from "../../interfaces/TypedDict";
-import { TypedPackage } from "../../interfaces/TypedPackage";
-import LTOService from "../../services/LTO.service";
-import EventChainService from "../../services/EventChain.service";
-import { themeStyles } from "../../theme/themeStyles";
-import If from "../If";
-import { ReactComponent as CircleCheckIcon } from "../../assets/circle_check_icon.svg";
-import LtoOverlay, { LtoOverlayBanner } from "./LtoOverlay";
-import SessionStorageService from "../../services/SessionStorage.service";
-import { sendRNPostMessage } from "../../utils/postMessage";
-import { BridgeService } from "../../services/Bridge.service";
-import { RelayService } from "../../services/Relay.service";
+import { Card, CircularProgress, Paper, Tooltip } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
+import { Component, ReactNode, RefObject, createRef, useEffect, useState } from "react";
+import { isObject } from "util";
+import TypedDict from "../../interfaces/TypedDict";
+import { TypedOwnableInfo, TypedMetadata } from "../../interfaces/TypedOwnableInfo";
+import { TypedPackage } from "../../interfaces/TypedPackage";
+import { BridgeService } from "../../services/Bridge.service";
+import EventChainService from "../../services/EventChain.service";
+import LTOService from "../../services/LTO.service";
+import OwnableService, { StateDump, OwnableRPC } from "../../services/Ownable.service";
+import PackageService from "../../services/Package.service";
+import { RelayService } from "../../services/Relay.service";
+import SessionStorageService from "../../services/SessionStorage.service";
+import ownableErrorMessage from "../../utils/ownableErrorMessage";
+import { sendRNPostMessage } from "../../utils/postMessage";
 import shortId from "../../utils/shortId";
+import If from "../If";
+import OwnableFrame from "../OwnableFrame";
+import LtoOverlay, { LtoOverlayBanner } from "./LtoOverlay";
+import { themeStyles } from "../../theme/themeStyles";
+import { Cancelled, connect as rpcConnect } from "simple-iframe-rpc";
+import { ReactComponent as CircleCheckIcon } from "../../assets/circle_check_icon.svg";
 import IDBService from "../../services/IDB.service";
-import Loading from "../Loading";
-import LocalStorageService from "../../services/LocalStorage.service";
 
 
 interface OwnableProps {
   chain: EventChain;
   packageCid: string;
   selected: boolean;
-  onDelete: () => void;
   onConsume: (info: TypedOwnableInfo) => void;
   onError: (title: string, message: string) => void;
   children?: ReactNode;
   onOpenModal: () => void;
-  onDeleted: () => void;
+  onDeleted?: () => void;
 }
 
 interface OwnableState {
@@ -59,7 +50,7 @@ export interface OwnableThumbProps {
   onConsume: (info: TypedOwnableInfo) => void;
   onError: (title: string, message: string) => void;
   onOpenModal: () => void;
-  onDeleted: () => void;
+  onDeleted?: () => void;
   children?: ReactNode;
 }
 
@@ -87,118 +78,6 @@ const ownableDescStyle = {
 
 const checkIcon = <CircleCheckIcon style={{ width: "20px", height: "20px" }} />;
 
-export default function OwnableThumb(props: OwnableThumbProps) {
-
-  const [image, setImage] = useState<string | null>(null)
-  const [info, setInfo] = useState<TypedPackage | null>(null)
-  const [owner, setOwner] = useState<string | null>(null)
-  const getImage = async () => {
-    try {
-      const _ = await IDBService.getAll(`package:${props.packageCid}`)
-      if (_.length > 0) {
-        const image = _.find((i: any) => i.name?.split(".")[1] === "webp" && i.name?.split(".")[0] !== "thumbnail")
-        if (image) {
-          setImage(URL.createObjectURL(image))
-        }
-        const metadata = PackageService.info(props.packageCid)
-        if (metadata) {
-          console.log("OwnableThumb -> metadata", metadata)
-          //OwnableService.initStore(props.chain, metadata.cid)
-        }
-      }
-    } catch (e) { }
-  }
-
-  useEffect(() => {
-    getImage()
-    const _info = PackageService.info(props.packageCid)
-    const allEvents = props.chain.events;
-    const lastEvent = allEvents[allEvents.length - 1];
-    const _owner = lastEvent?.parsedData?.transfer?.to
-    setOwner(_owner)
-    setInfo(_info)
-    return () => {
-      URL.revokeObjectURL(image as string)
-    }
-  }, [])
-
-
-
-  const isTransferred = () => {
-    return owner !== LTOService.address
-  }
-
-  const isBridged = () => {
-    const bridgeAddress = SessionStorageService.get("bridgeAddress")
-    const currentOwner = owner
-    if (!bridgeAddress || !currentOwner) return false
-    return currentOwner === bridgeAddress
-  }
-
-  const hasNFT = () => {
-    return info?.keywords?.includes("hasNFT") ?? false
-  }
-
-  return (
-
-    <><Card
-      sx={{
-        aspectRatio: "1/1",
-        position: "relative",
-        borderRadius: "16px",
-        animation: props.selected ? "bounce .4s ease infinite alternate" : "",
-        overflow: "hidden",
-        backgroundColor: "transparent",
-      }}
-      onClick={props.onOpenModal}
-      component={"div"}
-
-    >
-      {image ?
-        <div>
-          <img src={image} alt="Ownable" style={{ width: "100%", height: "100%" }} />
-          <If condition={props.selected}>
-            <LtoOverlay isForDetailsScreen={false}>
-              <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                Selected
-              </LtoOverlayBanner>
-            </LtoOverlay>
-          </If>
-          <If condition={isTransferred() && !isBridged()}>
-            <Tooltip
-              title="You're unable to interact with this Ownable, because it has been transferred to a different account."
-              followCursor
-            >
-              <LtoOverlay isForDetailsScreen={false}>
-                <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                  Transferred
-                </LtoOverlayBanner>
-              </LtoOverlay>
-            </Tooltip>
-          </If>
-          <If condition={isBridged()}>
-            <Tooltip
-              title="You're unable to interact with this Ownable, because it has been transferred to a different account."
-              followCursor
-            >
-              <LtoOverlay isForDetailsScreen={false}>
-                <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                  Bridged
-                </LtoOverlayBanner>
-              </LtoOverlay>
-            </Tooltip>
-          </If>
-
-        </div>
-        :
-        <CircularProgress style={{ alignSelf: "center", justifySelf: "center", marginTop: "50%" }} />}
-    </Card><div onClick={props.onOpenModal}>
-        <p style={ownableNameStyle}>{info?.name || ""}</p>
-        <p style={ownableDescStyle}>{info?.description || ""}</p>
-      </div></>
-
-  );
-}
 
 // export default class OwnableThumb extends Component<OwnableProps, OwnableState> {
 //   private readonly pkg: TypedPackage;
@@ -630,6 +509,7 @@ export default function OwnableThumb(props: OwnableThumbProps) {
 //     borderRadius: "16px",
 //     animation: this.props.selected ? "bounce .4s ease infinite alternate" : "",
 //     overflow: "hidden",
+//     backgroundColor: "transparent",
 //   };
 
 //   render() {
@@ -677,3 +557,164 @@ export default function OwnableThumb(props: OwnableThumbProps) {
 //     );
 //   }
 // }
+
+
+
+
+// import { Component, createRef, ReactNode, RefObject, useEffect, useState } from "react";
+// import { Card, CircularProgress, Paper, Tooltip } from "@mui/material";
+// import OwnableFrame from "../OwnableFrame";
+// import PackageService from "../../services/Package.service";
+// import { Binary, EventChain } from "@ltonetwork/lto";
+// import OwnableService, {
+//   OwnableRPC,
+//   StateDump,
+// } from "../../services/Ownable.service";
+// import {
+//   TypedMetadata,
+//   TypedOwnableInfo,
+// } from "../../interfaces/TypedOwnableInfo";
+// import isObject from "../../utils/isObject";
+// import ownableErrorMessage from "../../utils/ownableErrorMessage";
+// import TypedDict from "../../interfaces/TypedDict";
+// import { TypedPackage } from "../../interfaces/TypedPackage";
+// import LTOService from "../../services/LTO.service";
+// import EventChainService from "../../services/EventChain.service";
+// import { themeStyles } from "../../theme/themeStyles";
+// import If from "../If";
+// import LtoOverlay, { LtoOverlayBanner } from "./LtoOverlay";
+// import SessionStorageService from "../../services/SessionStorage.service";
+// import { sendRNPostMessage } from "../../utils/postMessage";
+// import { BridgeService } from "../../services/Bridge.service";
+// import { RelayService } from "../../services/Relay.service";
+// import { enqueueSnackbar } from "notistack";
+// import shortId from "../../utils/shortId";
+// import IDBService from "../../services/IDB.service";
+// import Loading from "../Loading";
+// import LocalStorageService from "../../services/LocalStorage.service";
+
+
+
+export default function OwnableThumb(props: OwnableThumbProps) {
+
+  const [image, setImage] = useState<string | null>(null)
+  const [info, setInfo] = useState<TypedPackage | null>(null)
+  const [owner, setOwner] = useState<string | null>(null)
+  const getImage = async () => {
+    try {
+      const _ = await IDBService.getAll(`package:${props.packageCid}`)
+      if (_.length > 0) {
+        const image = _.find((i: any) => i.name?.split(".")[1] === "webp" && i.name?.split(".")[0] !== "thumbnail")
+        if (image) {
+          setImage(URL.createObjectURL(image))
+        }
+        const metadata = PackageService.info(props.packageCid)
+        if (metadata) {
+          // console.log("OwnableThumb -> metadata", metadata)
+          OwnableService.initStore(props.chain, metadata.cid)
+        }
+      }
+    } catch (e) {
+      console.error("OwnableThumb -> getImage -> e", e)
+    }
+  }
+  const getOwnableName = (name: string) => {
+    if(!name) return ""
+    if(name.length > 20) {
+      return name.slice(0, 20) + "..."
+    }
+    //remove the term ownable from the start of the name case insensitive
+    const regex = new RegExp(/ownable/i)
+    const _name = name.replace(regex, "")
+    return _name
+  }
+  useEffect(() => {
+    getImage()
+    const _info = PackageService.info(props.packageCid)
+    const allEvents = props.chain.events;
+    const lastEvent = allEvents[allEvents.length - 1];
+    const _owner = lastEvent?.parsedData?.transfer?.to
+    setOwner(_owner)
+    setInfo(_info)
+    return () => {
+      URL.revokeObjectURL(image as string)
+    }
+  }, [])
+
+
+
+  const isTransferred = () => {
+    return owner !== LTOService.address
+  }
+
+  const isBridged = () => {
+    const bridgeAddress = SessionStorageService.get("bridgeAddress")
+    const currentOwner = owner
+    if (!bridgeAddress || !currentOwner) return false
+    return currentOwner === bridgeAddress
+  }
+
+  const hasNFT = () => {
+    return info?.keywords?.includes("hasNFT") ?? false
+  }
+
+  return (
+
+    <><Card
+      sx={{
+        aspectRatio: "1/1",
+        position: "relative",
+        borderRadius: "16px",
+        animation: props.selected ? "bounce .4s ease infinite alternate" : "",
+        overflow: "hidden",
+        backgroundColor: "transparent",
+      }}
+      onClick={props.onOpenModal}
+      component={"div"}
+
+    >
+      {image ?
+        <div>
+          <img src={image} alt="Ownable" style={{ width: "100%", height: "100%" }} />
+          <If condition={props.selected}>
+            <LtoOverlay isForDetailsScreen={false}>
+              <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                Selected
+              </LtoOverlayBanner>
+            </LtoOverlay>
+          </If>
+          <If condition={isTransferred() && !isBridged()}>
+            <Tooltip
+              title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+              followCursor
+            >
+              <LtoOverlay isForDetailsScreen={false}>
+                <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                  Transferred
+                </LtoOverlayBanner>
+              </LtoOverlay>
+            </Tooltip>
+          </If>
+          <If condition={isBridged()}>
+            <Tooltip
+              title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+              followCursor
+            >
+              <LtoOverlay isForDetailsScreen={false}>
+                <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                  Bridged
+                </LtoOverlayBanner>
+              </LtoOverlay>
+            </Tooltip>
+          </If>
+
+        </div>
+        :
+        <CircularProgress style={{ alignSelf: "center", justifySelf: "center", marginTop: "50%" }} />}
+    </Card><div onClick={props.onOpenModal}>
+        <p style={ownableNameStyle}>{getOwnableName(info?.name || "")}</p>
+        <p style={ownableDescStyle}>{info?.description || ""}</p>
+      </div></>
+
+  );
+}

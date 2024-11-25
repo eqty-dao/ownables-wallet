@@ -52,25 +52,35 @@ export default class IDBService {
   }
 
   static async getMap(store: string): Promise<Map<any, any>> {
-    return new Promise(async (resolve, reject) => {
-      const tx = (await this.db)
-        .transaction(store, "readonly")
-        .objectStore(store)
-        .openCursor();
+    try {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const tx = (await this.db)
+            .transaction(store, "readonly")
+            .objectStore(store)
+            .openCursor();
 
-      const map = new Map();
+          const map = new Map();
 
-      tx.onsuccess = () => {
-        let cursor = tx.result;
-        if (cursor) {
-          map.set(cursor.primaryKey, cursor.value);
-          cursor.continue();
-        } else {
-          return resolve(map);
+          tx.onsuccess = () => {
+            let cursor = tx.result;
+            if (cursor) {
+              map.set(cursor.primaryKey, cursor.value);
+              cursor.continue();
+            } else {
+              return resolve(map);
+            }
+          };
+          tx.onerror = (event) => reject(this.error(event));
+        } catch (error) {
+          console.log(error);
+
         }
-      };
-      tx.onerror = (event) => reject(this.error(event));
-    });
+      });
+    } catch (error) {
+      console.log(error);
+      return new Map();
+    }
   }
 
   static async keys(store: string): Promise<string[]> {
@@ -221,11 +231,11 @@ export default class IDBService {
     const stores =
       store instanceof RegExp
         ? Array.from((await this.db).objectStoreNames).filter((name) =>
-            name.match(store)
-          )
+          name.match(store)
+        )
         : (await this.db).objectStoreNames.contains(store)
-        ? store
-        : [];
+          ? store
+          : [];
 
     if (stores.length === 0) return;
 

@@ -46,6 +46,7 @@ import { sendRNPostMessage } from "../utils/postMessage";
 import { FileCopy, FileCopyOutlined } from "@mui/icons-material";
 import { activityLogService } from "../services/ActivityLog.service";
 import { sign } from "@ltonetwork/http-message-signatures";
+import { AppConfig } from "../AppConfig";
 
 interface Props {
   open: boolean;
@@ -148,16 +149,7 @@ const CreateOwnablesDrawer = (props: Props) => {
     try {
       const response =
         await axios.get(
-          `${process.env.REACT_APP_OBUILDER}/api/v1/availableChains`,
-          // `${process.env.REACT_APP_OBUILDER}/api/v1/templateCost?templateId=1`,
-          // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1',
-          // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
-          // 'http://localhost:3000/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
-          // {
-          //   headers: {
-          //     Accept: "*/*",
-          //   },
-          // }
+          `${AppConfig.OBUILDER()}/api/v1/availableChains`,
         );
       let _ = new Object();
       Object.keys(response.data).forEach((key) => {
@@ -175,20 +167,12 @@ const CreateOwnablesDrawer = (props: Props) => {
       setAvailableChains(availableChains);
       setAllBuildCosts(allBuildCosts);
       setBuildCost(value);
+      console.log("OBUILDER", AppConfig.OBUILDER());
       const address = await axios.get(
-        `${process.env.REACT_APP_OBUILDER}/api/v1/ServerLtoWalletAddresses`,
-        // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/ServerWalletAddressLTO',
-        // "http://localhost:3000/api/v1/ServerWalletAddressLTO",
-        // {
-        //   headers: {
-        //     Accept: "*/*",
-        //   },
-        // }
+        `${AppConfig.OBUILDER()}/api/v1/ServerLtoWalletAddresses`,
       );
       console.log("address", address.data.serverLtoWalletAddress_T);
       const serverAddress = address.data.serverLtoWalletAddress_T;
-      // for testing now use 3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo
-      // const serverAddress = "3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo";
       console.log("serverAddress", serverAddress);
       const calculatesAmount =
         parseFloat(templateCostValue.toString()) / LTO_REPRESENTATION + 1;
@@ -489,7 +473,7 @@ const CreateOwnablesDrawer = (props: Props) => {
   const getBuildCostInLTO = (chain: string) => {
     const chainCost = allBuildCosts[chain];
     if (chainCost) {
-      const value = chainCost?.testnet?.templateCost["1"];
+      const value = chainCost?.templateCost["1"];
       const chainCostValue = typeof value === 'number' ? value : Number(value);
       if (chainCostValue) {
         return (chainCostValue / LTO_REPRESENTATION) + 1;
@@ -560,7 +544,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       const account = await LTOService.getAccount();
       const transaction = await LTOService.broadcast(tx!.signWith(account));
       setCreateOwnableMessage("Contacting oBuilder...");
-      const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload`;
+      const url = `${AppConfig.OBUILDER()}/api/v1/upload`;
       const request = {
         headers: {},
         method: "POST",
@@ -575,7 +559,6 @@ const CreateOwnablesDrawer = (props: Props) => {
         Accept: "*/*",
       };
       const combinedHeaders = { ...signedRequest.headers, ...headers1 };
-      // const combinedHeaders = headers1;
       console.log("combinedHeaders", combinedHeaders);
       setTimeout(() => {
         if (transaction.id) {
@@ -615,17 +598,11 @@ const CreateOwnablesDrawer = (props: Props) => {
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
           zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-            const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload?ltoNetworkId=T`;
+            const url = `${AppConfig.OBUILDER()}/api/v1/upload?ltoNetworkId=T`;
             const formData = new FormData();
             formData.append("file", zipFile, formattedName + ".zip");
 
             axios
-              // .post(url, formData, {
-              //   headers: {
-              //     "Content-Type": "multipart/form-data",
-              //     Accept: "*/*",
-              //   },
-              // })
               .post(request.url, formData, {
                 headers: combinedHeaders,
               })

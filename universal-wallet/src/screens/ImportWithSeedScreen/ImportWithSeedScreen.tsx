@@ -1,17 +1,17 @@
-import React, {useContext, useState} from 'react';
-import {RootStackScreenProps} from '../../../types';
-import {IMPORT_WITHSEEDS} from '../../constants/Text';
-import {MessageContext} from '../../context/UserMessage.context';
+import React, { useContext, useState } from 'react';
+import { RootStackScreenProps } from '../../../types';
+import { IMPORT_WITHSEEDS } from '../../constants/Text';
+import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
-import {ScreenContainer} from '../../components/ScreenContainer';
-import {Title} from '../../components/Title';
-import {BackButton} from '../../components/BackButton';
-import {InputField} from '../../components/InputField';
-import {StyledButton} from '../../components/StyledButton';
+import { ScreenContainer } from '../../components/ScreenContainer';
+import { Title } from '../../components/Title';
+import { BackButton } from '../../components/BackButton';
+import { InputField } from '../../components/InputField';
+import { StyledButton } from '../../components/StyledButton';
 
-export default function ImportSeedScreen({navigation}: RootStackScreenProps<'ImportSeed'>) {
+export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
   const [seedPhrase, setSeedPhrase] = useState<string>('');
-  const {setShowMessage, setMessageInfo} = useContext(MessageContext);
+  const { setShowMessage, setMessageInfo } = useContext(MessageContext);
 
   const handleImportFromSeed = async () => {
     try {
@@ -19,7 +19,7 @@ export default function ImportSeedScreen({navigation}: RootStackScreenProps<'Imp
 
       if (seed.split(' ').length === 15) {
         await LTOService.importAccount(seed);
-        navigation.navigate('RegisterAccount', {data: 'seed'});
+        navigation.navigate('RegisterAccount', { data: 'seed' });
       } else {
         setShowMessage(true);
         setMessageInfo('Seed phrase must have 15 words separated by one space!');
@@ -42,10 +42,7 @@ export default function ImportSeedScreen({navigation}: RootStackScreenProps<'Imp
         onChangeText={setSeedPhrase}
         value={seedPhrase}
         placeholder={IMPORT_WITHSEEDS.INPUT_SEEDPHRASE.PLACEHOLDER}
-        // autoCapitalize="none"
-        // autoComplete="off"
-        // autoCorrect={false}
-        // blurOnSubmit={true}
+        autoCapitalize="none"
       />
       <StyledButton
         text={IMPORT_WITHSEEDS.BUTTON_IMPORT}

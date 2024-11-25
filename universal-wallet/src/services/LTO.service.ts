@@ -1,13 +1,13 @@
-import {Account, CancelLease, Lease, LTO, Transaction} from '@ltonetwork/lto';
+import { Account, CancelLease, Lease, LTO, Transaction } from '@ltonetwork/lto';
 import LocalStorageService from './LocalStorage.service';
-import {TypedTransaction} from '../interfaces/TypedTransaction';
-import {LTO_NETWORK_ID, LTO_API_URL} from '@env';
+import { TypedTransaction } from '../interfaces/TypedTransaction';
+import { LTO_API_URL_T, LTO_API_URL_M } from '@env';
 
-console.log('LTO_NETWORK_ID', LTO_NETWORK_ID, 'LTO_API_URL', LTO_API_URL);
-export const lto = new LTO(LTO_NETWORK_ID);
-if ((LTO_API_URL as string) && lto) {
-  lto.nodeAddress = LTO_API_URL!;
-}
+console.log('LTO_API_URL_T', LTO_API_URL_T, 'LTO_API_URL_M', LTO_API_URL_M);
+var lto = new LTO('L');
+lto.nodeAddress = LTO_API_URL_M;
+export var ltoService = lto;
+
 export default class LTOService {
   static account?: Account;
 
@@ -31,10 +31,11 @@ export default class LTOService {
     const seed = encryptedAccount.seed[seedIndex];
 
     if (signature) {
-      this.account = lto.account({seedPassword: encodedSignature, seed});
+      this.account = lto.account({ seedPassword: encodedSignature, seed });
     } else {
-      this.account = lto.account({seedPassword: password, seed});
+      this.account = lto.account({ seedPassword: password, seed });
     }
+    console.log('LTOService unlock', this.account);
   };
 
   public static lock = () => {
@@ -69,7 +70,16 @@ export default class LTOService {
 
   public static createAccount = async () => {
     try {
-      this.account = lto.account();
+      const network = await LocalStorageService.getData('@network');
+      console.log('network', network);
+      if (network === 'T') {
+        lto = new LTO('T');
+        lto.nodeAddress = LTO_API_URL_T;
+      } else {
+        lto = new LTO('L');
+        lto.nodeAddress = LTO_API_URL_M;
+      }
+      return this.account = lto.account();
     } catch (error) {
       throw new Error('Error creating account');
     }
@@ -98,12 +108,14 @@ export default class LTOService {
       const response = await fetch(url);
       return response.json();
     } catch (error) {
-      throw new Error('Error fetching account details');
+      console.log('Error fetching account details', error);
+      // throw new Error('Error fetching account details');
     }
   };
 
   public static getTransactions = async (address: string, limit?: number, page = 1) => {
     const pending = await this.getPendingTransactions(address);
+    console.log('pending', pending);
 
     let offset;
     if (!limit) {
@@ -183,4 +195,20 @@ export default class LTOService {
       return false;
     }
   };
+
+  public static switchNetwork = (network: string) => {
+    console.log('LTO Service switchNetwork', network);
+    lto = new LTO(network);
+    if (network === 'T') {
+      if (LTO_API_URL_T) {
+        console.log('setting node address to', LTO_API_URL_T);
+        lto.nodeAddress = LTO_API_URL_T;
+      }
+    } else if (network === 'L') {
+      if (LTO_API_URL_M) {
+        console.log('setting node address to', LTO_API_URL_M);
+        lto.nodeAddress = LTO_API_URL_M;
+      }
+    }
+  }
 }

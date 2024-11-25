@@ -78,6 +78,7 @@ export const ActivityCard = styled(Card)`
   margin: 16px auto 0 auto;
   background-color: #141414;
   border-radius: 16px;
+  margin-bottom: 100px;
 `;
 
 export const ActivityCardTitle = styled.View`

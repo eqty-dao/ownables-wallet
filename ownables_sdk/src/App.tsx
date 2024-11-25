@@ -186,13 +186,12 @@ export default function App() {
     const seed = queryParams.get("seed");
 
     if (seed) {
-      console.log(`GOT SEED: ${seed}`);
       sendRNPostMessage(JSON.stringify({ type: 'seed', data: seed }));
       try {
-        LTOService.importAccount(seed);
+        LTOService.importAccount();
         if (LTOService.isUnlocked()) {
           console.log(`SETTING ADDRESS: ${LTOService.address}`);
-          sendRNPostMessage(JSON.stringify({ type: 'address', data: LTOService.address }));
+          sendRNPostMessage(JSON.stringify({ type: 'WalletFromApp', data: LTOService.address }));
         }
         IDBService.open()
           .then(() => OwnableService.loadAll())

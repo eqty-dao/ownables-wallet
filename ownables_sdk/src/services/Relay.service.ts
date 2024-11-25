@@ -7,12 +7,10 @@ import { MessageExt, MessageInfo } from "../interfaces/MessageInfo";
 import { sign } from "@ltonetwork/http-message-signatures";
 import LTOService from "./LTO.service";
 import { activityLogService } from "./ActivityLog.service";
-
-export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID);
+import { AppConfig } from "../AppConfig";
 
 export class RelayService {
-  private static relayURL =
-    process.env.REACT_APP_RELAY || process.env.REACT_APP_LOCAL;
+  private static relayURL =AppConfig.RELAY();
   private static relay = new Relay(`${this.relayURL}`);
 
   /**

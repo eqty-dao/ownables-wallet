@@ -128,6 +128,7 @@ const paperStyle = {
   position: "relative",
   borderRadius: "16px",
   overflow: "hidden",
+  backgroundColor: "transparent",
 };
 
 const checkIcon = <CircleCheckIcon style={{ width: "40px", height: "40px" }} />;

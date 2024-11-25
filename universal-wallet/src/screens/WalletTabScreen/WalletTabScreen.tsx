@@ -162,12 +162,13 @@ const MainTab = ({children, navigation}) => {
       setDetails({} as TypedDetails);
       return;
     }
-
-    return LTOService.getBalance(accountAddress)
-      .then(accountDetails => setDetails(accountDetails))
-      .catch(error => {
-        throw new Error(`Error retrieving account data. ${error}`);
-      });
+    const accountDetails = await LTOService.getBalance(accountAddress);
+    console.log('accountDetails', accountDetails);
+    if(accountDetails) {
+      setDetails(accountDetails);
+    }else{
+      setDetails({} as TypedDetails);
+    }
   };
 
   const loadLeases = async () => {
@@ -268,6 +269,7 @@ const MainTab = ({children, navigation}) => {
 
     try {
       const txs: TypedTransaction[] = await LTOService.getTransactions(accountAddress, LATEST_TRANSACTIONS);
+      console.log('txs', txs);
       const txsByDate = new Map();
 
       for (const tx of txs.sort((a, b) => b.timestamp! - a.timestamp!)) {
@@ -277,7 +279,8 @@ const MainTab = ({children, navigation}) => {
       setTransactions(Array.from(txsByDate.entries()).map(([date, txs]) => ({date, data: txs})));
     } catch (error) {
       // throw new Error(`Error retrieving latest transactions. ${error}`)
-      console.log('>> ERROR: Error retrieving latest transactions');
+      console.log(`WalletScreen: loadTransactions: Error retrieving latest transactions. ${error}`);
+      setTransactions([]);
     }
   };
 
