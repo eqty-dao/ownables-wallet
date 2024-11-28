@@ -1,24 +1,29 @@
-import React, {useContext, useEffect, useState} from 'react';
-import {RootStackScreenProps} from '../../../types';
-import {MessageContext} from '../../context/UserMessage.context';
+import React, { useContext, useEffect, useState } from 'react';
+import { RootStackScreenProps } from '../../../types';
+import { MessageContext } from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
 import LTOService from '../../services/LTO.service';
-import {SIGNIN} from '../../constants/Text';
-import {authenticateWithBiometrics} from '../../utils/authenticateWithBiometrics';
+import { SIGNIN } from '../../constants/Text';
+import { authenticateWithBiometrics } from '../../utils/authenticateWithBiometrics';
 import ReactNativeBiometrics from 'react-native-biometrics';
-import {ScreenContainer} from '../../components/ScreenContainer';
-import {StyledButton} from '../../components/StyledButton';
-import {InputField} from '../../components/InputField';
-import {Separator} from '../../components/styles/Separator.styles';
-import {Title} from '../../components/Title';
+import { ScreenContainer } from '../../components/ScreenContainer';
+import { StyledButton } from '../../components/StyledButton';
+import { InputField } from '../../components/InputField';
+import { Separator } from '../../components/styles/Separator.styles';
+import { Title } from '../../components/Title';
+import EnvironmentSelectionSwitch from '../../components/EnvironmentSwitch';
+import { ENABLE_ENV_SWITCH } from '@env';
 
-export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'>) {
+export default function SignInScreen({ navigation }: RootStackScreenProps<'SignIn'>) {
+
   const [userAlias, setUserAlias] = useState<any>();
   const [password, setPassword] = useState<string>('');
   const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const {setShowMessage, setMessageInfo} = useContext(MessageContext);
+  const { setShowMessage, setMessageInfo } = useContext(MessageContext);
   const [loading, setLoading] = useState<boolean>(false);
+  const [isBiometric, setIsBiometric] = useState<boolean>(false);
+  const [showEnvironmentSelector, setShowEnvironmentSelector] = useState<boolean>(false);
 
   useEffect(() => {
     getAlias();
@@ -34,12 +39,12 @@ export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'
       });
   };
 
-  const validateForm = (): {err?: string} => {
+  const validateForm = (): { err?: string } => {
     if (!userAlias?.nickname) {
-      return {err: 'Please import your account first!'};
+      return { err: 'Please import your account first!' };
     }
     if (password === '') {
-      return {err: 'Password is required!'};
+      return { err: 'Password is required!' };
     }
 
     return {};
@@ -49,7 +54,7 @@ export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'
     if (loading) return;
 
     setLoading(true);
-    const {err} = validateForm();
+    const { err } = validateForm();
 
     if (err) {
       setMessageInfo(err);
@@ -63,6 +68,8 @@ export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'
         setLoading(false);
         navigation.replace('Root');
         setPassword('');
+        setLoading(false);
+        setIsBiometric(false);
       })
       .catch(() => {
         setMessageInfo('Wrong password!');
@@ -79,6 +86,11 @@ export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'
     verifyForEnrollment();
   }, []);
 
+  const handleLongPress = () => {
+    if (ENABLE_ENV_SWITCH !== 'true') return;
+    setShowEnvironmentSelector(true);
+  }
+
   return (
     <ScreenContainer>
       <Separator />
@@ -92,19 +104,28 @@ export default function SignInScreen({navigation}: RootStackScreenProps<'SignIn'
         placeholder={SIGNIN.INPUT_PASSWORD.PLACEHOLDER}
       />
 
-      <StyledButton disabled={loading} onPress={handleSignIn} text={loading ? 'Please wait' : SIGNIN.BUTTON_SIGNIN} />
+      <StyledButton disabled={loading} onPress={handleSignIn} text={loading && !isBiometric ? 'Please wait' : SIGNIN.BUTTON_SIGNIN} onLongPress={handleLongPress} />
       {isEnrolled && (
         // F-2024-4598 - Biometric Authentication Without Fallback
         <StyledButton
-          onPress={() =>
-            authenticateWithBiometrics({navigation}).catch(() => {
+          onPress={() => {
+            setIsBiometric(true);
+            setLoading(true);
+            authenticateWithBiometrics({ navigation }).catch(() => {
               setMessageInfo('Biometric authentication failed. Please use your password.');
+              setLoading(false);
               setShowMessage(true);
             })
-          }
-          text={SIGNIN.BUTTON_BIOMETRICS}
+          }}
+          disabled={loading}
+          text={loading && isBiometric ? 'Please wait' : SIGNIN.BUTTON_BIOMETRICS}
+          onLongPress={handleLongPress}
         />
       )}
+      <EnvironmentSelectionSwitch
+        showEnvironmentSelector={showEnvironmentSelector}
+        setShowEnvironmentSelector={setShowEnvironmentSelector}
+      />
     </ScreenContainer>
   );
 }

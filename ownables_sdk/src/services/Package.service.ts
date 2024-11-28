@@ -102,6 +102,11 @@ export default class PackageService {
     );
 
     if (!found) throw new Error(`Package not found: ${nameOrCid}`);
+    // replace get the correct title
+    const regex = new RegExp(/ownable/i);
+    const title = found.name.replace(regex, "").replace(/[-_]+/, " ").trim()
+    .replace(/\b\w/, (c) => c.toUpperCase());
+    found.title = title;
     return found;
   }
 

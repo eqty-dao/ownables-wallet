@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, Dialog, DialogContent, DialogContentText, LinearProgress } from "@mui/material";
+import { Badge, Box, Dialog, DialogContent, DialogContentText, LinearProgress } from "@mui/material";
 import IDBService from "./services/IDB.service";
 import { TypedPackage } from "./interfaces/TypedPackage";
 import Loading from "./components/Loading";
@@ -53,6 +53,7 @@ import LocalStorageService from "./services/LocalStorage.service";
 import { InfoSharp } from "@mui/icons-material";
 import ActivityLogDrawer from "./components/ActivityLogs";
 import { activityLogService } from "./services/ActivityLog.service";
+import { PollingService } from "./services/Polling.service";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -220,6 +221,19 @@ export default function App() {
     initializeCollections();
     // eslint-disable-next-line
   }, []);
+
+  useEffect(() => {
+    if (LTOService.address.length > 1) {
+      const stopPolling = PollingService.startPolling(
+        LTOService.address,
+        (newCount: any) => {
+          setMessages(newCount);
+        },
+        5000
+      );
+      return () => stopPolling();
+    }
+  }, [LTOService.address]);
 
   const deleteOwnable = async (id: string, packageCid: string) => {
     const pkg = PackageService.info(packageCid);
@@ -486,6 +500,8 @@ export default function App() {
           // setTimeout(() => {
           //   window.location.reload();
           // }, 4000);
+          LocalStorageService.set("messageCount", 0);
+          setMessages(0);
         } else {
           enqueueSnackbar(`No matching packages found for refresh`, {
             variant: "info",
@@ -533,12 +549,14 @@ export default function App() {
         return;
       }
       setImportLabel(`Relating Ownables : (${pkg?.length || 0})`);
+      //@ts-ignore
       const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null && p !== undefined);
       if (filteredPackages.length === 0) {
         sendRNPostMessage(JSON.stringify({ type: 'import completed', data: 'No Ownables found' }));
         setImportingFromRelay(false);
         return;
       }
+      //@ts-ignore
       relayImport(filteredPackages);
     } catch (error) {
       setImportingFromRelay(false);
@@ -731,7 +749,19 @@ export default function App() {
           {
             id: HomePageEnums.ReceiveOwnables,
             title: "Receive Ownables",
-            icon: ReceiveIcon,
+            icon: message > 0 ? () =>
+              <div>
+                <ReceiveIcon />
+                <Badge
+                  badgeContent={message}
+                  color="error"
+                  sx={{
+                    position: "absolute",
+                  }}
+                />
+              </div>
+              :
+              ReceiveIcon,
           },
           {
             id: HomePageEnums.ActivityLogs,

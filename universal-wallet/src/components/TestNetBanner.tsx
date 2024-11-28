@@ -1,14 +1,16 @@
 import React from 'react';
 import { Text, StyleSheet, SafeAreaView } from 'react-native';
-import { useUserSettings } from '../context/User.context';
+import { Env, Network, useUserSettings } from '../context/User.context';
 
 const TestNetBanner = () => {
-  const { network } = useUserSettings();
+  const { network, env } = useUserSettings();
 
-  if (network !== 'T') return null;
+  if (network === Network.MAINNET && env === Env.PROD) {
+    return null;
+  }
   return (
     <SafeAreaView style={styles.banner}>
-      <Text style={styles.text}>Test Net</Text>
+      <Text style={styles.text}>{`${network === Network.MAINNET ? 'Mainnet' : 'Testnet'} (${env})`}</Text>
     </SafeAreaView>
   );
 };

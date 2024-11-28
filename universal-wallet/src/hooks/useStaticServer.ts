@@ -23,7 +23,7 @@ const useStaticServer = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [server, setServer] = useState<StaticServer | null>(null);
   const navigation = useNavigation();
-  const { network } = useUserSettings();
+  const { network, env } = useUserSettings();
 
   const restartServer = async () => {
     if (server) {
@@ -58,7 +58,7 @@ const useStaticServer = () => {
       }
       const serverUrl = debugUrl ? debugUrl : await _server.start();
       console.log('Server started at:', serverUrl);
-      setUrl(`${serverUrl}?seed=${seed}&network=${network}`);
+      setUrl(`${serverUrl}?seed=${seed}&network=${network}&env=${env}`);
     } catch (error) {
       console.error('Failed to start server:', error);
     } finally {

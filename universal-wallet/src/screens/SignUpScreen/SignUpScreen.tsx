@@ -9,6 +9,7 @@ import { StyledButton } from '../../components/StyledButton';
 import { FormContainer } from '../../components/styles/FormContainer.styles';
 import NetworkSelector from '../../components/NetworkSelector';
 import { Text } from 'react-native';
+import { ENABLE_NETWORK_SWITCH } from '@env';
 
 export default function SignUpScreen({ navigation }: RootStackScreenProps<'SignUp'>) {
   const [showNetworkSelector, setShowNetworkSelector] = React.useState(false);
@@ -29,14 +30,19 @@ export default function SignUpScreen({ navigation }: RootStackScreenProps<'SignU
     }
 
   };
-
+  const handleLongPress = () => {
+    if (ENABLE_NETWORK_SWITCH !== 'true') {
+      return;
+    }
+    setShowNetworkSelector(true);
+  }
   return (
     <ScreenContainer>
       <Separator />
       <Title title={SIGNUP.TITLE} subtitle={SIGNUP.SUBTITLE} />
       <FormContainer>
-        <StyledButton onPress={handleCreateAccount} text={SIGNUP.BUTTON_CREATE} onLongPress={() => setShowNetworkSelector(true)} />
-        <StyledButton onPress={() => navigation.navigate('ImportSeed')} text={SIGNUP.BUTTON_IMPORT} type="secondary" onLongPress={() => setShowNetworkSelector(true)} />
+        <StyledButton onPress={handleCreateAccount} text={SIGNUP.BUTTON_CREATE} onLongPress={handleLongPress} />
+        <StyledButton onPress={() => navigation.navigate('ImportSeed')} text={SIGNUP.BUTTON_IMPORT} type="secondary" onLongPress={handleLongPress} />
       </FormContainer>
       <NetworkSelector showNetworkSelector={showNetworkSelector} setShowNetworkSelector={setShowNetworkSelector} />
       {

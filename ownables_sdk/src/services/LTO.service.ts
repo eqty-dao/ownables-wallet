@@ -3,21 +3,33 @@ import LocalStorageService from "./LocalStorage.service";
 import SessionStorageService from "./SessionStorage.service";
 import CryptoJS from "crypto-js";
 import { sendRNPostMessage } from "../utils/postMessage";
+import { Env, Network } from "../AppConfig";
 
 const getSeedFromQuery = () => {
   const queryParams = new URLSearchParams(window.location.search);
   return queryParams.get("seed");
 }
 
-export const getNetworkFromQuery = () => {
+// Function to derive Network from query parameters
+export const getNetworkFromQuery: () => Network = (): Network => {
   const queryParams = new URLSearchParams(window.location.search);
-  return queryParams.get("network") || "L";
-}
+  const networkValue = queryParams.get("network");
+
+  // Map the string to the corresponding Network enum value
+  if (networkValue === Network.MAINNET) {
+    return Network.MAINNET;
+  } else if (networkValue === Network.TESTNET) {
+    return Network.TESTNET;
+  }
+
+  return Network.MAINNET;
+};
+
 
 const seed = getSeedFromQuery() as string;
 
 const decryptedSeed = () => {
-  sendRNPostMessage(JSON.stringify({ type: "Enterning decryptedSeed" , data: seed }));
+  sendRNPostMessage(JSON.stringify({ type: "Enterning decryptedSeed", data: seed }));
   return seed;
   // const encryptData = (data: string): string => {
   //   const key = process.env.REACT_APP_SECURE_KEY as string;

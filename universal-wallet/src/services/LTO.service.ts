@@ -1,9 +1,9 @@
 import { Account, CancelLease, Lease, LTO, Transaction } from '@ltonetwork/lto';
 import LocalStorageService from './LocalStorage.service';
 import { TypedTransaction } from '../interfaces/TypedTransaction';
-import { LTO_API_URL_T, LTO_API_URL_M } from '@env';
+import { LTO_API_URL_T, LTO_API_URL_M,ENABLE_NETWORK_SWITCH } from '@env';
+import { Network } from '../context/User.context';
 
-console.log('LTO_API_URL_T', LTO_API_URL_T, 'LTO_API_URL_M', LTO_API_URL_M);
 var lto = new LTO('L');
 lto.nodeAddress = LTO_API_URL_M;
 export var ltoService = lto;
@@ -87,7 +87,7 @@ export default class LTOService {
 
   public static importAccount = async (seed: string) => {
     try {
-      this.account = lto.account({seed: seed});
+      this.account = lto.account({ seed: seed });
     } catch (error) {
       throw new Error('Error importing account from seeds');
     }
@@ -196,15 +196,23 @@ export default class LTOService {
     }
   };
 
-  public static switchNetwork = (network: string) => {
-    console.log('LTO Service switchNetwork', network);
+  public static switchNetwork = (network: Network) => {
+    console.log('switching network to', ENABLE_NETWORK_SWITCH, network);
+    if (ENABLE_NETWORK_SWITCH !== 'true') {
+      lto = new LTO(Network.MAINNET);
+      if (LTO_API_URL_M) {
+        console.log('setting node address to', LTO_API_URL_M);
+        lto.nodeAddress = LTO_API_URL_M;
+      }
+      return
+    }
     lto = new LTO(network);
-    if (network === 'T') {
+    if (network === Network.TESTNET) {
       if (LTO_API_URL_T) {
         console.log('setting node address to', LTO_API_URL_T);
         lto.nodeAddress = LTO_API_URL_T;
       }
-    } else if (network === 'L') {
+    } else if (network === Network.MAINNET) {
       if (LTO_API_URL_M) {
         console.log('setting node address to', LTO_API_URL_M);
         lto.nodeAddress = LTO_API_URL_M;

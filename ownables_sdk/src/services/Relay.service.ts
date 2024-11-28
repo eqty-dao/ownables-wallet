@@ -10,17 +10,19 @@ import { activityLogService } from "./ActivityLog.service";
 import { AppConfig } from "../AppConfig";
 
 export class RelayService {
-  private static relayURL =AppConfig.RELAY();
+  private static relayURL = AppConfig.RELAY();
   private static relay = new Relay(`${this.relayURL}`);
 
   /**
    * Handle All Signed Requests
    */
-  private static async handleSignedRequest(method: string, url: string) {
+  public static async handleSignedRequest(method: string, url: string, options: { headers?: Record<string, string> } = {}) {
     try {
       const sender = LTOService.account;
       const request = {
-        headers: {},
+        headers: {
+          ...options.headers,
+        },
         method,
         url,
       };
@@ -30,13 +32,17 @@ export class RelayService {
       const response = await axios({
         method: signedRequest.method,
         url: signedRequest.url,
-        headers: signedRequest.headers,
+        headers: {
+          ...signedRequest.headers,
+          ...options.headers,
+        },
+        validateStatus: (status) => status >= 200 && status < 500,
       });
 
       return response;
     } catch (error) {
       console.error("Error in handleSignedRequest:", error);
-      throw error;
+      return null;
     }
   }
 
@@ -82,25 +88,30 @@ export class RelayService {
         return [];
       }
 
-      const serverHashes = await Promise.all(
+      const serverHashes = (await Promise.all(
         responses.data.map(async (response: MessageInfo) => {
-          const messageUrl = `${this.relayURL}/inboxes/${address}/${response.hash}`;
-          const infoResponse = await this.handleSignedRequest(
-            "GET",
-            messageUrl
-          );
-
-          if (infoResponse && infoResponse.data && infoResponse.data.hash) {
-            return infoResponse.data.hash;
-          } else {
-            console.warn(
-              "Failed to retrieve message hash for response:",
-              response
+          try {
+            const messageUrl = `${this.relayURL}/inboxes/${address}/${response.hash}`;
+            const infoResponse = await this.handleSignedRequest(
+              "GET",
+              messageUrl
             );
+
+            if (infoResponse && infoResponse.data && infoResponse.data.hash) {
+              return infoResponse.data.hash;
+            } else {
+              console.warn(
+                "Failed to retrieve message hash for response:",
+                response
+              );
+              return;
+            }
+          } catch (error) {
+            console.error("Error in reading inbox hashes:", error);
             return null;
           }
         })
-      );
+      )).filter(c => c !== null || c !== undefined);
 
       return serverHashes.filter(Boolean);
     } catch (error) {
@@ -125,25 +136,27 @@ export class RelayService {
     const url = `${this.relayURL}/inboxes/${address}/`;
     try {
       const responses = await this.handleSignedRequest("GET", url);
+      if (!responses) return null;
       activityLogService.logActivity({
-        activity: "Read Relay Data",
+        activity: `Read relay data for ${responses.data.length} messages`,
         timestamp: Date.now(),
       })
 
       if (!responses.data.length) return null;
 
-      const ownableData = await Promise.all(
+      const ownableData = (await Promise.all(
         responses.data.map(async (response: MessageInfo) => {
           const messageUrl = `${this.relayURL}/inboxes/${address}/${response.hash}`;
           const infoResponse = await this.handleSignedRequest(
             "GET",
             messageUrl
           );
+          if (!infoResponse) return null;
           const message = Message.from(infoResponse.data);
           return { message, messageHash: infoResponse.data.hash };
         })
-      );
-      return ownableData;
+      )).filter(c => c !== null || c !== undefined);
+      return ownableData.filter(Boolean);
     } catch (error) {
       console.error("Failed to read relay data:", error);
       return null;
@@ -183,6 +196,7 @@ export class RelayService {
     if (!this.relayURL) return false;
     try {
       const response = await this.handleSignedRequest("HEAD", this.relayURL);
+      if (!response) return false;
       if (response.status === 200) {
         return true;
       } else {

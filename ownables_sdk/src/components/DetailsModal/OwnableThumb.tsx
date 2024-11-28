@@ -605,6 +605,19 @@ export default function OwnableThumb(props: OwnableThumbProps) {
       const _ = await IDBService.getAll(`package:${props.packageCid}`)
       if (_.length > 0) {
         const image = _.find((i: any) => i.name?.split(".")[1] === "webp" && i.name?.split(".")[0] !== "thumbnail")
+        if (!image) {
+          // try thumbnail
+          const thumbnail = _.find((i: any) => i.name?.split(".")[1] === "webp" && i.name?.split(".")[0] === "thumbnail")
+          if (thumbnail) {
+            setImage(URL.createObjectURL(thumbnail))
+          }else{
+            // find any image with webp,.png,.jpg,.jpeg,.gif
+            const _image = _.find((i: any) => i.name?.split(".")[1] === "webp" || i.name?.split(".")[1] === "png" || i.name?.split(".")[1] === "jpg" || i.name?.split(".")[1] === "jpeg" || i.name?.split(".")[1] === "gif")
+            if (_image) {
+              setImage(URL.createObjectURL(_image))
+            }
+          }
+        }
         if (image) {
           setImage(URL.createObjectURL(image))
         }
@@ -619,8 +632,8 @@ export default function OwnableThumb(props: OwnableThumbProps) {
     }
   }
   const getOwnableName = (name: string) => {
-    if(!name) return ""
-    if(name.length > 20) {
+    if (!name) return ""
+    if (name.length > 20) {
       return name.slice(0, 20) + "..."
     }
     //remove the term ownable from the start of the name case insensitive
@@ -712,7 +725,7 @@ export default function OwnableThumb(props: OwnableThumbProps) {
         :
         <CircularProgress style={{ alignSelf: "center", justifySelf: "center", marginTop: "50%" }} />}
     </Card><div onClick={props.onOpenModal}>
-        <p style={ownableNameStyle}>{getOwnableName(info?.name || "")}</p>
+        <p style={ownableNameStyle}>{getOwnableName(info?.title || "")}</p>
         <p style={ownableDescStyle}>{info?.description || ""}</p>
       </div></>
 

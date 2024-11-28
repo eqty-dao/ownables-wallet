@@ -1,25 +1,44 @@
-import { getNetworkFromQuery } from './services/LTO.service';
-import process from 'process';
-const netWork = getNetworkFromQuery();
+export enum Network {
+  MAINNET = 'L',
+  TESTNET = 'T',
+}
 
-export var AppConfig ={
+export enum Env {
+  PROD = 'PROD',
+  STAGING = 'STAGING',
+}
+
+export const getEnvFromQuery: () => Env = (): Env => {
+  const queryParams = new URLSearchParams(window.location.search);
+  const envValue = queryParams.get("env");
+
+  if (envValue === Env.PROD) {
+    return Env.PROD;
+  } else if (envValue === Env.STAGING) {
+    return Env.STAGING;
+  }
+
+  return Env.PROD;
+}
+const env = getEnvFromQuery();
+export var AppConfig = {
 
   OBUILDER: () => {
-    if (netWork === 'T') {
+    if (env === Env.STAGING) {
       return process.env.REACT_APP_OBUILDER_STAGING;
     } else {
       return process.env.REACT_APP_OBUILDER_PROD;
     }
   },
   OBRIDGE: () => {
-    if (netWork === 'T') {
+    if (env === Env.STAGING) {
       return process.env.REACT_APP_OBRIDGE_STAGING;
     } else {
       return process.env.REACT_APP_OBRIDGE_PROD;
     }
   },
   RELAY: () => {
-    if (netWork === 'T') {
+    if (env === Env.STAGING) {
       return process.env.REACT_APP_RELAY_STAGING;
     } else {
       return process.env.REACT_APP_RELAY_PROD;
@@ -27,12 +46,3 @@ export var AppConfig ={
   },
 }
 
-
-
-// REACT_APP_OBUILDER_STAGING=http://obuilder-staging.eba-ftdayif2.eu-west-1.elasticbeanstalk.com
-// REACT_APP_RELAY_STAGING=https://relay-dev.lto.network
-// REACT_APP_OBRIDGE_STAGING=http://obridge-staging.eba-dge2pr4q.eu-west-1.elasticbeanstalk.com/api/v1
-
-// REACT_APP_OBUILDER_PROD=http://obuilder-env.eu-west-1.elasticbeanstalk.com
-// REACT_APP_RELAY_PROD=https://relay.lto.network
-// REACT_APP_OBRIDGE_PROD=http://obridge-staging.eba-dge2pr4q.eu-west-1.elasticbeanstalk.com/api/v1

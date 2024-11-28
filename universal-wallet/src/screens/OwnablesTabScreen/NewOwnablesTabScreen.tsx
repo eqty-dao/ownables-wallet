@@ -7,7 +7,7 @@ import OverviewHeader from '../../components/OverviewHeader';
 import { StyledImage } from '../../components/styles/OverviewHeader.styles';
 import { logoTitle } from '../../utils/images';
 import { useNavigation } from '@react-navigation/native';
-import styled from 'styled-components/native';
+import { Icon as RneIcons } from 'react-native-elements'
 
 
 const NewOwnablesTabScreen = () => {
@@ -18,6 +18,7 @@ const NewOwnablesTabScreen = () => {
     const webViewRef = React.useRef<WebView>(null);
     const navigation = useNavigation();
     const [errorMessage, setErrorMessage] = useState<string>('');
+    const [sdkError, setSdkError] = useState<boolean>(false);
 
     useEffect(() => {
         setWebviewUrl(url);
@@ -47,13 +48,14 @@ const NewOwnablesTabScreen = () => {
         const data = JSON.parse(event.nativeEvent.data);
         if (data.type === 'sdkerror') {
             console.log('SDK error:', data.data);
-            setWebViewError(true);
-            setErrorMessage(JSON.stringify(data));
-            if (webViewRef.current) {
-                webViewRef.current.stopLoading();
-                webViewRef.current.reload();
-            }
-            restartServer();
+            setSdkError(true);
+            // setWebViewError(true);
+            // setErrorMessage(JSON.stringify(data));
+            // if (webViewRef.current) {
+            //     webViewRef.current.stopLoading();
+            //     webViewRef.current.reload();
+            // }
+            // restartServer();
         }
 
         if (data.type === 'address') {
@@ -71,7 +73,7 @@ const NewOwnablesTabScreen = () => {
 
     return (
         <View style={{ flex: 1 }}>
-            {webViewLoading && (
+            {webViewLoading && !sdkError && (
                 <View style={styles.loaderOverlay}>
                     <ActivityIndicator size="large" />
                     <Button
@@ -93,7 +95,7 @@ const NewOwnablesTabScreen = () => {
                     input={<StyledImage testID="logo-title" source={logoTitle} />}
                 />
                 <>
-                    <WebView
+                    {!sdkError && <WebView
                         ref={webViewRef}
                         backgroundColor="#0D0D0D"
                         source={{
@@ -117,9 +119,52 @@ const NewOwnablesTabScreen = () => {
                             setWebViewError(true);
                             restartServer();
                         }}
-                        style={{ flex: 1 , backgroundColor: '#0D0D0D'}}
-                    />
+                        style={{ flex: 1, backgroundColor: '#0D0D0D' }}
+                    />}
                 </>
+                {
+                    sdkError && (
+                        <View style={
+                            {
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                backgroundColor: 'transparent',
+                                zIndex: 1,
+                                height: '100%',
+                            }
+                        }>
+                            <View style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                            }}>
+                                <RneIcons
+                                    name="warning"
+                                    type='font-awesome'
+                                    color={'white'}
+                                    size={15}
+                                    style={{ backgroundColor: '#35363b', borderRadius: 100, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}
+                                />
+                                <Text style={{ color: 'white', fontSize: 14 }}> Ownable Module Timeout</Text>
+                            </View>
+                            <Button
+                                title="Relaunch"
+                                onPress={() => {
+                                    setSdkError(false);
+                                    setWebViewError(false);
+                                    setWebViewLoading(true);
+                                    setWebviewUrl('');
+                                    restartServer();
+                                }}
+                            />
+                        </View>
+                    )
+                }
             </MainScreenContainer>
             {/* BT: Left it here for debugging purposes */}
             {/* {webViewError && (
@@ -137,7 +182,9 @@ const NewOwnablesTabScreen = () => {
                     <Text style={styles.errorText}>{errorMessage}</Text>
                 </View>
             )} */}
+
         </View>
+
     );
 };
 

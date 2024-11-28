@@ -5,7 +5,6 @@ export interface TypedPackageCapabilities {
   isConsumable: boolean;
   isConsumer: boolean;
   isTransferable: boolean;
-  isBridgeable?: boolean;
 }
 
 export interface TypedPackage extends TypedPackageCapabilities {
@@ -17,7 +16,7 @@ export interface TypedPackage extends TypedPackageCapabilities {
   chain?;
   isNotLocal?: boolean;
   uniqueMessageHash?: string;
-  versions: Array<{ date: Date; cid: string }>;
+  versions: Array<{ date: Date; cid: string; uniqueMessageHash?: string }>;
   keywords?: string[];
 }
 

@@ -2,12 +2,8 @@ import {
   Box,
   Button,
   CircularProgress,
-  FormControlLabel,
-  Icon,
   IconButton,
   MenuItem,
-  Radio,
-  RadioGroup,
   Select,
   Typography,
 } from "@mui/material";
@@ -22,13 +18,11 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   AlertTitle,
-  DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle,
   Hidden,
 } from "@mui/material";
-import LTOService from "../services/LTO.service";
+import LTOService, { getNetworkFromQuery } from "../services/LTO.service";
 import useInterval from "../utils/useInterval";
 import Dialog from "@mui/material/Dialog";
 import JSZip from "jszip";
@@ -40,13 +34,12 @@ import { TypedOwnable } from "../interfaces/TypedOwnableInfo";
 import { useSnackbar } from "notistack";
 import TagInputField from "./common/TagInputField";
 import Loading from "./Loading";
-import Modal from "@mui/material/Modal";
 import EventChainService from "../services/EventChain.service";
 import { sendRNPostMessage } from "../utils/postMessage";
-import { FileCopy, FileCopyOutlined } from "@mui/icons-material";
+import { FileCopyOutlined } from "@mui/icons-material";
 import { activityLogService } from "../services/ActivityLog.service";
 import { sign } from "@ltonetwork/http-message-signatures";
-import { AppConfig } from "../AppConfig";
+import { AppConfig, Network } from "../AppConfig";
 
 interface Props {
   open: boolean;
@@ -144,6 +137,8 @@ const CreateOwnablesDrawer = (props: Props) => {
   const [transactionIdMessage, setTransactionIdMessage] = useState<string | null>(null);
   const [createOwnableMessage, setCreateOwnableMessage] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const network = getNetworkFromQuery();
 
   const fetchBuildAmount = useCallback(async () => {
     try {
@@ -159,7 +154,14 @@ const CreateOwnablesDrawer = (props: Props) => {
       const allBuildCosts = _;
       const availableChains = _ as IAvailableChains;
       //@ts-ignore
-      const selectedChain = availableChains[selectedNetwork];
+      let selectedChain = availableChains[selectedNetwork] || availableChains["arbitrum"];
+      if(!selectedChain){
+        //check if there is a chain available and select the first one
+        const keys = Object.keys(availableChains);
+        if(keys.length > 0){
+          selectedChain = availableChains[keys[0]];
+        }
+      }
       console.log("selectedChain", selectedChain);
       setSelectedChain(selectedChain.name);
       const templateCostValue = selectedChain?.templateCost["1"];
@@ -169,10 +171,14 @@ const CreateOwnablesDrawer = (props: Props) => {
       setBuildCost(value);
       console.log("OBUILDER", AppConfig.OBUILDER());
       const address = await axios.get(
-        `${AppConfig.OBUILDER()}/api/v1/ServerLtoWalletAddresses`,
+        `${AppConfig.OBUILDER()}/api/v1/GetServerInfo`,
       );
-      console.log("address", address.data.serverLtoWalletAddress_T);
-      const serverAddress = address.data.serverLtoWalletAddress_T;
+      let serverAddress;
+      if (network === Network.MAINNET) {
+        serverAddress = address.data.serverLtoWalletAddress_L;
+      } else {
+        serverAddress = address.data.serverLtoWalletAddress_T;
+      }
       console.log("serverAddress", serverAddress);
       const calculatesAmount =
         parseFloat(templateCostValue.toString()) / LTO_REPRESENTATION + 1;
@@ -234,7 +240,6 @@ const CreateOwnablesDrawer = (props: Props) => {
     // let rn app know that the user wants to upload a file so to set the state
     // properly
     sendRNPostMessage(JSON.stringify({ type: "uploadFileStart" }));
-
     const fileInput = fileInputRef.current;
     if (fileInput) {
       fileInput.click();
@@ -307,6 +312,7 @@ const CreateOwnablesDrawer = (props: Props) => {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLoading(true);
     let file = e.target.files?.[0] || null;
 
     if (file && file.type === "image/heic") {
@@ -319,19 +325,20 @@ const CreateOwnablesDrawer = (props: Props) => {
         file = new File([blob], file.name, { type: "image/webp" });
       }
     }
-    setOwnable((prevOwnable) => ({
-      ...prevOwnable,
-      image: file,
-    }));
+
     if (file) {
       const resizedImage = await resizeImage(file);
       file = new File([resizedImage], file.name, { type: "image/webp" });
       // Create a thumbnail from the resized image
+      setOwnable((prevOwnable) => ({
+        ...prevOwnable,
+        image: file,
+      }));
       const thumbnailImage = await createThumbnail(resizedImage);
       setThumbnail(thumbnailImage);
     }
     sendRNPostMessage(JSON.stringify({ type: "uploadFileEnd" }));
-
+    setLoading(false);
 
   };
 
@@ -992,6 +999,7 @@ const CreateOwnablesDrawer = (props: Props) => {
           </Dialog>
         </Box>
       </Box>
+      <Loading show={loading} />
     </LtoDrawer>
   );
 };

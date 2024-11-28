@@ -354,7 +354,6 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
       setShowMessage(true);
       return;
     }
-    console.log('value', value);
     setloginForm({ ...loginForm, [name]: value });
   };
 
