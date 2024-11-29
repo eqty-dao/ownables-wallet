@@ -101,7 +101,6 @@ const OwnablesTabs = (props: Props) => {
         ? [...deletableFromCollections, collectionId]
         : deletableFromCollections.filter((item) => item !== collectionId)
     );
-
   const renderCollectionItems = (
     collections: Array<CollectionItemType>,
     areStatic: boolean = false
@@ -125,7 +124,7 @@ const OwnablesTabs = (props: Props) => {
           }
         >
           {items.length === 0 ? (
-            <EmptyCollection title={collection.value} />
+            <EmptyCollection title={collection.value} id={collection.id}/>
           ) : (
             <Grid container columnSpacing={2} rowSpacing={2}>
               {items.map((item: any, index: number) => {
@@ -185,7 +184,7 @@ const OwnablesTabs = (props: Props) => {
       <>
         {props.ownables.length === 0 ? (
           <Box p={5}>
-            <EmptyCollection title="All" />
+            <EmptyCollection title="All" id="all"/>
           </Box>
         ) : (
           <Grid container sx={gridStyle} columnSpacing={2} rowSpacing={2}>
@@ -224,7 +223,7 @@ const OwnablesTabs = (props: Props) => {
           active={tab === TabType.COLLECTIONS}
           onClick={() => handleTabChange(TabType.COLLECTIONS)}
         >
-          Collections
+         Categories
         </Tab>
         <Tab
           key={TabType.ALL}

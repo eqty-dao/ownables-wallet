@@ -544,7 +544,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
 
       <BottomModal
         title={REGISTER.DIALOG_TITLE}
-        body={[{ text: REGISTER.BIOMETRICS_CONFIRMATION }]}
+        body={[]}
         onSubmit={() => {
           SuscribeBiometrics();
           setDialogVisible(false);
@@ -556,6 +556,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
           handleAccount();
           setDialogVisible(false);
         }}
+        type="biometric"
         visible={dialogVisible}
       />
     </ScreenContainer>

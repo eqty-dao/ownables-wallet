@@ -8,6 +8,7 @@ import { StyledImage } from '../../components/styles/OverviewHeader.styles';
 import { logoTitle } from '../../utils/images';
 import { useNavigation } from '@react-navigation/native';
 import { Icon as RneIcons } from 'react-native-elements'
+import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 
 
 const NewOwnablesTabScreen = () => {
@@ -62,6 +63,10 @@ const NewOwnablesTabScreen = () => {
             console.log('Address:', data.data);
             setWebviewUrl(url);
             setWebViewLoading(false);
+        }
+        if (data.type === 'openInfo') {
+            console.log('Open Info:', data.data);
+            InAppBrowser.open('https://lto.network');
         }
 
     }

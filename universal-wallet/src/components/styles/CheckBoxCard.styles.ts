@@ -21,7 +21,6 @@ export const CheckBoxLabelContainer = styled.TouchableOpacity.attrs({
 })``;
 
 export const CheckBoxLabel = styled.Text`
-  color: #fcfcf7;
   font-family: Inter;
   font-size: 12px;
 `;

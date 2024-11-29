@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Icon,
   IconButton,
   MenuItem,
   Select,
@@ -16,11 +17,8 @@ import LtoInput, { LtoInputRefMethods } from "./common/LtoInput";
 import { useRef } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
-  AlertTitle,
   DialogContent,
   DialogContentText,
-  Hidden,
 } from "@mui/material";
 import LTOService, { getNetworkFromQuery } from "../services/LTO.service";
 import useInterval from "../utils/useInterval";
@@ -28,7 +26,6 @@ import Dialog from "@mui/material/Dialog";
 import JSZip from "jszip";
 import axios from "axios";
 import heic2any from "heic2any";
-import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import { getNetwork, Transfer as TransferTx } from "@ltonetwork/lto";
 import { TypedOwnable } from "../interfaces/TypedOwnableInfo";
 import { useSnackbar } from "notistack";
@@ -36,7 +33,7 @@ import TagInputField from "./common/TagInputField";
 import Loading from "./Loading";
 import EventChainService from "../services/EventChain.service";
 import { sendRNPostMessage } from "../utils/postMessage";
-import { FileCopyOutlined } from "@mui/icons-material";
+import { FileCopyOutlined, InfoRounded } from "@mui/icons-material";
 import { activityLogService } from "../services/ActivityLog.service";
 import { sign } from "@ltonetwork/http-message-signatures";
 import { AppConfig, Network } from "../AppConfig";
@@ -53,9 +50,6 @@ interface Props {
 interface StyledButtonProps {
   transparent: boolean;
 }
-const contentContainerStyle = {
-
-};
 
 const StyledButton = styled(Button) <StyledButtonProps>`
   text-transform: none;
@@ -90,6 +84,10 @@ const closeModalBtnStyle = {
   padding: 0,
   color: themeColors.error,
 };
+const infoButtonStyle = {
+  color: themeColors.iconLiner,
+  cursor: "pointer",
+};
 const LTO_REPRESENTATION = 100000000;
 
 const CreateOwnablesDrawer = (props: Props) => {
@@ -114,14 +112,14 @@ const CreateOwnablesDrawer = (props: Props) => {
     description: "",
     keywords: [],
     evmAddress: "",
-    network: "ethereum",
+    network: "arbitrum",
     image: null,
   });
 
   const [recipient, setShowAddress] = useState<string | undefined>();
   const [noConnection, setNoConnection] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState("ethereum");
+  const [selectedNetwork, setSelectedNetwork] = useState("arbitrum");
   const [thumbnail, setThumbnail] = useState<Blob | null>(null);
   const [blurThumbnail, setBlurThumbnail] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
@@ -155,10 +153,10 @@ const CreateOwnablesDrawer = (props: Props) => {
       const availableChains = _ as IAvailableChains;
       //@ts-ignore
       let selectedChain = availableChains[selectedNetwork] || availableChains["arbitrum"];
-      if(!selectedChain){
+      if (!selectedChain) {
         //check if there is a chain available and select the first one
         const keys = Object.keys(availableChains);
-        if(keys.length > 0){
+        if (keys.length > 0) {
           selectedChain = availableChains[keys[0]];
         }
       }
@@ -265,10 +263,10 @@ const CreateOwnablesDrawer = (props: Props) => {
       description: "",
       keywords: [],
       evmAddress: "",
-      network: "ethereum",
+      network: "arbitrum",
       image: null,
     });
-    setSelectedNetwork("ethereum");
+    setSelectedNetwork("arbitrum");
   };
 
   const loadBalance = () => {
@@ -672,53 +670,12 @@ const CreateOwnablesDrawer = (props: Props) => {
       <Box sx={{ color: "white" }}>
         <Box
           display={"flex"}
-          p={2}
+          p={1}
           flexDirection={"row"}
           alignItems={"flex-start"}
         >
-          <Box p={1} width={"100%"}>
-            {/* <Box p={2}> */}
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="flex-start"
-            >
-              <Box component="div" sx={{ width: "100%" }}>
-                {" "}
-                {/* Make the Box full width */}
-                <Typography
-                  sx={{ fontSize: 12, color: "white" }}
-                  color="text.secondary"
-                >
-                  LTO Network Address
-                </Typography>
-                <Typography
-                  sx={{ fontSize: 12, fontWeight: 600 }}
-                  component="div"
-                  onClick={e => handleCopy(e)}
-                  style={{ cursor: "pointer" }}
-                >
-                  {ltoWalletAddress}
-                </Typography>
-                <Typography variant="body2" sx={{}}>
-                  Balance: {balance !== undefined ? balance + " LTO" : ""}
-                </Typography>
-                {/* <Typography variant="body2" sx={{ mt: 1 }}>
-                  build cost:{" "}
-                  {showAmount !== undefined ? showAmount + " LTO" : ""} (incl.
-                  Fee: 1 LTO)
-                </Typography> */}
-              </Box>
-              <Hidden smUp>
-                <IconButton
-                  onClick={handleClose}
-                  size="small"
-                  sx={{ mr: 2, mt: -1 }}
-                >
-                  <HighlightOffIcon />
-                </IconButton>
-              </Hidden>
-            </Box>
+          <Box p={0} width={"100%"}>
+
             <Box p={0} width={"100%"}>
               {" "}
               {/* Make the Box full width */}
@@ -727,6 +684,85 @@ const CreateOwnablesDrawer = (props: Props) => {
                 flexDirection="column"
                 width={"100%"}
               >
+                {/* <Box p={2}> */}
+                <p className="text">
+                  Welcome to the oBuilder. Here you can create your very own Ownables and  for a small fee they will register on the LTO Network blockchain.<br /><br />
+                  Learn More
+                  <IconButton
+                    aria-label="info"
+                    onClick={() => sendRNPostMessage(JSON.stringify({ type: "openInfo" }))}
+                    sx={infoButtonStyle}
+                  >
+                    <InfoRounded style={{ fontSize: 20, color: 'white' }} />
+                  </IconButton>
+                </p>
+                <StyledButton transparent={false} onClick={handleFileUploadClick}>
+                  Choose an Image
+                </StyledButton>
+                <br></br>
+                <input
+                  id="fileUpload"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.heic"
+                  onChange={handleImageUpload}
+                  style={{ marginBottom: "10px", display: "none" }} />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-around",
+                    width: "100%", // Make the div full width
+                  }}
+                >
+                  {ownable.image && (
+                    <div>
+                      <img
+                        src={URL.createObjectURL(ownable.image)}
+                        alt="Selected"
+                        style={{ width: "100px", height: "auto" }} />
+                    </div>
+                  )}
+                  {thumbnail && (
+                    <>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: "smaller", lineHeight: "1" }}>
+                          Wallet
+                          <br />
+                          thumbnail
+                        </div>
+                        <img
+                          src={URL.createObjectURL(thumbnail)}
+                          alt="Thumbnail"
+                          style={{
+                            width: "50px",
+                            height: "auto",
+                            filter: blurThumbnail ? "blur(5px)" : "none",
+                          }} />
+                      </div>
+                    </>
+                  )}
+                </div>
+                <br></br>
+                {thumbnail && (
+                  <>
+                    <Button onClick={() => setBlurThumbnail(!blurThumbnail)}>
+                      {blurThumbnail ? "Unblur Thumbnail" : "Blur Thumbnail"}
+                    </Button>
+                    <br></br>
+                    <Button>
+                      <label htmlFor="thumbUpload" className="custom-file-upload">
+                        Change Thumbnail
+                      </label>
+                    </Button>
+                    <input
+                      id="thumbUpload"
+                      type="file"
+                      accept="image/*,.heic"
+                      onChange={handleThumbnailUpload}
+                      style={{ marginBottom: "10px", display: "none" }} />
+                  </>
+                )}
                 {" "}
                 {/* Make the Box full width */}
                 <Typography
@@ -803,73 +839,7 @@ const CreateOwnablesDrawer = (props: Props) => {
               <br></br>
               <br></br>
               <br></br>
-              <StyledButton transparent={false} onClick={handleFileUploadClick}>
-                Choose File
-              </StyledButton>
-              <br></br>
-              <input
-                id="fileUpload"
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.heic"
-                onChange={handleImageUpload}
-                style={{ marginBottom: "10px", display: "none" }} />
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-around",
-                  width: "100%", // Make the div full width
-                }}
-              >
-                {ownable.image && (
-                  <div>
-                    <img
-                      src={URL.createObjectURL(ownable.image)}
-                      alt="Selected"
-                      style={{ width: "100px", height: "auto" }} />
-                  </div>
-                )}
-                {thumbnail && (
-                  <>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: "smaller", lineHeight: "1" }}>
-                        Wallet
-                        <br />
-                        thumbnail
-                      </div>
-                      <img
-                        src={URL.createObjectURL(thumbnail)}
-                        alt="Thumbnail"
-                        style={{
-                          width: "50px",
-                          height: "auto",
-                          filter: blurThumbnail ? "blur(5px)" : "none",
-                        }} />
-                    </div>
-                  </>
-                )}
-              </div>
-              <br></br>
-              {thumbnail && (
-                <>
-                  <Button onClick={() => setBlurThumbnail(!blurThumbnail)}>
-                    {blurThumbnail ? "Unblur Thumbnail" : "Blur Thumbnail"}
-                  </Button>
-                  <br></br>
-                  <Button>
-                    <label htmlFor="thumbUpload" className="custom-file-upload">
-                      Change Thumbnail
-                    </label>
-                  </Button>
-                  <input
-                    id="thumbUpload"
-                    type="file"
-                    accept="image/*,.heic"
-                    onChange={handleThumbnailUpload}
-                    style={{ marginBottom: "10px", display: "none" }} />
-                </>
-              )}
+
               {errorMessage && (
                 <div style={{ color: "red" }}>{errorMessage}</div>
               )}
@@ -891,38 +861,95 @@ const CreateOwnablesDrawer = (props: Props) => {
               </Box>
             </Box>
           </Box>
+          {/* Server Connection Dialog */}
           <Dialog
             open={noConnection}
             hideBackdrop
             onClose={() => setNoConnection(false)}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
           >
-            <Alert variant="outlined" severity="warning">
-              <AlertTitle>No server Connection</AlertTitle>
-              The server seems to be down, please try again later.
-            </Alert>
+            <DialogContent>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <b>Error Connecting to Server</b>
+                  <p>
+                    The server seems to be down, please try again later.
+                  </p>
+                </div>
+              </DialogContentText>
+            </DialogContent>
           </Dialog>
           <Dialog
-            open={showNoBalance}
-            hideBackdrop
-            onClose={() => setShowNoBalance(false)}
-          >
-            <Alert variant="outlined" severity="warning">
-              <AlertTitle>Your balance is zero</AlertTitle>A minumum of{" "}
-              {showAmount + 1} LTO is required to build a ownable.
-            </Alert>
-          </Dialog>
-          <Dialog
-            open={lowBalance}
+            open={lowBalance || showNoBalance}
             hideBackdrop
             onClose={() => setLowBalance(false)}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
           >
-            <Alert variant="outlined" severity="warning">
-              <AlertTitle>
-                Your balance is to low. A A minumum of {showAmount + 1} LTO is
-                required to build a ownable.{" "}
-              </AlertTitle>
-              Please top up.
-            </Alert>
+            <DialogContent>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <br />
+                  <b>WARNING</b>
+                  <>
+                    Your balance is too low.<br /> A minimum of {(showAmount + 1).toFixed(4)} LTO is
+                    required to build an ownable.
+                  </>
+                </div>
+                <Button onClick={() => {
+                  setLowBalance(false);
+                  setNoConnection(false);
+                  props.onClose();
+                }} sx={{ backgroundColor: themeColors.primary, color: "white" }}>
+                  Ok
+                </Button>
+              </DialogContentText>
+            </DialogContent>
           </Dialog>
           <Dialog open={openDialog} onClose={handleCloseDialog}
             sx={{
@@ -994,8 +1021,39 @@ const CreateOwnablesDrawer = (props: Props) => {
           <Dialog
             open={buildError !== null}
             onClose={() => setBuildError(null)}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
           >
-            <Alert severity="error">{buildError}</Alert>
+            <DialogContent>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <b>oBuilder Status</b>
+                  <p>{buildError}</p>
+                </div>
+              </DialogContentText>
+            </DialogContent>
           </Dialog>
         </Box>
       </Box>

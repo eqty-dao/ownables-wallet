@@ -8,6 +8,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import { themeColors } from "../theme/themeColors";
 import { themeStyles } from "../theme/themeStyles";
+import zIndex from "@mui/material/styles/zIndex";
 
 interface FabProps {
   actions: Array<TypedFabItem>;
@@ -41,6 +42,7 @@ const Fab = (props: FabProps) => {
       backgroundColor: open ? themeColors.titleText : themeColors.primary,
     },
     display: "flex",
+    zIndex: 1300,
   };
 
   const Overlay: React.FC<OverlayProps> = ({ show }) => {

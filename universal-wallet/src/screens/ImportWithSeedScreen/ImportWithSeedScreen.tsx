@@ -8,6 +8,7 @@ import { Title } from '../../components/Title';
 import { BackButton } from '../../components/BackButton';
 import { InputField } from '../../components/InputField';
 import { StyledButton } from '../../components/StyledButton';
+import { Text } from 'react-native';
 
 export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
   const [seedPhrase, setSeedPhrase] = useState<string>('');
@@ -51,6 +52,14 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
           handleImportFromSeed();
         }}
       />
+      <Text
+        style={{
+          color: '#ffffff',
+          padding: 10,
+          borderRadius: 5,
+          marginTop: 20,
+        }}
+      >Note:  You can only use one wallet address at a time. To use another wallet address, you can remove the current account at anytime and add a different one.</Text>
     </ScreenContainer>
   );
 }

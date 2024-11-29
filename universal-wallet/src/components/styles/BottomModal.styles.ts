@@ -48,7 +48,7 @@ export const ModalSubTitle = styled.Text`
   font-weight: 600;
 `;
 
-export const ModalBody = styled.Text<{type: 'default' | 'terms'}>`
+export const ModalBody = styled.Text<{type: 'default' | 'terms' | 'biometric'}>`
   color: #909092;
   font-size: ${({type}) => (type == 'terms' ? 14 : 16)}px;
   text-align: ${({type}) => (type == 'terms' ? 'left' : 'center')};

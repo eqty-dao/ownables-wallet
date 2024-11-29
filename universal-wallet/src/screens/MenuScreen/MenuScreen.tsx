@@ -92,6 +92,8 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
               paddingLeft: 10, 
               marginBottom: 10 
             }}
+            label="Your Wallet Address"
+            labelStyle={{ color: '#ffff', fontSize: width * 0.035 }}
           />
             <FontAwesome6 
             name="copy" 
@@ -102,6 +104,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             }} 
             size={24} 
             color="#909092" 
+            style={{ position: 'absolute', right: -20, top: 25}}
             />
         </View>
         <MainScreenMinorContainer>
@@ -112,7 +115,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             textStyle={{ fontWeight: '600' }}
           />
           <StyledButton
-            text={'More info'}
+            text={'More Info'}
             onPress={navigateToWebsite}
             type="textOnly"
             textStyle={{ fontWeight: '600' }}

@@ -37,7 +37,7 @@ export const SIGNIN = {
 export const IMPORT_WITHSEEDS = {
   IMPORT_TITLE: 'Import Account',
   INPUT_SEEDPHRASE: {
-    LABEL: 'Add your seed phrase',
+    LABEL: 'Your seed phrase',
     PLACEHOLDER: 'Type your seed phrase separated by a space',
   },
   BUTTON_IMPORT: 'Import account',
@@ -54,7 +54,7 @@ export const REGISTER = {
   },
   INPUT_PASSWORD: {
     LABEL: 'Password',
-    PLACEHOLDER: 'Enter your password',
+    PLACEHOLDER: 'Set your password',
   },
   INPUT_PASSWORD_REPEAT: {
     LABEL: 'Confirm Password',
@@ -148,7 +148,7 @@ export const PROFILE = {
   PHRASE: 'Backup Phrase (Seed)',
   DISCOVER_PRIVATEKEY: 'Show private key',
   DISCOVER_PHRASE: 'Show backup phrase',
-  DELETE_ACCOUNT: 'Delete account',
+  DELETE_ACCOUNT: 'Remove Account',
   DELETE_ACCOUNT_LABEL: 'Delete Account',
   DELETE_ACCOUNT_MESSAGE:
     "You're about to delete your account. This action is irreversible and may result in a loss of funds.",
