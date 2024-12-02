@@ -1,11 +1,7 @@
 export default class LocalStorageService {
   static get(key: string): any {
-    try {
-      const value = localStorage.getItem(key);
-      return value ? JSON.parse(value) : undefined;
-    } catch (error) {
-      console.error(`Unable to get value from local storage: ${error}`);
-    }
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : undefined;
   }
 
   static set(key: string, value: any): void {
@@ -14,7 +10,10 @@ export default class LocalStorageService {
 
   static append(key: string, value: any): void {
     const list = this.get(key) || [];
-    if (!Array.isArray(list)) throw new Error(`Unable to append value in local storage: "${key} is not an array"`);
+    if (!Array.isArray(list))
+      throw new Error(
+        `Unable to append value in local storage: "${key} is not an array"`
+      );
 
     list.push(value);
     this.set(key, list);
@@ -26,5 +25,26 @@ export default class LocalStorageService {
 
   static clear(): void {
     localStorage.clear();
+  }
+
+  static removeItem(key: string, value: any): void {
+    const list = this.get(key);
+    if (!Array.isArray(list))
+      throw new Error(`"${key}" is not an array in local storage`);
+
+    const updatedList =
+      typeof list[0] === "object"
+        ? list.filter((item: any) => item[value] !== value)
+        : list.filter((item: any) => item !== value);
+
+    this.set(key, updatedList);
+  }
+
+  static removeByField(key: string, field: string, value: any): void {
+    const list = this.get(key);
+    if (!Array.isArray(list))
+      throw new Error(`"${key}" is not an array in local storage`);
+    const updatedList = list.filter((item: any) => item[field] !== value);
+    this.set(key, updatedList);
   }
 }

@@ -239,7 +239,7 @@ export default function App() {
     const pkg = PackageService.info(packageCid);
     setOwnables(() => ownables.filter((ownable) => ownable.chain.id !== id));
     await OwnableService.delete(id);
-    enqueueSnackbar(`${pkg.title} has been deleted`, {
+    enqueueSnackbar(`${pkg?.title} has been deleted`, {
       autoHideDuration: snackbarDuration,
       style: {
         backgroundColor: themeColors.error,
@@ -403,7 +403,7 @@ export default function App() {
 
     const foundedOwnables = items.filter((ownable) => {
       const pkg = PackageService.info(ownable.package);
-      const lowerCasedTitle = pkg.title.toLowerCase();
+      const lowerCasedTitle = pkg?.title?.toLowerCase() || "";
       const includesPartialKeyword = pkg && pkg.keywords ? pkg.keywords.some((keyword) => keyword.includes(queryFormat)) : false;
       const includesPartialTitle =
         lowerCasedTitle.includes(queryFormat) ||
@@ -420,7 +420,13 @@ export default function App() {
 
   const handleSearchFilter = () => setShowFilters(!showFilters);
 
-  const relayImport = async (pkg: TypedPackage[] | null) => {
+  const getPackageDisplayName = (str: string) => {
+    if (!str) return '';
+    const regex = new RegExp(/ownable/i);
+    return str?.replace(regex, "").replace(/[-_]+/, " ").trim()
+      .replace(/\b\w/, (c) => c.toUpperCase());
+  }
+  const relayImport = async (pkg: TypedPackage[] | null, triggerRefresh: boolean) => {
     try {
 
       sendRNPostMessage(JSON.stringify({ type: 'relay Import loop', data: "pkg" }));
@@ -450,7 +456,7 @@ export default function App() {
           timestamp: Date.now(),
         });
         for (let i = 0; i < pkg.length; i += batchNumber) {
-          setImportLabel(`Importing Ownables : (${i + 1}/${pkg.length}):${pkg[i]?.name || ""}`);
+          setImportLabel(`Importing Ownables : (${i + 1}/${pkg.length}):${getPackageDisplayName(pkg[i]?.name || "")}`);
           activityLogService.logActivity({
             activity: `Importing Ownables from Relay : ${i + 1}/${pkg.length}`,
             timestamp: Date.now(),
@@ -464,53 +470,52 @@ export default function App() {
             (item) => item !== null && item !== undefined
           );
 
-          if (
-            filteredBatch.some((data) =>
-              storedPackages.some((storedPkg) => storedPkg.cid === data.cid)
-            )
-          ) {
-            triggerRefresh = true;
-          }
-
           setOwnables((prevOwnables) => [
             ...prevOwnables,
             ...filteredBatch
-              .filter((data: any) => data.chain && data.cid)
-              .map((data: any) => ({
+              .filter((data: TypedPackage) => data.chain && data.cid)
+              .map((data: TypedPackage) => ({
                 chain: data.chain,
                 package: data.cid,
+                uniqueMessageHash: data.uniqueMessageHash, // Include uniqueMessageHash
               })),
           ]);
 
           enqueueSnackbar(`Ownable successfully loaded`, {
             variant: "success",
           });
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+
         }
         setImportingFromRelay(false);
+        LocalStorageService.remove("messageCount");
+        setMessages(0);
 
         //Trigger a refresh only if any package matched current one
-        if (triggerRefresh) {
-          setAlert({
-            severity: "info",
-            title: "New Ownables Detected",
-            message: "New ownables have been detected. Refreshing...",
-          });
+        // if (triggerRefresh) {
+        //   setAlert({
+        //     severity: "info",
+        //     title: "New Ownables Detected",
+        //     message: "New ownables have been detected. Refreshing...",
+        //   });
 
-          // setTimeout(() => {
-          //   window.location.reload();
-          // }, 4000);
-          LocalStorageService.set("messageCount", 0);
-          setMessages(0);
-        } else {
-          enqueueSnackbar(`No matching packages found for refresh`, {
-            variant: "info",
-          });
-        }
+        //   // setTimeout(() => {
+        //   //   window.location.reload();
+        //   // }, 4000);
+        //   // LocalStorageService.set("messageCount", 0);
+        //   // setMessages(0);
+        // } else {
+        //   enqueueSnackbar(`No matching packages found for refresh`, {
+        //     variant: "info",
+        //   });
+        // }
       } else {
         enqueueSnackbar(`Nothing to Load from relay`, {
           variant: "error",
         });
+        LocalStorageService.remove("messageCount");
+        setMessages(0);
+        setImportingFromRelay(false);
+        setImportLabel(`Import from Relay Completed`);
       }
     } catch (error) {
       setImportingFromRelay(false);
@@ -532,8 +537,10 @@ export default function App() {
       });
       setImportLabel(`Importing From Relay, please wait...`);
       sendRNPostMessage(JSON.stringify({ type: 'import started' }));
+
       let pkg = await PackageService.importFromRelay();
       // filter out [null,null,null] from the response
+
       setImportLabel(`Import from Relay Completed , processing Ownables`);
       sendRNPostMessage(JSON.stringify({ type: 'import completed', data: pkg }));
       activityLogService.logActivity({
@@ -549,15 +556,26 @@ export default function App() {
         return;
       }
       setImportLabel(`Relating Ownables : (${pkg?.length || 0})`);
-      //@ts-ignore
-      const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null && p !== undefined);
-      if (filteredPackages.length === 0) {
-        sendRNPostMessage(JSON.stringify({ type: 'import completed', data: 'No Ownables found' }));
-        setImportingFromRelay(false);
-        return;
-      }
-      //@ts-ignore
-      relayImport(filteredPackages);
+      // //@ts-ignore
+      // const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null && p !== undefined);
+      // if (filteredPackages.length === 0) {
+      //   sendRNPostMessage(JSON.stringify({ type: 'import completed', data: 'No Ownables found' }));
+      //   setImportingFromRelay(false);
+      //   return;
+      // }
+      // //@ts-ignore
+      // relayImport(filteredPackages);
+      const [filteredPackages, triggerRefresh] = pkg as [
+        Array<TypedPackage | undefined>,
+        boolean
+      ];
+
+      const validPackages = Array.isArray(filteredPackages)
+        ? filteredPackages.filter(
+          (p): p is TypedPackage => p !== null && p !== undefined
+        )
+        : [];
+      relayImport(validPackages, triggerRefresh);
     } catch (error) {
       setImportingFromRelay(false);
       showError("Import failed", ownableErrorMessage(error));
@@ -796,6 +814,9 @@ export default function App() {
           }
           onConsume={onConsumeTapped}
           onError={showError}
+          uniqueMessageHash={
+            PackageService.info(selectedOwnable.packageCid)?.uniqueMessageHash || ""
+          }
         />
       )}
       <ConfirmDrawer
@@ -809,7 +830,7 @@ export default function App() {
         isPersistent={true}
       >
         Select which Ownable should consume this{" "}
-        <em>{consuming ? PackageService.info(consuming.package).title : ""}</em>
+        <em>{consuming ? PackageService.info(consuming.package)?.title : ""}</em>
       </ConfirmDrawer>
       <SnackbarProvider />
       <AlertDrawer
@@ -885,7 +906,6 @@ export default function App() {
           </DialogContentText>
           <LinearProgress />
         </DialogContent>
-
       </Dialog>
       <Loading show={!loaded} />
     </>

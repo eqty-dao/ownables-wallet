@@ -5,18 +5,28 @@ import RNFS from 'react-native-fs';
 import LTOService from '../services/LTO.service';
 import { useNavigation } from '@react-navigation/native';
 import { Platform } from 'react-native';
+import CryptoJS from 'crypto-js';
+// import { SECURE_KEY } from '@env';
 
 export const ASSETS_FOLDER_NAME: string = 'build';
 export const DOCUMENT_FOLDER_PATH: string = `${RNFS.DocumentDirectoryPath}/${ASSETS_FOLDER_NAME}`;
 
 
-const debugUrl = null; //Platform.OS == "ios" ? 'http://localhost:3000/' : 'http://10.0.0.167:3000';
+const debugUrl = null;//Platform.OS == "ios" ? 'http://localhost:3000/' : 'http://10.0.0.167:3000';
+const SECURE_KEY = 'asdsadsada324e23jen32jkbr2kbr2k4';
 
-// const encryptData = (data: string): string => {
-//   const key = SECURE_KEY;
-//   console.log('key:', key);
-//   return CryptoJS.AES.encrypt(data, key).toString();
-// };
+export const encryptData = (data: string): string => {
+  const key = SECURE_KEY;
+  return CryptoJS.AES.encrypt(data, key).toString().replace('==', '');
+};
+
+export const decryptData = (encryptedData: string): string => {
+  const key = SECURE_KEY;
+  const bytes = CryptoJS.AES.decrypt(encryptedData, key);
+  const _ = bytes.toString(CryptoJS.enc.Utf8);
+  console.log('decryptedData:', _);
+  return _;
+};
 
 const useStaticServer = () => {
   const [url, setUrl] = useState<string>('');

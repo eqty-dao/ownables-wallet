@@ -12,6 +12,7 @@ import { TypedPackage } from "../interfaces/TypedPackage";
 import { TypedOwnableInfo } from "../interfaces/TypedOwnableInfo";
 import EventChainService from "./EventChain.service";
 import LocalStorageService from "./LocalStorage.service";
+import { sendRNPostMessage } from "../utils/postMessage";
 
 export type StateDump = Array<[ArrayLike<number>, ArrayLike<number>]>;
 
@@ -74,16 +75,10 @@ export default class OwnableService {
       package: string;
       created: Date;
       keywords: string[];
+      uniqueMessageHash?: string;
     }>
   > {
-    try {
-      const _ = (await EventChainService.loadAll()).filter((res) => res !== null);
-      console.log(_);
-      return _;
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
+    return EventChainService.loadAll();
   }
 
   static rpc(id: string): OwnableRPC {
@@ -110,6 +105,7 @@ export default class OwnableService {
     const chain = EventChain.create(account);
     const anchors: Array<{ key: Binary; value: Binary }> = [];
 
+    console.log(pkg);
     if (pkg.isDynamic) {
       const msg = {
         "@context": "instantiate_msg.json",
@@ -133,31 +129,30 @@ export default class OwnableService {
     return chain;
   }
 
-  static async init(chain: any, cid: string, rpc: OwnableRPC): Promise<void> {
-    try {
-      if (this._rpc.has(chain.id)) {
-        try {
-          delete (this._rpc.get(chain.id) as any).handler;
-        } catch (e) {
-          console.error(e);
-         }
-      }
-
-      this._rpc.set(chain.id, rpc);
-      const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
-      const js = workerJsSource + moduleJs;
-
-      const wasm = (await PackageService.getAsset(
-        cid,
-        "ownable_bg.wasm",
-        (fr, file) => fr.readAsArrayBuffer(file)
-      )) as ArrayBuffer;
-      await rpc.init(chain.id, js, new Uint8Array(wasm));
-      const stateDump = await this.apply(chain, []);
-      await this.initStore(chain, cid, stateDump);
-    } catch (error) {
-      console.error(error);
+  static async init(
+    chain: any,
+    cid: string,
+    rpc: OwnableRPC,
+    uniqueMessageHash: string
+  ): Promise<void> {
+    if (this._rpc.has(chain.id)) {
+      try {
+        delete (this._rpc.get(chain.id) as any).handler;
+      } catch (e) { }
     }
+
+    this._rpc.set(chain.id, rpc);
+    const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
+    const js = workerJsSource + moduleJs;
+
+    const wasm = (await PackageService.getAsset(
+      cid,
+      "ownable_bg.wasm",
+      (fr, file) => fr.readAsArrayBuffer(file)
+    )) as ArrayBuffer;
+    await rpc.init(chain.id, js, new Uint8Array(wasm));
+    const stateDump = await this.apply(chain, []);
+    await this.initStore(chain, cid, uniqueMessageHash, stateDump);
   }
 
   static async apply(
@@ -210,28 +205,35 @@ export default class OwnableService {
     msg: TypedDict,
     stateDump: StateDump
   ): Promise<StateDump> {
-    const info = { sender: LTOService.account.publicKey, funds: [] };
-    const { state: newStateDump } = await this.rpc(chain.id).execute(
-      msg,
-      info,
-      stateDump
-    );
+    try {
+      const info = { sender: LTOService.account.publicKey, funds: [] };
+      const { state: newStateDump } = await this.rpc(chain.id).execute(
+        msg,
+        info,
+        stateDump
+      );
 
-    delete msg["@context"]; // Shouldn't be set
-    new Event({ "@context": "execute_msg.json", ...msg })
-      .addTo(chain)
-      .signWith(LTOService.account);
+      delete msg["@context"]; // Shouldn't be set
+      new Event({ "@context": "execute_msg.json", ...msg })
+        .addTo(chain)
+        .signWith(LTOService.account);
 
-    await EventChainService.store({ chain, stateDump });
+      await EventChainService.store({ chain, stateDump });
 
-    return newStateDump;
+      return newStateDump;
+    } catch (error) {
+      console.error(error);
+      return stateDump;
+    }
+
   }
 
   static async canConsume(
     consumer: { chain: EventChain; package: string },
     info: TypedOwnableInfo
   ): Promise<boolean> {
-    if (!PackageService.info(consumer.package).isConsumer) return false;
+    const ownable = PackageService.info(consumer.package);
+    if (!ownable?.isConsumer) return false;
 
     return true; // TODO: The check below is not working
 
@@ -297,47 +299,141 @@ export default class OwnableService {
     );
   }
 
+  private static async ensureDBConnection(): Promise<void> {
+    try {
+      await IDBService.listStores();
+    } catch (e) {
+      console.warn("IDB connection lost, attempting to reconnect...");
+      await IDBService.open();
+    }
+  }
+
+  private static async retryOperation<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    delay: number = 1000
+  ): Promise<T> {
+    //let lastError: Error;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.ensureDBConnection();
+        return await operation();
+      } catch (error) {
+        //lastError = error as Error;
+        console.warn(`Attempt ${attempt} failed:`, error);
+
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, delay * attempt));
+        }
+      }
+    }
+
+    throw new Error(
+      `Operation failed after ${maxRetries} attempts. Last error: `
+    );
+  }
+
   static async initStore(
     chain: EventChain,
     pkg: string,
+    uniqueMessageHash: string,
     stateDump?: StateDump
   ): Promise<void> {
-    if (await IDBService.hasStore(`ownable:${chain.id}`)) {
-      return;
+    try {
+      const storeId = `ownable:${chain.id}`;
+      const stateStoreId = `${storeId}.state`;
+
+      console.log(uniqueMessageHash);
+
+      const chainData = {
+        chain: chain.toJSON(),
+        state: chain.state.hex,
+        package: pkg,
+        created: new Date(),
+        latestHash: chain.latestHash.hex,
+        keywords: PackageService.info(pkg)?.keywords || [],
+        uniqueMessageHash: PackageService.info(pkg, uniqueMessageHash) ?? uniqueMessageHash,
+      };
+
+      const stores = [storeId];
+      if (stateDump) stores.push(stateStoreId);
+
+      await this.retryOperation(async () => {
+        const hasStore = await IDBService.hasStore(storeId);
+        if (hasStore) {
+          return;
+        }
+
+        await IDBService.createStore(...stores);
+
+        const data: TypedDict = {
+          [storeId]: chainData,
+        };
+
+        if (stateDump) {
+          data[stateStoreId] = new Map(stateDump);
+        }
+
+        try {
+          await IDBService.setAll(data);
+        } catch (error) {
+          // If setAll fails, attempt to clean up
+          console.error("Failed to set data, cleaning up stores...");
+          await Promise.all(
+            stores.map((store) =>
+              IDBService.deleteStore(store).catch((e) =>
+                console.warn(`Failed to clean up store ${store}:`, e)
+              )
+            )
+          );
+          return;
+        }
+
+        const verifyData = await Promise.all([
+          IDBService.get(storeId, "state"),
+          stateDump ? IDBService.getAll(stateStoreId) : Promise.resolve(null),
+        ]);
+
+        if (
+          verifyData[0] !== chainData.state ||
+          (stateDump && !verifyData[1]?.length)
+        ) {
+          return Promise.reject(new Error("State verification failed after write"));
+        }
+      });
+    } catch (error) {
+      console.error(error);
+
     }
-    const dbs = [`ownable:${chain.id}`];
-    if (stateDump) dbs.push(`ownable:${chain.id}.state`);
-
-    const chainData = {
-      chain: chain.toJSON(),
-      state: chain.state.hex,
-      package: pkg,
-      created: new Date(),
-      latestHash: chain.latestHash.hex,
-      keywords: PackageService.info(pkg).keywords,
-    };
-
-    const data: TypedDict = {};
-    data[`ownable:${chain.id}`] = chainData;
-    if (stateDump) data[`ownable:${chain.id}.state`] = new Map(stateDump);
-
-    await IDBService.createStore(...dbs);
-    await IDBService.setAll(data);
   }
 
   static async store(chain: EventChain, stateDump: StateDump): Promise<void> {
-    const storedState = await IDBService.get(`ownable:${chain.id}`, "state");
-    if (storedState === chain.state) return;
-    await IDBService.setAll(
-      Object.fromEntries([
-        [
-          `ownable:${chain.id}`,
-          { chain: chain.toJSON(), state: chain.state.hex },
-        ],
-        [`ownable:${chain.id}.state`, new Map(stateDump)],
-      ])
-    );
+    const storeId = `ownable:${chain.id}`;
+    const stateStoreId = `${storeId}.state`;
+
+    await this.retryOperation(async () => {
+      const storedState = await IDBService.get(storeId, "state");
+      if (storedState === chain.state) return;
+
+      const data = {
+        [storeId]: {
+          chain: chain.toJSON(),
+          state: chain.state.hex,
+        },
+        [stateStoreId]: new Map(stateDump),
+      };
+
+      await IDBService.setAll(data);
+
+      // Verify the write
+      const verifyState = await IDBService.get(storeId, "state");
+      if (verifyState !== chain.state.hex) {
+        throw new Error("State verification failed after write");
+      }
+    });
   }
+
 
   static async delete(id: string): Promise<void> {
     await EventChainService.delete(id);

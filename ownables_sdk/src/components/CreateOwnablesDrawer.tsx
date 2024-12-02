@@ -183,6 +183,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       console.log("calculatesAmount", calculatesAmount);
       if (calculatesAmount < 1.1) {
         console.log("error server is not ready yet");
+        setNoConnection(true);
         return;
       } else {
         setBuildCost(calculatesAmount);
@@ -197,8 +198,10 @@ const CreateOwnablesDrawer = (props: Props) => {
   }, [selectedNetwork]);
 
   useEffect(() => {
-    fetchBuildAmount();
-  }, [fetchBuildAmount]);
+    if (open) {
+      fetchBuildAmount();
+    }
+  }, [fetchBuildAmount, open]);
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
@@ -214,25 +217,6 @@ const CreateOwnablesDrawer = (props: Props) => {
     setBlurThumbnail(false);
     onClose();
   };
-
-  const { enqueueSnackbar } = useSnackbar();
-
-  const handleCopy = (e: any) => {
-    const value = e.currentTarget.textContent;
-    if (value) {
-      if (window.navigator?.clipboard) {
-        window.navigator.clipboard.writeText(value);
-      } else {
-        const el = document.createElement('textarea');
-        el.value = value;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-      }
-    }
-    enqueueSnackbar("Address copied to clipboard", { variant: "success" });
-  }
 
   const handleFileUploadClick = () => {
     // let rn app know that the user wants to upload a file so to set the state
@@ -341,6 +325,7 @@ const CreateOwnablesDrawer = (props: Props) => {
   };
 
   async function createThumbnail(blob: Blob): Promise<Blob> {
+    return blob;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -390,6 +375,7 @@ const CreateOwnablesDrawer = (props: Props) => {
   };
 
   async function resizeImage(file: File): Promise<Blob> {
+    return file;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -481,7 +467,8 @@ const CreateOwnablesDrawer = (props: Props) => {
       const value = chainCost?.templateCost["1"];
       const chainCostValue = typeof value === 'number' ? value : Number(value);
       if (chainCostValue) {
-        return (chainCostValue / LTO_REPRESENTATION) + 1;
+        const _ = (chainCostValue / LTO_REPRESENTATION) + 1;
+        return _?.toFixed(4) || 0;
       } else {
         return 0;
       }
@@ -557,7 +544,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       };
       const signedRequest = await sign(request, { signer: account });
       request.url =
-        request.url + `?ltoNetworkId=${getNetwork(account.address)}`;
+        request.url + `?ltoNetworkId=${getNetworkFromQuery()}`;
       console.log("signedRequest", signedRequest);
       const headers1 = {
         "Content-Type": "multipart/form-data",
@@ -603,7 +590,7 @@ const CreateOwnablesDrawer = (props: Props) => {
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
           zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-            const url = `${AppConfig.OBUILDER()}/api/v1/upload?ltoNetworkId=T`;
+            const url = `${AppConfig.OBUILDER()}/api/v1/upload?ltoNetworkId=${getNetwork(account.address)}`;
             const formData = new FormData();
             formData.append("file", zipFile, formattedName + ".zip");
 
@@ -898,6 +885,15 @@ const CreateOwnablesDrawer = (props: Props) => {
                   <p>
                     The server seems to be down, please try again later.
                   </p>
+                  <Button onClick={() => {
+                    setNoConnection(false);
+                    setLowBalance(false);
+                    setShowNoBalance(false);
+                    props.onClose();
+                  }
+                  } sx={{ backgroundColor: themeColors.primary, color: "white" }}>
+                    Ok
+                  </Button>
                 </div>
               </DialogContentText>
             </DialogContent>

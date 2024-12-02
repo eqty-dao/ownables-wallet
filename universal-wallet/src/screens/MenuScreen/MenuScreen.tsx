@@ -17,13 +17,16 @@ import { Input } from 'react-native-elements';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import PressToCopy from '../../components/PressToCopy';
 import { useClipboard } from '@react-native-clipboard/clipboard';
+import DeviceInfo from 'react-native-device-info';
+import { encryptData ,decryptData} from '../../hooks/useStaticServer';
 
 export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
+  const [installationId, setInstallationId] = useState('');
   const [accountNickname, setAccountNickname] = useState('');
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
   const [data, setString] = useClipboard();
-  const {width} = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
 
   useEffect(() => {
@@ -36,6 +39,19 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
       });
       return () => backHandler.remove();
     }
+    const getInitialData = async () => {
+      const id = (await DeviceInfo.getUniqueId()) + "-652"
+      // hash the id to make it more secure
+      const encryptedId = encryptData(id);
+      // const decryptedId = decryptData('U2FsdGVkX18ym1SkOyLXguGsWGb/jrhTUwIJy2jdsYOpl7bS7nwKvmMuG8qGKmFPh7VNu64dN7dkyDQarRErcg');
+      // console.log(encryptedId);
+      // console.log(decryptedId);
+      setInstallationId(encryptedId.toString());
+    }
+    getInitialData().catch(error => {
+      console.log(error);
+    });
+
   }, []);
 
   useEffect(() => {
@@ -85,27 +101,56 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             editable={false}
             inputContainerStyle={{ borderBottomWidth: 0 }}
             inputStyle={{ color: '#ffff', fontSize: width * 0.035 }}
-            style={{ 
-              width: '110%', 
-              backgroundColor: '#656565', 
-              borderRadius: 10, 
-              paddingLeft: 10, 
-              marginBottom: 10 
+            style={{
+              width: '110%',
+              backgroundColor: '#656565',
+              borderRadius: 10,
+              paddingLeft: 10,
+              marginBottom: 10
             }}
             label="Your Wallet Address"
             labelStyle={{ color: '#ffff', fontSize: width * 0.035 }}
           />
-            <FontAwesome6 
-            name="copy" 
+          <FontAwesome6
+            name="copy"
             onPress={() => {
               setString(accountAddress);
               setShowMessage(true);
               setMessageInfo('Copied to clipboard!');
-            }} 
-            size={24} 
-            color="#909092" 
-            style={{ position: 'absolute', right: -20, top: 25}}
-            />
+            }}
+            size={24}
+            color="#909092"
+            style={{ position: 'absolute', right: -20, top: 25 }}
+          />
+        </View>
+        <View style={{ flexDirection: 'row', width: '95%' }}>
+          <Input
+            placeholder="Installation ID"
+            value={installationId}
+            editable={false}
+            inputContainerStyle={{ borderBottomWidth: 0 }}
+            inputStyle={{ color: '#ffff', fontSize: width * 0.035 }}
+            style={{
+              width: '110%',
+              backgroundColor: '#656565',
+              borderRadius: 10,
+              paddingLeft: 10,
+              marginBottom: 10
+            }}
+            label="Your Installation ID"
+            labelStyle={{ color: '#ffff', fontSize: width * 0.035 }}
+          />
+          <FontAwesome6
+            name="copy"
+            onPress={() => {
+              setString(installationId);
+              setShowMessage(true);
+              setMessageInfo('Copied to clipboard!');
+            }}
+            size={24}
+            color="#909092"
+            style={{ position: 'absolute', right: -20, top: 25 }}
+          />
         </View>
         <MainScreenMinorContainer>
           <StyledButton

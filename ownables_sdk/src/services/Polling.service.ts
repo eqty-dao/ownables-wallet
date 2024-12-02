@@ -27,7 +27,8 @@ export class PollingService {
         url,
         requestOptions
       );
-      if(!response) return 0;
+      if (!response) return 0;
+
       if (response.status === 304) {
         const messageCount = LocalStorageService.get("messageCount") || 0;
         return messageCount;

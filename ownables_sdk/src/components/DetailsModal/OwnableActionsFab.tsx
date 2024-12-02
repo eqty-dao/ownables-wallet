@@ -7,7 +7,7 @@ import { ReactComponent as ConsumeIcon } from "../../assets/consume_icon.svg";
 import { ReactComponent as TransferIcon } from "../../assets/transfer_icon.svg";
 import { ReactComponent as InfoIcon } from "../../assets/info_icon.svg";
 import { ReactComponent as PlusIcon } from "../../assets/plus_icon.svg";
-import{SwapHoriz } from "@mui/icons-material"
+import { SwapHoriz } from "@mui/icons-material"
 import { EventChain } from "@ltonetwork/lto";
 import { TypedMetadata } from "../../interfaces/TypedOwnableInfo";
 import { useState } from "react";
@@ -28,6 +28,7 @@ enum OwnableActionType {
   Info = "Info",
   AddToCollection = "AddToCollection",
   Bridge = "Bridge",
+  Download = "Download"
 }
 
 interface OwnableActionsFabProps {
@@ -47,6 +48,7 @@ interface OwnableActionsFabProps {
   onTransfer: (address: string) => void;
   onAddToCollection: (pkg: string) => void;
   showBridge: () => void;
+  downloadImage: () => void;
 }
 
 const wasConsumed = (chain: EventChain): boolean => {
@@ -76,7 +78,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
       title: "Delete Ownable",
       message: (
         <span>
-          Are you sure you want to delete the <em>{pkg.title}</em> Ownable? This
+          Are you sure you want to delete the <em>{pkg?.title || ""}</em> Ownable? This
           action can not be undone.
         </span>
       ),
@@ -122,6 +124,10 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         props.onClose();
         props.showBridge();
         break
+      case OwnableActionType.Download:
+        props.onClose();
+        props.downloadImage();
+        break
       default:
         console.error("Unknown action:", action);
     }
@@ -144,6 +150,11 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         title: "Info",
         icon: InfoIcon,
       },
+      // {
+      //   id: OwnableActionType.Download,
+      //   title: "Download",
+      //   icon: InfoIcon,
+      // }
     ];
 
     if (props.isConsumable) {
@@ -156,7 +167,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
       }
     }
 
-    if(props.isBridgeable) {
+    if (props.isBridgeable) {
       actions.push({
         id: OwnableActionType.Bridge,
         title: "Bridge",

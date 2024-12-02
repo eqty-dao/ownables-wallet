@@ -27,14 +27,16 @@ import { enqueueSnackbar } from "notistack";
 import { BridgeService } from "../services/Bridge.service";
 import shortId from "../utils/shortId";
 import SessionStorageService from "../services/SessionStorage.service";
-import { sendRNPostMessage } from "../utils/postMessage";
+import LocalStorageService from "../services/LocalStorage.service";
 
 interface OwnableProps {
   chain: EventChain;
   packageCid: string;
   selected: boolean;
+  uniqueMessageHash: string;
   onDelete: () => void;
   onConsume: (info: TypedOwnableInfo) => void;
+  onRemove: () => void;
   onError: (title: string, message: string) => void;
   children?: ReactNode;
 }
@@ -54,7 +56,20 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
 
   constructor(props: OwnableProps) {
     super(props);
-    this.pkg = PackageService.info(props.packageCid);
+    this.pkg = PackageService.info(props.packageCid) || {
+      title: "Unknown",
+      name: "Unknown",
+      cid: props.packageCid,
+      isDynamic: false,
+      hasMetadata: false,
+      hasWidgetState: false,
+      isConsumable: false,
+      isConsumer: false,
+      isTransferable: false,
+      uniqueMessageHash: props.uniqueMessageHash,
+      versions: [],
+      keywords: [],
+    };
     this.iframeRef = createRef();
     this.state = {
       initialized: false,
@@ -98,11 +113,34 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
         const content = await zip.generateAsync({
           type: "uint8array",
         });
-        await RelayService.sendOwnable(to, content);
-        enqueueSnackbar("Ownable sent Successfully!!", { variant: "success" });
-        //Remove ownable from relay's inbox
+
+        const messageHash = await RelayService.sendOwnable(to, content);
+        enqueueSnackbar(`Ownable ${messageHash} sent Successfully!!`, {
+          variant: "success",
+        });
+
         if (this.pkg.uniqueMessageHash) {
+          console.log(this.pkg.uniqueMessageHash);
+          //Remove ownable from relay's inbox
           await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+
+          //remove ownable from IDB
+          //await OwnableService.delete(this.chain.id);
+
+          //remove hash from localstorage messageHashes
+          await LocalStorageService.removeItem(
+            "messageHashes",
+            this.pkg.uniqueMessageHash
+          );
+
+          //remove package from localstorage packages
+          // await LocalStorageService.removeByField(
+          //   "packages",
+          //   "uniqueMessageHash",
+          //   this.pkg.uniqueMessageHash
+          // );
+
+          //this.props.onRemove();
         }
       } else {
         enqueueSnackbar("Server is down", { variant: "error" });
@@ -155,6 +193,12 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
       if (this.pkg.uniqueMessageHash) {
         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
       }
+      const hashes = JSON.parse(localStorage.getItem("messageHashes") || "[]");
+
+      const updatedHashes = hashes.filter(
+        (item: any) => item.uniqueMessageHash !== this.pkg.uniqueMessageHash
+      );
+      localStorage.setItem("messageHashes", JSON.stringify(updatedHashes));
       enqueueSnackbar("Successfully bridged!!", { variant: "success" });
     } catch (error) {
       console.error("Error while attempting to bridge:", error);
@@ -162,27 +206,23 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
-    try {
-      if (!stateDump) stateDump = this.state.stateDump;
+    if (!stateDump) stateDump = this.state.stateDump;
 
-      if (this.pkg.hasWidgetState)
-        await OwnableService.rpc(this.chain.id).refresh(stateDump);
+    if (this.pkg.hasWidgetState)
+      await OwnableService.rpc(this.chain.id).refresh(stateDump);
 
-      const info = (await OwnableService.rpc(this.chain.id).query(
-        { get_info: {} },
+    const info = (await OwnableService.rpc(this.chain.id).query(
+      { get_info: {} },
+      stateDump
+    )) as TypedOwnableInfo;
+    const metadata = this.pkg.hasMetadata
+      ? ((await OwnableService.rpc(this.chain.id).query(
+        { get_metadata: {} },
         stateDump
-      )) as TypedOwnableInfo;
-      const metadata = this.pkg.hasMetadata
-        ? ((await OwnableService.rpc(this.chain.id).query(
-            { get_metadata: {} },
-            stateDump
-          )) as TypedMetadata)
-        : this.state.metadata;
+      )) as TypedMetadata)
+      : this.state.metadata;
 
-      this.setState({ info, metadata });
-    } catch (error) {
-      console.error("Error during refresh:", error);
-    }
+    this.setState({ info, metadata });
   }
 
   private async apply(partialChain: EventChain): Promise<void> {
@@ -204,7 +244,11 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
 
   async onLoad(): Promise<void> {
     if (!this.pkg.isDynamic) {
-      await OwnableService.initStore(this.chain, this.pkg.cid);
+      await OwnableService.initStore(
+        this.chain,
+        this.pkg.cid,
+        this.pkg.uniqueMessageHash
+      );
       return;
     }
 
@@ -214,15 +258,18 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
     });
 
     try {
-      await OwnableService.init(this.chain, this.pkg.cid, rpc);
+      await OwnableService.init(
+        this.chain,
+        this.pkg.cid,
+        rpc,
+        this.props.uniqueMessageHash
+      );
       this.setState({ initialized: true });
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
-      sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: ownableErrorMessage(e) }));
     }
   }
-
 
   private async execute(msg: TypedDict): Promise<void> {
     let stateDump: StateDump;
