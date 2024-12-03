@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Badge, Box, Dialog, DialogContent, DialogContentText, LinearProgress } from "@mui/material";
+import { Badge, Box, Dialog, DialogContent, DialogContentText, LinearProgress, List } from "@mui/material";
 import IDBService from "./services/IDB.service";
 import { TypedPackage } from "./interfaces/TypedPackage";
 import Loading from "./components/Loading";
@@ -54,6 +54,8 @@ import { InfoSharp } from "@mui/icons-material";
 import ActivityLogDrawer from "./components/ActivityLogs";
 import { activityLogService } from "./services/ActivityLog.service";
 import { PollingService } from "./services/Polling.service";
+import { RelayService } from "./services/Relay.service";
+import ImportOwnablesDrawer from "./components/ImportOwnables";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -86,6 +88,31 @@ const contentContainerStyle = {
   marginTop: "80px",
 };
 
+const iconCircleStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: themeColors.iconLiner,
+  borderRadius: "50%",
+  width: "30px",
+  height: "30px",
+  marginRight: "16px",
+  padding: "5px",
+};
+
+
+const itemContainerStyle = {
+  backgroundColor: themeColors.actionBtn,
+  color: "white",
+  borderRadius: "60px",
+  display: "flex",
+  alignItems: "center",
+  marginRight: "-16px",
+  marginBottom: "-8px",
+  justifyContent: "flex-end",
+};
+
+
 export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [showPackages, setShowPackages] = React.useState(false);
@@ -111,6 +138,7 @@ export default function App() {
   const [message, setMessages] = useState(0);
   const [importingOwnables, setImportingFromRelay] = useState(false);
   const [importLabel, setImportLabel] = useState("Importing Ownables");
+  const [showImportPackage, setShowImportPackage] = useState(false);
 
 
   // DC: filters
@@ -212,6 +240,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (importingOwnables === true && selectedTab === TabType.ALL) {
+      setSelectedTab(TabType.INTERSTITIAL);
+    } else if (importingOwnables === false && selectedTab === TabType.INTERSTITIAL) {
+      setTimeout(() => {
+        setSelectedTab(TabType.ALL);
+      }, 1000);
+    }
+  }, [importingOwnables]);
+
+  useEffect(() => {
     handleSearch("");
     handleClearSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -222,18 +260,18 @@ export default function App() {
     // eslint-disable-next-line
   }, []);
 
-  useEffect(() => {
-    if (LTOService.address.length > 1) {
-      const stopPolling = PollingService.startPolling(
-        LTOService.address,
-        (newCount: any) => {
-          setMessages(newCount);
-        },
-        5000
-      );
-      return () => stopPolling();
-    }
-  }, [LTOService.address]);
+  // useEffect(() => {
+  //   if (LTOService.address.length > 1) {
+  //     const stopPolling = PollingService.startPolling(
+  //       LTOService.address,
+  //       (newCount: any) => {
+  //         setMessages(newCount);
+  //       },
+  //       5000
+  //     );
+  //     return () => stopPolling();
+  //   }
+  // }, [LTOService.address]);
 
   const deleteOwnable = async (id: string, packageCid: string) => {
     const pkg = PackageService.info(packageCid);
@@ -426,12 +464,13 @@ export default function App() {
     return str?.replace(regex, "").replace(/[-_]+/, " ").trim()
       .replace(/\b\w/, (c) => c.toUpperCase());
   }
+
   const relayImport = async (pkg: TypedPackage[] | null, triggerRefresh: boolean) => {
     try {
-
       sendRNPostMessage(JSON.stringify({ type: 'relay Import loop', data: "pkg" }));
       const isEmpty = pkg && pkg.every((item) => item === null || item === undefined);
       sendRNPostMessage(JSON.stringify({ type: 'isEmpty', data: isEmpty }));
+
       if (pkg == null || pkg.length === 0 || isEmpty) {
         enqueueSnackbar(`Nothing to Load from relay`, {
           variant: "info"
@@ -487,33 +526,14 @@ export default function App() {
 
         }
         setImportingFromRelay(false);
-        LocalStorageService.remove("messageCount");
-        setMessages(0);
-
-        //Trigger a refresh only if any package matched current one
-        // if (triggerRefresh) {
-        //   setAlert({
-        //     severity: "info",
-        //     title: "New Ownables Detected",
-        //     message: "New ownables have been detected. Refreshing...",
-        //   });
-
-        //   // setTimeout(() => {
-        //   //   window.location.reload();
-        //   // }, 4000);
-        //   // LocalStorageService.set("messageCount", 0);
-        //   // setMessages(0);
-        // } else {
-        //   enqueueSnackbar(`No matching packages found for refresh`, {
-        //     variant: "info",
-        //   });
-        // }
+        // LocalStorageService.remove("messageCount");
+        // setMessages(0);
       } else {
         enqueueSnackbar(`Nothing to Load from relay`, {
           variant: "error",
         });
-        LocalStorageService.remove("messageCount");
-        setMessages(0);
+        // LocalStorageService.remove("messageCount");
+        // setMessages(0);
         setImportingFromRelay(false);
         setImportLabel(`Import from Relay Completed`);
       }
@@ -524,9 +544,14 @@ export default function App() {
         activity: `Importing Ownables from Relay failed`,
         timestamp: Date.now(),
       });
-      throw error;
+      console.error("Error importing ownables from relay", error);
     }
   };
+
+  const importOwnableByCid = async (cid: string) => {
+  }
+
+  const checkAvailableOwnables = async () => { }
 
   const importPackagesFromRelay = async () => {
     setImportingFromRelay(true);
@@ -601,7 +626,8 @@ export default function App() {
         setShowPackages(true);
         return;
       case HomePageEnums.ReceiveOwnables:
-        importPackagesFromRelay();
+        // importPackagesFromRelay();
+        setShowImportPackage(true);
         return;
       case HomePageEnums.ActivityLogs:
         setShowActivityLogDrawer(true);
@@ -868,6 +894,13 @@ export default function App() {
         title="Activity Logs"
         onClose={() => setShowActivityLogDrawer(false)}
         isPersistent={true}
+      />
+
+      <ImportOwnablesDrawer
+        open={showImportPackage}
+        onClose={() => setShowImportPackage(false)}
+        title="Import Ownables"
+        setOwnables={setOwnables}
       />
       <Dialog
         open={importingOwnables}

@@ -81,10 +81,15 @@ export default class OwnableService {
     return EventChainService.loadAll();
   }
 
-  static rpc(id: string): OwnableRPC {
-    const rpc = this._rpc.get(id);
-    if (!rpc) throw new Error(`No RPC for ownable ${id}`);
-    return rpc;
+  static rpc(id: string): OwnableRPC | undefined {
+    try {
+      const rpc = this._rpc.get(id);
+      if (!rpc) throw new Error(`No RPC for ownable ${id}`);
+      return rpc;
+    } catch (error) {
+      console.error(error);
+
+    }
   }
 
   static clearRpc(id: string) {
@@ -135,24 +140,29 @@ export default class OwnableService {
     rpc: OwnableRPC,
     uniqueMessageHash: string
   ): Promise<void> {
-    if (this._rpc.has(chain.id)) {
-      try {
-        delete (this._rpc.get(chain.id) as any).handler;
-      } catch (e) { }
+    try {
+      if (this._rpc.has(chain.id)) {
+        try {
+          delete (this._rpc.get(chain.id) as any).handler;
+        } catch (e) { }
+      }
+
+      this._rpc.set(chain.id, rpc);
+      const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
+      const js = workerJsSource + moduleJs;
+
+      const wasm = (await PackageService.getAsset(
+        cid,
+        "ownable_bg.wasm",
+        (fr, file) => fr.readAsArrayBuffer(file)
+      )) as ArrayBuffer;
+      await rpc.init(chain.id, js, new Uint8Array(wasm));
+      const stateDump = await this.apply(chain, []);
+      await this.initStore(chain, cid, uniqueMessageHash, stateDump);
+    } catch (error) {
+      console.error(error);
+
     }
-
-    this._rpc.set(chain.id, rpc);
-    const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
-    const js = workerJsSource + moduleJs;
-
-    const wasm = (await PackageService.getAsset(
-      cid,
-      "ownable_bg.wasm",
-      (fr, file) => fr.readAsArrayBuffer(file)
-    )) as ArrayBuffer;
-    await rpc.init(chain.id, js, new Uint8Array(wasm));
-    const stateDump = await this.apply(chain, []);
-    await this.initStore(chain, cid, uniqueMessageHash, stateDump);
   }
 
   static async apply(
@@ -160,6 +170,7 @@ export default class OwnableService {
     stateDump: StateDump
   ): Promise<StateDump> {
     const rpc = this.rpc(partialChain.id);
+    if(!rpc) return stateDump;
 
     for (const event of partialChain.events) {
       stateDump = (await this.applyEvent(rpc, event, stateDump)).state;
@@ -207,11 +218,13 @@ export default class OwnableService {
   ): Promise<StateDump> {
     try {
       const info = { sender: LTOService.account.publicKey, funds: [] };
-      const { state: newStateDump } = await this.rpc(chain.id).execute(
-        msg,
-        info,
-        stateDump
-      );
+      if(!this.rpc(chain.id)) return stateDump;
+      //@ts-ignore
+        const { state: newStateDump } = await this.rpc(chain.id).execute(
+          msg,
+          info,
+          stateDump
+        );
 
       delete msg["@context"]; // Shouldn't be set
       new Event({ "@context": "execute_msg.json", ...msg })
@@ -263,7 +276,8 @@ export default class OwnableService {
     );
     if (!consumerState || !consumableState)
       throw Error("State mismatch for consume");
-
+    if(this.rpc(consumer.id) === undefined || (await this.rpc(consumable.id)) === undefined) return;
+    //@ts-ignore
     const { events, state: consumableStateDump } = await this.rpc(
       consumable.id
     ).execute(consumeMessage, info, consumableState);
@@ -282,6 +296,8 @@ export default class OwnableService {
       },
     };
 
+    if(this.rpc(consumer.id) === undefined || (await this.rpc(consumable.id)) === undefined) return;
+    //@ts-ignore
     const { state: consumerStateDump } = await this.rpc(
       consumer.id
     ).externalEvent(externalEventMsg, info, consumerState);

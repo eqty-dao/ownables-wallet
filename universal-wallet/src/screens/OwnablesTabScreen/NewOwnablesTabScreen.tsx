@@ -131,16 +131,13 @@ const NewOwnablesTabScreen = () => {
                     sdkError && (
                         <View style={
                             {
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                justifyContent: 'center',
+                                display: 'flex',
+                                flexDirection: 'column',
                                 alignItems: 'center',
-                                backgroundColor: 'transparent',
-                                zIndex: 1,
-                                height: '100%',
+                                justifyContent: 'space-between',
+                                padding: 10,
+                                borderRadius: 10,
+                                top: "50%",
                             }
                         }>
                             <View style={{

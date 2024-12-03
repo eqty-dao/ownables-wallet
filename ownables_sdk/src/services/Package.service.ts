@@ -421,9 +421,9 @@ export default class PackageService {
             const { ...values } = messageHash;
             const uniqueMessageHash = values.messageHash;
 
-            if (await IDBService.hasStore(`package:${cid}`)) {
-              triggerRefresh = true;
-            }
+            // if (await IDBService.hasStore(`package:${cid}`)) {
+            //   triggerRefresh = true;
+            // }
 
             await this.storeMessageHash(uniqueMessageHash);
             await this.storeAssets(cid, asset);
@@ -454,6 +454,91 @@ export default class PackageService {
       const packages = results.filter((pkg) => pkg !== null);
 
       return [packages, triggerRefresh];
+    } catch (error) {
+      console.error("Error:", error);
+      return null;
+    }
+  }
+
+  static async importFromRelayByMessageHash(messageHash: string) {
+    try {
+      const relayData = await RelayService.getOwnableData(messageHash);
+
+      if (!relayData) {
+        console.log("No data found for messageHash:", messageHash);
+        return null;
+      }
+      let triggerRefresh = false;
+
+
+      try {
+        const { message, ...messageHash } = relayData;
+        const mainMessage = message;
+        const asset = await this.extractAssets(mainMessage.data.buffer);
+        if (asset.length === 0){
+          console.log("No asset found for messageHash:", messageHash);
+          return null;
+        }
+        const cid = await calculateCid(asset);
+        const chainJson = await this.getChainJson(
+          "chain.json",
+          mainMessage.data.buffer
+        );
+
+        if (await IDBService.hasStore(`package:${cid}`)) {
+          if (await this.isCurrentEvent(chainJson)) {
+            console.log("Removing older package for messageHash:", messageHash);
+            this.removeOlderPackage(chainJson.id);
+          } else {
+            console.log("Package is current for messageHash:", messageHash);
+            // return null;
+          }
+        }
+
+        const packageJson = await this.getPackageJson(
+          "package.json",
+          asset
+        );
+        const name = packageJson.name;
+        const title = name
+          .replace(/^ownable-|-ownable$/, "")
+          .replace(/[-_]+/, " ")
+          .replace(/\b\w/, (c: any) => c.toUpperCase());
+        const description = packageJson.description;
+        const capabilities = await this.getCapabilities(asset);
+        const keywords: string[] = packageJson.keywords || "";
+        const isNotLocal = true;
+        const { ...values } = messageHash;
+        const uniqueMessageHash = values.messageHash;
+
+        if (await IDBService.hasStore(`package:${cid}`)) {
+          triggerRefresh = true;
+        }
+
+        await this.storeMessageHash(uniqueMessageHash);
+        await this.storeAssets(cid, asset);
+
+        const pkg = this.storePackageInfo(
+          title,
+          name,
+          description,
+          cid,
+          keywords,
+          capabilities,
+          uniqueMessageHash,
+          isNotLocal
+        );
+
+        const chain = EventChain.from(chainJson);
+        pkg.chain = chain;
+        pkg.uniqueMessageHash = uniqueMessageHash;
+        console.log("Package imported for messageHash:", messageHash, pkg);
+        return pkg;
+      } catch (err) {
+        console.error("Error processing data:", err);
+        return null; // Skip failed items
+      }
+
     } catch (error) {
       console.error("Error:", error);
       return null;

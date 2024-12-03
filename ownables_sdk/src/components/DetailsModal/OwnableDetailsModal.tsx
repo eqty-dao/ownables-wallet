@@ -319,14 +319,19 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       if (!stateDump) stateDump = this.state.stateDump;
 
       if (this.pkg.hasWidgetState)
-        await OwnableService.rpc(this.chain.id).refresh(stateDump);
+        if(await OwnableService.rpc(this.chain.id) !== null){
+          await OwnableService?.rpc(this.chain.id)?.refresh(stateDump);
+        }
 
-      const info = (await OwnableService.rpc(this.chain.id).query(
+      if(!(await OwnableService.rpc(this.chain.id))){
+        console.log("OwnableDetailsModal -> refresh -> OwnableService.rpc(this.chain.id)", OwnableService.rpc(this.chain.id));
+      }
+      const info = (await OwnableService.rpc(this.chain.id)?.query(
         { get_info: {} },
         stateDump
       )) as TypedOwnableInfo;
       const metadata = this.pkg.hasMetadata
-        ? ((await OwnableService.rpc(this.chain.id).query(
+        ? ((await OwnableService.rpc(this.chain.id)?.query(
           { get_metadata: {} },
           stateDump
         )) as TypedMetadata)

@@ -49,6 +49,7 @@ const TabContent = styled(Box)``;
 export enum TabType {
   COLLECTIONS = "COLLECTIONS",
   ALL = "ALL",
+  INTERSTITIAL = "INTERSTITIAL",
 }
 
 interface OwnableType {
@@ -124,7 +125,7 @@ const OwnablesTabs = (props: Props) => {
           }
         >
           {items.length === 0 ? (
-            <EmptyCollection title={collection.value} id={collection.id}/>
+            <EmptyCollection title={collection.value} id={collection.id} />
           ) : (
             <Grid container columnSpacing={2} rowSpacing={2}>
               {items.map((item: any, index: number) => {
@@ -178,13 +179,21 @@ const OwnablesTabs = (props: Props) => {
           {renderCollectionItems(staticCollections, true)}
         </React.Fragment>
       );
+    } else if (tab === TabType.INTERSTITIAL) {
+      //loader
+      return (
+        <Box p={5}>
+          <>
+          </>
+        </Box>
+      );
     }
 
     return (
       <>
         {props.ownables.length === 0 ? (
           <Box p={5}>
-            <EmptyCollection title="All" id="all"/>
+            <EmptyCollection title="All" id="all" />
           </Box>
         ) : (
           <Grid container sx={gridStyle} columnSpacing={2} rowSpacing={2}>
@@ -223,7 +232,7 @@ const OwnablesTabs = (props: Props) => {
           active={tab === TabType.COLLECTIONS}
           onClick={() => handleTabChange(TabType.COLLECTIONS)}
         >
-         Categories
+          Categories
         </Tab>
         <Tab
           key={TabType.ALL}
@@ -231,6 +240,13 @@ const OwnablesTabs = (props: Props) => {
           onClick={() => handleTabChange(TabType.ALL)}
         >
           All
+        </Tab>
+        <Tab
+          key={TabType.INTERSTITIAL}
+          active={tab === TabType.INTERSTITIAL}
+          onClick={() => handleTabChange(TabType.INTERSTITIAL)}
+        >
+          {""}
         </Tab>
       </TabsContainer>
       <TabContent>{renderContent()}</TabContent>
