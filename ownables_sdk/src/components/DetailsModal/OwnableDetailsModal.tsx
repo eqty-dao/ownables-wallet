@@ -315,32 +315,23 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
-    try {
-      if (!stateDump) stateDump = this.state.stateDump;
+    if (!stateDump) stateDump = this.state.stateDump;
 
-      if (this.pkg.hasWidgetState)
-        if(await OwnableService.rpc(this.chain.id) !== null){
-          await OwnableService?.rpc(this.chain.id)?.refresh(stateDump);
-        }
+    if (this.pkg.hasWidgetState)
+      await OwnableService.rpc(this.chain.id).refresh(stateDump);
 
-      if(!(await OwnableService.rpc(this.chain.id))){
-        console.log("OwnableDetailsModal -> refresh -> OwnableService.rpc(this.chain.id)", OwnableService.rpc(this.chain.id));
-      }
-      const info = (await OwnableService.rpc(this.chain.id)?.query(
-        { get_info: {} },
+    const info = (await OwnableService.rpc(this.chain.id).query(
+      { get_info: {} },
+      stateDump
+    )) as TypedOwnableInfo;
+    const metadata = this.pkg.hasMetadata
+      ? ((await OwnableService.rpc(this.chain.id).query(
+        { get_metadata: {} },
         stateDump
-      )) as TypedOwnableInfo;
-      const metadata = this.pkg.hasMetadata
-        ? ((await OwnableService.rpc(this.chain.id)?.query(
-          { get_metadata: {} },
-          stateDump
-        )) as TypedMetadata)
-        : this.state.metadata;
+      )) as TypedMetadata)
+      : this.state.metadata;
 
-      this.setState({ info, metadata });
-    } catch (error) {
-      console.error("Error during refresh:", error);
-    }
+    this.setState({ info, metadata });
   }
 
   private async apply(partialChain: EventChain): Promise<void> {
@@ -577,14 +568,26 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
               onLoad={() => this.onLoad()}
             />
 
-            <If condition={this.isTransferred}>
+            <If condition={this.isTransferred && !this.isBridged}>
               <Tooltip
                 title="You're unable to interact with this Ownable, because it has been transferred to a different account."
                 followCursor
               >
-                <LtoOverlay isForDetailsScreen={true}>
-                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={true}>
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
                     Transferred
+                  </LtoOverlayBanner>
+                </LtoOverlay>
+              </Tooltip>
+            </If>
+            <If condition={this.isBridged && this.isTransferred}>
+              <Tooltip
+                title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+                followCursor
+              >
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                    Bridged
                   </LtoOverlayBanner>
                 </LtoOverlay>
               </Tooltip>

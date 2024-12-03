@@ -4,13 +4,11 @@ import { ReactComponent as CloseDrawerIcon } from "../assets/close_drawer_icon.s
 import styled from "@emotion/styled";
 import { themeStyles } from "../theme/themeStyles";
 import { themeColors } from "../theme/themeColors";
-import { LtoInputRefMethods } from "./common/LtoInput";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { RelayService } from "../services/Relay.service";
 import { EventChain } from "@ltonetwork/lto";
 import Loading from "./Loading";
 import PackageService from "../services/Package.service";
-import calculateCid from "../utils/calculateCid";
 import IDBService from "../services/IDB.service";
 
 export interface Ownable {
@@ -81,16 +79,18 @@ const ImportOwnablesDrawer = (props: Props) => {
   }, [open]);
 
   const fetchOwnables = async () => {
-    const res = await RelayService.listOwnables();
-    console.log("ImportOwnablesDrawer -> res", res);
-    const lookupHash = "2zA7yt1pKcEXo2xjMtQk7uRc8KFZ4LQCC4doiULLdKbK";
-    const hash = res.find((h:any) => h.hash === lookupHash);
-    console.log("ImportOwnablesDrawer -> hash", hash);
-    const index = res.findIndex((h:any) => h.hash === lookupHash);
-    console.log("ImportOwnablesDrawer -> index", index);
-    setTotalOwnables(res?.length || 0);
-    setDebugMessage(`Ownables found: ${res.length}`);
-    for (const hash of res) {
+    window.localStorage.removeItem("messageHashes");
+    setOwnables([]);
+    let metadata = await RelayService.listOwnables();
+    if(metadata.length === 0) {
+      setDebugMessage("No ownables found");
+      setLoading(false);
+      return;
+    }
+    console.log("ImportOwnablesDrawer -> metadata", metadata);
+    setTotalOwnables(metadata?.length || 0);
+    setDebugMessage(`Ownables found: ${metadata.length}`);
+    for (const hash of metadata) {
       const index = ownables.findIndex((o) => o.uniqueMessageHash === hash.hash);
       setDebugMessage(`Fetching ownable: ${hash.hash}`);
       const ownable = await PackageService.importFromRelayByMessageHash(hash.hash);
@@ -104,7 +104,6 @@ const ImportOwnablesDrawer = (props: Props) => {
     setDebugMessage(`Done Fetching all ownables`);
     setEndTime(Date.now());
     setLoading(false);
-
   }
 
 
@@ -133,13 +132,32 @@ const ImportOwnablesDrawer = (props: Props) => {
           <CloseDrawerIcon />
         </IconButton>
       </Box>
+      {/* Refresh button*/}
+      <Box
+        display={"flex"}
+        p={1}
+        flexDirection={"row"}
+        justifyContent={"center"}
+        alignItems={"center"}
+        width={"100%"}
+      >
+        <StyledButton
+          variant="contained"
+          transparent={false}
+          onClick={() => {
+            fetchOwnables();
+          }}
+        >
+          Refresh
+        </StyledButton>
+        </Box>
       <b>
         <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Total Ownables: {totalOwnables}</p>
       </b>
       <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{debugMessage}</p>
       {ownables.length === 0 && <Loading show={true} />}
       {ownables.length > 0 && <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Available Ownables</p>}
-      {endTime ? <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Time taken: {endTime - startTime} ms</p> : null}
+      {/* {endTime ? <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Time taken: {endTime - startTime} ms</p> : null} */}
       {lastResponse ? <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Last Response: {lastResponse}</p> : null}
       <Box
         display={"flex"}
@@ -157,7 +175,6 @@ const ImportOwnablesDrawer = (props: Props) => {
               borderSpacing: "0 8px",
               width: "100%",
               "& th, & td": {
-                maxWidth: isMobile ? "100px" : "200px",
                 wordWrap: "break-word",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -216,10 +233,10 @@ const ImportOwnablesDrawer = (props: Props) => {
                       Accept
                     </StyledButton>
                   </td>
-                  <Loading show={loading} />
                 </tr>
               ))}
             </tbody>
+            <Loading show={loading} />
           </Table></>
         }
       </Box>

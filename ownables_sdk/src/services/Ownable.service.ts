@@ -81,15 +81,10 @@ export default class OwnableService {
     return EventChainService.loadAll();
   }
 
-  static rpc(id: string): OwnableRPC | undefined {
-    try {
-      const rpc = this._rpc.get(id);
-      if (!rpc) throw new Error(`No RPC for ownable ${id}`);
-      return rpc;
-    } catch (error) {
-      console.error(error);
-
-    }
+  static rpc(id: string): OwnableRPC {
+    const rpc = this._rpc.get(id);
+    if (!rpc) throw new Error(`No RPC for ownable ${id}`);
+    return rpc;
   }
 
   static clearRpc(id: string) {
