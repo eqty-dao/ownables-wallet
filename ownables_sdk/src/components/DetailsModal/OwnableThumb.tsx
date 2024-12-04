@@ -92,7 +92,7 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
       initialized: false,
       applied: new EventChain(this.chain.id).latestHash,
       stateDump: [],
-      metadata: { name: this.pkg.title, description: this.pkg.description },
+      metadata: { name: this?.pkg?.title || "", description: this?.pkg?.description || "" },
     };
   }
 

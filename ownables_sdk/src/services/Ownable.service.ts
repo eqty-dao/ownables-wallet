@@ -364,7 +364,7 @@ export default class OwnableService {
         created: new Date(),
         latestHash: chain.latestHash.hex,
         keywords: PackageService.info(pkg)?.keywords || [],
-        uniqueMessageHash: PackageService.info(pkg, uniqueMessageHash) ?? uniqueMessageHash,
+        uniqueMessageHash: uniqueMessageHash,
       };
 
       const stores = [storeId];

@@ -66,7 +66,7 @@ const NewOwnablesTabScreen = () => {
         }
         if (data.type === 'openInfo') {
             console.log('Open Info:', data.data);
-            InAppBrowser.open('https://lto.network');
+            InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
         }
 
     }
@@ -105,8 +105,12 @@ const NewOwnablesTabScreen = () => {
                         backgroundColor="#0D0D0D"
                         source={{
                             uri: webviewUrl,
-                            cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
-                            cacheEnabled: true
+                            headers: {
+                                'Cache-Control': 'no-cache',
+                                'Pragma': 'no-cache',
+                                'Expires': '0',
+                            },
+
                         }}
                         allowsUnsecureHttps={true}
                         originWhitelist={['*']}

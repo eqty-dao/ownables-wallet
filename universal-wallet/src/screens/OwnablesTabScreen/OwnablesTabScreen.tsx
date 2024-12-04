@@ -1,24 +1,27 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {BackHandler, Linking, Platform} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { BackHandler, Linking, Platform } from 'react-native';
 import LTOService from '../../services/LTO.service';
-import {RootTabScreenProps} from '../../../types';
+import { RootTabScreenProps } from '../../../types';
 import OverviewHeader from '../../components/OverviewHeader';
-import {WebView, WebViewMessageEvent, WebViewNavigation} from 'react-native-webview';
+import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
 import styled from 'styled-components/native';
-import {useFocusEffect} from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFS from 'react-native-fs';
 import StaticWebServer from 'react-native-rl-web-server';
-import {MainScreenContainer} from '../../components/MainScreenContainer';
-import {StyledImage} from '../../components/styles/OverviewHeader.styles';
-import {logoTitle} from '../../utils/images';
-import {useUserSettings} from '../../context/User.context';
-import {Account} from '@ltonetwork/lto';
-import {CurrentState, useAppContext} from '../../../providers/AppContext';
+import { MainScreenContainer } from '../../components/MainScreenContainer';
+import { StyledImage } from '../../components/styles/OverviewHeader.styles';
+import { logoTitle } from '../../utils/images';
+import { useUserSettings } from '../../context/User.context';
+import { Account } from '@ltonetwork/lto';
+import { CurrentState, useAppContext } from '../../../providers/AppContext';
 import * as pathModule from 'path';
+import InAppBrowser from 'react-native-inappbrowser-reborn';
 
+export const ASSETS_FOLDER_NAME: string = 'build';
+export const DOCUMENT_FOLDER_PATH: string = `${RNFS.DocumentDirectoryPath}/${ASSETS_FOLDER_NAME}`;
 const port = 30122; // select a random available port
-const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/www' : RNFS.DocumentDirectoryPath + '/html';
+const path = Platform.OS === 'ios' ? RNFS.MainBundlePath + '/build' : DOCUMENT_FOLDER_PATH;
 const options = {
   keepAlive: true,
   localOnly: true, // local means secure, have access to crypto and https calls
@@ -29,11 +32,13 @@ const WebViewContainer = styled.View`
   background-color: #0d0d0d;
 `;
 
-export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Ownables'>) {
+export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ownables'>) {
   const [accountInfo, setAccountInfo] = useState<Account | null>(null);
   const [webViewOpacity, setWebViewOpacity] = useState(0);
-  const {setForceSignOut} = useUserSettings();
-  const {currentAction, setCurrentAction} = useAppContext();
+  const { setForceSignOut } = useUserSettings();
+  const { currentAction, setCurrentAction } = useAppContext();
+  const { network, env } = useUserSettings();
+
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -78,7 +83,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
     console.log('webMessage', data);
     console.log('sanitizedData', sanitizedData);
     if (data.type === 'openFileDialog') {
-      const {forceSignout} = data.data;
+      const { forceSignout } = data.data;
       setForceSignOut(forceSignout);
     }
     if (data.type === 'uploadFileStart') {
@@ -88,13 +93,17 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
     if (data.type === 'uploadFileEnd') {
       setCurrentAction('');
     }
+    if (data.type === 'openInfo') {
+      console.log('Open Info:', data.data);
+      InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
+    }
     AsyncStorage.setItem('webData', JSON.stringify(data));
   };
 
   const [serverUrl, setServerUrl] = React.useState<string>();
 
   const copyWWWBuildFiles = async (directory: string) => {
-    (await RNFS.readDirAssets(directory)).forEach(async (file: {isDirectory: () => any; path: string}) => {
+    (await RNFS.readDirAssets(directory)).forEach(async (file: { isDirectory: () => any; path: string }) => {
       if (file.isDirectory()) {
         const dirPath = pathModule.join(RNFS.DocumentDirectoryPath, file.path);
         await RNFS.mkdir(dirPath);
@@ -117,7 +126,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
   const initializeServer = async () => {
     if (Platform.OS === 'android') {
       await RNFS.mkdir(path);
-      await copyWWWBuildFiles('html');
+      await copyWWWBuildFiles(ASSETS_FOLDER_NAME);
     }
 
     const url = await StaticWebServer.start(port, path, options);
@@ -130,7 +139,7 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
 
   const getWebViewUrl = () => {
     if (accountInfo && accountInfo.seed) {
-      return `${serverUrl}?seed=${encodeURIComponent(accountInfo.seed)}`;
+      return `${serverUrl}?seed=${(accountInfo.seed)}&network=${network}&env=${env}`;
     }
     return serverUrl; // Fallback to just serverUrl if accountInfo or seed is not available
   };
@@ -166,13 +175,14 @@ export default function OwnablesTabScreen({navigation}: RootTabScreenProps<'Owna
           onMessage={webMessage}
           onLoadEnd={onWebviewLoads}
           source={{
-            // uri: getWebViewUrl(),
-            uri: 'http://10.0.167:3000/?seed=lock visa vacuum soul awesome chuckle swing lawsuit trumpet human tiny eagle tone trust army',
-
+            uri: getWebViewUrl(),
+            // uri: 'http://localhost:3000/?seed=lock%20visa%20vacuum%20soul%20awesome%20chuckle%20swing%20lawsuit%20trumpet%20human%20tiny%20eagle%20tone%20trust%20army&network=T&env=PROD',
+            // uri: 'http://localhost:3000/?seed=run run run run run run run run run run run run run run run&network=T&env=STAGING',
+            // uri:'http://localhost:3000/?seed=run%20run%20run%20run%20run%20run%20run%20run%20run%20run%20run%20run%20run%20run%20run&network=T&env=STAGING',
             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
             cacheEnabled: true,
           }}
-          style={{backgroundColor: '#0D0D0D', opacity: webViewOpacity}}
+          style={{ backgroundColor: '#0D0D0D', opacity: webViewOpacity }}
         />
       </WebViewContainer>
     </MainScreenContainer>

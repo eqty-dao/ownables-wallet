@@ -25,6 +25,7 @@ export class RelayService {
       const request = {
         headers: {
           ...options.headers, // Include optional headers in the request
+
         },
         method,
         url,
@@ -37,7 +38,7 @@ export class RelayService {
         url: signedRequest.url,
         headers: {
           ...signedRequest.headers,
-          ...options.headers, // Ensure optional headers are included after signing
+          ...options.headers, // Ensure optional headers are included after signing,
         },
         validateStatus: (status) => {
           return (status >= 200 && status < 300) || status === 304;
@@ -119,11 +120,13 @@ export class RelayService {
 
     try {
       const response = await this.handleSignedRequest("GET", url);
-      if (response && response.data) {
+      if (response && response.data && response.data.metadata) {
         return response.data.metadata;
       }
+      return [];
     } catch (error) {
       console.error("Failed to list ownables:", error);
+      return [];
     }
   }
   /**

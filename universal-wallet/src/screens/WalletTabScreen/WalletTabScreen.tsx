@@ -163,7 +163,7 @@ const MainTab = ({children, navigation}) => {
       return;
     }
     const accountDetails = await LTOService.getBalance(accountAddress);
-    console.log('accountDetails', accountDetails);
+    // console.log('accountDetails', accountDetails);
     if(accountDetails) {
       setDetails(accountDetails);
     }else{
@@ -269,7 +269,7 @@ const MainTab = ({children, navigation}) => {
 
     try {
       const txs: TypedTransaction[] = await LTOService.getTransactions(accountAddress, LATEST_TRANSACTIONS);
-      console.log('txs', txs);
+      // console.log('txs', txs);
       const txsByDate = new Map();
 
       for (const tx of txs.sort((a, b) => b.timestamp! - a.timestamp!)) {

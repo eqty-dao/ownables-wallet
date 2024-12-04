@@ -899,8 +899,9 @@ export default function App() {
       <ImportOwnablesDrawer
         open={showImportPackage}
         onClose={() => setShowImportPackage(false)}
-        title="Import Ownables"
+        title="Receive Ownables"
         setOwnables={setOwnables}
+        existingOwnables={ownables}
       />
       <Dialog
         open={importingOwnables}

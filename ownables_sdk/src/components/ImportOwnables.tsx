@@ -10,6 +10,9 @@ import { EventChain } from "@ltonetwork/lto";
 import Loading from "./Loading";
 import PackageService from "../services/Package.service";
 import IDBService from "../services/IDB.service";
+import { sendRNPostMessage } from "../utils/postMessage";
+import { ReactComponent as RefreshIcon } from "../assets/refresh_icon.svg";
+import { ReactComponent as DownloadIcon } from "../assets/receive_icon.svg";
 
 export interface Ownable {
   chain: EventChain;
@@ -23,6 +26,7 @@ interface Props {
   title: string;
   isPersistent?: boolean;
   setOwnables: (ownables: Ownable[]) => void;
+  existingOwnables: Ownable[];
 }
 
 interface StyledButtonProps {
@@ -59,6 +63,7 @@ const ImportOwnablesDrawer = (props: Props) => {
   const [endTime, setEndTime] = useState(0);
   const [totalOwnables, setTotalOwnables] = useState(0);
   const [lastResponse, setLastResponse] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     console.log("ImportOwnablesDrawer -> open", open);
@@ -66,6 +71,7 @@ const ImportOwnablesDrawer = (props: Props) => {
     const fetchData = async () => {
       setStartTime(Date.now());
       setOwnables([]);
+      setDebugMessage("");
       setDebugMessage("Fetching ownables...");
       try {
         await fetchOwnables();
@@ -79,10 +85,21 @@ const ImportOwnablesDrawer = (props: Props) => {
   }, [open]);
 
   const fetchOwnables = async () => {
+    if (isFetching) return;
+    setIsFetching(true);
     window.localStorage.removeItem("messageHashes");
     setOwnables([]);
+    setLastResponse(null);
+
+    sendRNPostMessage(JSON.stringify({ type: "clear_cache", data: "clear cache" }));
+    setDebugMessage("Fetching ownables...");
+    setStartTime(Date.now());
+    setTotalOwnables(0);
+
+
     let metadata = await RelayService.listOwnables();
-    if(metadata.length === 0) {
+
+    if (metadata.length === 0) {
       setDebugMessage("No ownables found");
       setLoading(false);
       return;
@@ -104,6 +121,13 @@ const ImportOwnablesDrawer = (props: Props) => {
     setDebugMessage(`Done Fetching all ownables`);
     setEndTime(Date.now());
     setLoading(false);
+    setIsFetching(false);
+  }
+  const getPackageDisplayName = (str: string) => {
+    if (!str) return '';
+    const regex = new RegExp(/ownable/i);
+    return str?.replace(regex, "").replace(/[-_]+/, " ").trim()
+      .replace(/\b\w/, (c) => c.toUpperCase());
   }
 
 
@@ -113,7 +137,7 @@ const ImportOwnablesDrawer = (props: Props) => {
       open={open}
       onClose={onClose}
       shouldHideBackdrop={false}
-      isPersistent={props.isPersistent}
+      isPersistent={true}
       height="100%"
     >
       <Box
@@ -133,39 +157,22 @@ const ImportOwnablesDrawer = (props: Props) => {
         </IconButton>
       </Box>
       {/* Refresh button*/}
-      <Box
-        display={"flex"}
-        p={1}
-        flexDirection={"row"}
-        justifyContent={"center"}
-        alignItems={"center"}
-        width={"100%"}
+      <StyledButton
+        variant="contained"
+        style={{ width: "50px", fontSize: "12px", marginLeft: 10, alignSelf: 'center' }}
+        onClick={() => {
+          fetchOwnables();
+        }}
+        transparent={false}
       >
-        <StyledButton
-          variant="contained"
-          transparent={false}
-          onClick={() => {
-            fetchOwnables();
-          }}
-        >
-          Refresh
-        </StyledButton>
-        </Box>
+        <RefreshIcon />
+      </StyledButton>
       <b>
         <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Total Ownables: {totalOwnables}</p>
       </b>
-      <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{debugMessage}</p>
-      {ownables.length === 0 && <Loading show={true} />}
-      {ownables.length > 0 && <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Available Ownables</p>}
-      {/* {endTime ? <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Time taken: {endTime - startTime} ms</p> : null} */}
-      {lastResponse ? <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Last Response: {lastResponse}</p> : null}
       <Box
-        display={"flex"}
-        p={2}
-        flexDirection={"row"}
-        justifyContent={"space-between"}
-        alignItems={"center"}
-        width={"100%"}
+        p={2} sx={{ overflowX: 'auto' }}
+        style={{ alignSelf: 'center', alignContent: 'center', justifyContent: 'center', textAlign: 'center', marginLeft: '5px', marginRight: 'auto' }}
       >
         {
           <><Table
@@ -202,36 +209,51 @@ const ImportOwnablesDrawer = (props: Props) => {
               }}
             >
               <tr>
-                <th>#</th>
-                <th>cid</th>
+                <th
+                  style={{
+                    width: "5%",
+                  }}
+                >#</th>
+                {/* <th>cid</th> */}
                 <th>Name</th>
-                <th>Description</th>
+                {/* <th>Description</th> */}
                 <th>Actions</th>
+                <th>Existing</th>
               </tr>
             </thead>
             <tbody>
               {ownables.map((_ownable, index) => (
                 <tr key={index}>
                   <td>{index + 1}</td>
-                  <td>{_ownable.cid}</td>
+                  {/* <td>{_ownable.cid}</td> */}
                   {/* <td>
                     <ImageComponent _ownable={_ownable} />
                   </td> */}
-                  <td>{_ownable.name}</td>
-                  <td>{_ownable.description}</td>
+                  <td>{getPackageDisplayName(_ownable.name)}</td>
+                  {/* <td>{_ownable.description}</td> */}
                   <td>
                     <StyledButton
                       variant="contained"
                       transparent={false}
+                      style={{ width: "50px", fontSize: "12px" }}
                       onClick={() => {
                         setLoading(true);
+                        let existing = props.existingOwnables.find((o) => o.package === _ownable.cid);
+                        if (existing) {
+                          //remove existing
+                          //@ts-ignore
+                          props.setOwnables((prev: Ownable[]) => prev.filter((o) => o.package !== _ownable.cid));
+                        }
                         //@ts-ignore
                         props.setOwnables((prev: Ownable[]) => [...prev, { chain: _ownable.chain, package: _ownable.cid }]);
                         onClose();
                       }}
                     >
-                      Accept
+                      <DownloadIcon />
                     </StyledButton>
+                  </td>
+                  <td>
+                    {props.existingOwnables.find((o) => o.package === _ownable.cid) ? "Yes" : "No"}
                   </td>
                 </tr>
               ))}
@@ -370,156 +392,3 @@ export interface Version {
   cid: string;
   uniqueMessageHash: string;
 }
-// {
-//   "title": "Ownabletest",
-//   "name": "ownabletest",
-//   "description": "test",
-//   "cid": "bafybeihteqaeziitvlbunkoeljetjx7pmesnjjmjcgd2tfr2gxtiudiq3q",
-//   "keywords": [
-//       "tesrt",
-//       "hasNFT"
-//   ],
-//   "isNotLocal": true,
-//   "isDynamic": true,
-//   "hasMetadata": true,
-//   "hasWidgetState": true,
-//   "isConsumable": false,
-//   "isConsumer": false,
-//   "isTransferable": true,
-//   "uniqueMessageHash": "7wFNqa7ypxExdzANfb41386gXh6ATvh8Y1jpQgi5Wqt3",
-//   "versions": [
-//       {
-//           "date": "2024-12-03T00:11:29.571Z",
-//           "cid": "bafybeihteqaeziitvlbunkoeljetjx7pmesnjjmjcgd2tfr2gxtiudiq3q",
-//           "uniqueMessageHash": "7wFNqa7ypxExdzANfb41386gXh6ATvh8Y1jpQgi5Wqt3"
-//       }
-//   ],
-//   "chain": {
-//       "id": "8F99LsweSGzvhnMU9c2DF7jhDL7zQVRwkeLkX8CG7fbpahq5cujZJfJSFF8VfQq",
-//       "events": [
-//           {
-//               "timestamp": 1733158346191,
-//               "previous": "Dc8CqiP54w9xxa9Yt2pAYzc4uKGBMYuHQKs3VK4pJoBB",
-//               "signKey": {
-//                   "keyType": "ed25519",
-//                   "publicKey": "A1A7kRkyLZqnJVkCwdhaRt44b2xwNEng6TAjn5qJHVMN"
-//               },
-//               "signature": "3ogCFbrpUytLUJHTkAJPbgBSe1vjbwMiZhkMbjdY3gPneKpuc3rrjaVjeTu31TuvKJcA2RtLhDuiPMzHKVNghW63",
-//               "hash": "Cj1RaNjRvyJPHPGMEJzGGtMWmiuvX6nenWA5ja54q4hR",
-//               "mediaType": "application/json",
-//               "data": "base64:eyJAY29udGV4dCI6Imluc3RhbnRpYXRlX21zZy5qc29uIiwib3duYWJsZV9pZCI6IjhGOTlMc3dlU0d6dmhuTVU5YzJERjdqaERMN3pRVlJ3a2VMa1g4Q0c3ZmJwYWhxNWN1alpKZkpTRkY4VmZRcSIsInBhY2thZ2UiOiJiYWZ5YmVpaHRlcWFlemlpdHZsYnVua29lbGpldGp4N3BtZXNuamptamNnZDJ0ZnIyZ3h0aXVkaXEzcSIsIm5ldHdvcmtfaWQiOiJUIiwia2V5d29yZHMiOlsidGVzcnQiLCJoYXNORlQiXSwibmZ0Ijp7Im5ldHdvcmsiOiJhcmJpdHJ1bSIsImlkIjoiNTMiLCJhZGRyZXNzIjoiMHgwMjljM2I5NDZmMjhCNTM3OTMwZDA5OGJCRTAzOUQyMjFERTk2OGU2In19",
-//               "attachments": []
-//           },
-//           {
-//               "timestamp": 1733158346195,
-//               "previous": "Cj1RaNjRvyJPHPGMEJzGGtMWmiuvX6nenWA5ja54q4hR",
-//               "signKey": {
-//                   "keyType": "ed25519",
-//                   "publicKey": "A1A7kRkyLZqnJVkCwdhaRt44b2xwNEng6TAjn5qJHVMN"
-//               },
-//               "signature": "3kx5nbKJQCdTEjkT6WdQzuvJ3p19k9Py9zjysGaTYrmR148xagFWyftonVq351Fs5K4Yo2Syh87BEWGPnzkTngdR",
-//               "hash": "3L4tnbNRHC1x7eVXqyWnox8QNnfstmtdsxN9ee9PhDQG",
-//               "mediaType": "application/json",
-//               "data": "base64:eyJAY29udGV4dCI6ImV4ZWN1dGVfbXNnLmpzb24iLCJ0cmFuc2ZlciI6eyJ0byI6IjNOMjJURkxMeTJNZXNrQXF3RkRjSzFoRE1yZGc0S3ptV2E1In19",
-//               "attachments": []
-//           }
-//       ]
-//   }
-// }
-
-// {
-//   type: "basic",
-//   sender: "3N5vwNey9aFkyrQ5KUzMt3qfuwg5jKKzrLB",
-//   recipient: "3N22TFLLy2MeskAqwFDcK1hDMrdg4KzmWa5",
-//   timestamp: "2024-12-02T16:52:29.953Z",
-//   signature: "2qB51WEFz7MLWxusmYfKZbq9ukMR3vnpf1pPpQyueg1od9CsR7AXkhgsDyBHYe92sTzn7TbkWgxHzo5YAKx3Ew51",
-//   hash: "7wFNqa7ypxExdzANfb41386gXh6ATvh8Y1jpQgi5Wqt3",
-//   mediaType: "application/octet-stream",
-//   size: 421372,
-//   senderKeyType: "ed25519",
-//   senderPublicKey: "A1A7kRkyLZqnJVkCwdhaRt44b2xwNEng6TAjn5qJHVMN",
-// }
-{/* <Dialog
-open={showImportPackage}
-onClose={() => setShowImportPackage(false)}
-sx={{
-  "& .MuiDialog-paper": {
-    backgroundColor: "#141414",
-    color: "white",
-    borderRadius: "10px",
-    width: "100%",
-  },
-  "& .MuiDialogTitle-root": {
-    borderBottom: "1px solid #141414",
-    color: "white",
-  },
-  "& .MuiDialogActions-root": {
-    padding: "10px",
-    justifyContent: "center",
-  },
-  "& .MuiDialogContent-root": {
-    padding: "20px",
-  },
-}}
->
-<DialogContent>
-  <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-      <img
-        src={'/logo_popup.png'}
-        alt={"oBuilder Logo"}
-        style={{}}
-      />
-      <b>Ownables Import</b>
-    </div>
-    <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>Available Ownables</p>
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" , width: "50%", marginBottom: "10px"}}>
-          <img
-            src={'https://picsum.photos/200'}
-            alt={"oBuilder Logo"}
-            style={{
-              width: "50px",
-              height: "50px",
-              borderRadius: "50%",
-              marginRight: "16px",
-            }}
-          />
-          <b>Test</b>          <span style={{}}>
-            <span style={iconCircleStyle}><ReceiveIcon /></span>
-          </span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" , width: "50%",marginBottom: "10px"}}>
-          <img
-            src={'https://picsum.photos/200'}
-            alt={"oBuilder Logo"}
-            style={{
-              width: "50px",
-              height: "50px",
-              borderRadius: "50%",
-              marginRight: "16px",
-            }}
-          />
-          <b>Test</b>          <span style={{}}>
-            <span style={iconCircleStyle}><ReceiveIcon /></span>
-          </span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" , width: "50%",marginBottom: "10px"}}>
-          <img
-            src={'https://picsum.photos/200'}
-            alt={"oBuilder Logo"}
-            style={{
-              width: "50px",
-              height: "50px",
-              borderRadius: "50%",
-              marginRight: "16px",
-            }}
-          />
-          <b>Test</b>          <span style={{}}>
-            <span style={iconCircleStyle}><ReceiveIcon /></span>
-          </span>
-        </div>
-    </div>
-  </DialogContentText>
-</DialogContent>
-</Dialog> */}
