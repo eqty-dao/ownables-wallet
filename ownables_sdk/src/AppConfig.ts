@@ -20,7 +20,22 @@ export const getEnvFromQuery: () => Env = (): Env => {
 
   return Env.PROD;
 }
-const env = getEnvFromQuery();
+const getNetworkFromQuery: () => Network = (): Network => {
+  const queryParams = new URLSearchParams(window.location.search);
+  const networkValue = queryParams.get("network");
+
+  // Map the string to the corresponding Network enum value
+  if (networkValue === Network.MAINNET) {
+    return Network.MAINNET;
+  } else if (networkValue === Network.TESTNET) {
+    return Network.TESTNET;
+  }
+
+  return Network.MAINNET;
+};
+
+const network = getNetworkFromQuery() as Network;
+const env = getEnvFromQuery() as Env;
 export var AppConfig = {
 
   OBUILDER: () => {
@@ -44,5 +59,7 @@ export var AppConfig = {
       return process.env.REACT_APP_RELAY_PROD;
     }
   },
+  ENV: () => env,
+  Network: () => network,
 }
 

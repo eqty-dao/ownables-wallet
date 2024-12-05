@@ -50,13 +50,19 @@ const NewOwnablesTabScreen = () => {
         if (data.type === 'sdkerror') {
             console.log('SDK error:', data.data);
             setSdkError(true);
-            // setWebViewError(true);
-            // setErrorMessage(JSON.stringify(data));
-            // if (webViewRef.current) {
-            //     webViewRef.current.stopLoading();
-            //     webViewRef.current.reload();
-            // }
-            // restartServer();
+            setWebViewError(true);
+            setErrorMessage(JSON.stringify(data));
+            if (webViewRef.current) {
+                webViewRef.current.stopLoading();
+                webViewRef.current.reload();
+            }
+            setTimeout(() => {
+                setSdkError(false);
+                setWebViewError(false);
+                setWebViewLoading(true);
+                setWebviewUrl('');
+                restartServer();
+            }, 5000);
         }
 
         if (data.type === 'address') {

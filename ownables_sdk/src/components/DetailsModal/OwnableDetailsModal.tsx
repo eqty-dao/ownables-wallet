@@ -279,7 +279,13 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   ): Promise<void> {
     try {
       const bridgeAddress = await BridgeService.getBridgeAddress();
+
+      //   const previousHash: string = this.chain.latestHash.hex;
+
       await this.execute({ transfer: { to: bridgeAddress } });
+
+      this.chain.validate();
+
       const zip = await OwnableService.zip(this.chain);
       const content = await zip.generateAsync({
         type: "uint8array",
@@ -297,6 +303,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         type: "application/octet-stream",
       });
       if (transactionId) {
+
         await BridgeService.bridgeOwnableToNft(
           address,
           transactionId,
@@ -308,6 +315,12 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       if (this.pkg.uniqueMessageHash) {
         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
       }
+      const hashes = JSON.parse(localStorage.getItem("messageHashes") || "[]");
+
+      const updatedHashes = hashes.filter(
+        (item: any) => item.uniqueMessageHash !== this.pkg.uniqueMessageHash
+      );
+      localStorage.setItem("messageHashes", JSON.stringify(updatedHashes));
       enqueueSnackbar("Successfully bridged!!", { variant: "success" });
     } catch (error) {
       console.error("Error while attempting to bridge:", error);

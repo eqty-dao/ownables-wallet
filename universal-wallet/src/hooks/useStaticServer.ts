@@ -92,14 +92,14 @@ const useStaticServer = () => {
     if (Platform.OS === 'android') {
       return;
     }
-    server.isRunning().then((running: boolean) => {
-      console.log('server.isRunning:', running);
-      if (!running) {
-        setUrl('');
-        setLoading(true);
-        startServer();
-      }
-    });
+    // server.isRunning().then((running: boolean) => {
+    //   console.log('server.isRunning:', running);
+    //   if (!running) {
+    //     setUrl('');
+    //     setLoading(true);
+    //     startServer();
+    //   }
+    // });
   }, [server?.isRunning()]);
   return { url, loading, restartServer };
 };

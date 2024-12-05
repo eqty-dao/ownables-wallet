@@ -90,24 +90,24 @@ export default function LeaseScreen({navigation, route}: RootStackScreenProps<'L
   //F-2024-4551 - Improper Address Validation
   const checkAuthorizationAndFetchNode = async () => {
     try {
-      const storedAccount = await LocalStorageService.getData('@accountData');
+      // const storedAccount = await LocalStorageService.getData('@accountData');
 
-      if (!storedAccount || !storedAccount.address) {
-        navigation.navigate('SignIn');
-        setMessageInfo('Please log in to access this information');
-        setShowMessage(true);
-        return;
-      }
+      // if (!storedAccount || !storedAccount.address) {
+      //   navigation.navigate('SignIn');
+      //   setMessageInfo('Please log in to access this information');
+      //   setShowMessage(true);
+      //   return;
+      // }
 
-      // Fetch the current account from LTOService
-      const currentUser = await LTOService.getAccount();
+      // // Fetch the current account from LTOService
+      // const currentUser = await LTOService.getAccount();
 
-      if (currentUser.address !== storedAccount.address) {
-        navigation.goBack();
-        setMessageInfo('Unauthorized access');
-        setShowMessage(true);
-        return;
-      }
+      // if (currentUser.address !== storedAccount.address) {
+      //   navigation.goBack();
+      //   setMessageInfo('Unauthorized access');
+      //   setShowMessage(true);
+      //   return;
+      // }
       fetchNodeInfo();
     } catch (error) {
       console.error('Error during authorization check:', error);

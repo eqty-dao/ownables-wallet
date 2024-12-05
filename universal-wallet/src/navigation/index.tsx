@@ -208,7 +208,7 @@ function BottomTabNavigator() {
       />
       <Tab.Screen
         name="Ownables"
-        component={OwnablesTabScreen}
+        component={NewOwnablesTabScreen}
         options={{
           headerTitle: 'Ownables',
           headerStyle: { height: 100 },

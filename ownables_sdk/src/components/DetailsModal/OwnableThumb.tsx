@@ -249,8 +249,8 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
-      sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: e }));
-      throw e;
+      // sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: e }));
+      console.error("Failed to forge Ownable", e);
     }
   }
 
