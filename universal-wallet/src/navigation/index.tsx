@@ -28,6 +28,8 @@ import Icon from '../components/Icon';
 import { FabContext } from '../context/Fab.context';
 import { CurrentState, useAppContext } from '../../providers/AppContext';
 import NewOwnablesTabScreen from '../screens/OwnablesTabScreen/NewOwnablesTabScreen';
+import { useUserSettings } from '../context/User.context';
+import TestNetBanner from '../components/TestNetBanner';
 
 const navTheme = {
   ...DefaultTheme,
@@ -41,6 +43,7 @@ export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeNa
   return (
     <NavigationContainer linking={LinkingConfiguration} theme={colorScheme === 'dark' ? DarkTheme : navTheme}>
       <SnackbarMessage />
+      <TestNetBanner />
       <RootNavigator />
     </NavigationContainer>
   );
@@ -54,19 +57,19 @@ function RootNavigator(): any {
     userAlias: null as boolean | null,
     appStateVisible: AppState.currentState,
   });
+  const {network} = useUserSettings();
 
   const appState = useRef(AppState.currentState);
   const navigator = useNavigation();
   const { currentAction } = useAppContext();
 
   const handleAppStateChange = useCallback((nextAppState: any) => {
-    console.log('AppState', appState.current, nextAppState);
     let lockOutTimer: any;
     if (appState.current.match(/active/) && nextAppState === 'background') {
       lockOutTimer = setTimeout(() => {
         console.log('Inactivity detected', currentAction);
         console.log('App has come to the background!',appState.current);
-        if (!currentAction && !appState.current.match(/active/)) {
+        if (!currentAction && !appState.current.match(/active/)  && userAlias) {
           navigator.navigate('SignIn');
         }
       }, 30*1000);

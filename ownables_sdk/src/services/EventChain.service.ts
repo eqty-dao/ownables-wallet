@@ -10,6 +10,7 @@ interface StoredChainInfo {
   chain: IEventChainJSON;
   state: string;
   package: string;
+  uniqueMessageHash: string;
   created: Date;
   latestHash: string;
   keywords: string[];
@@ -23,7 +24,7 @@ export default class EventChainService {
   }
   static set anchoring(enabled: boolean) {
     LocalStorageService.set("anchoring", enabled);
-    this._anchoring = enabled;
+    this._anchoring = true;
   }
 
   static async loadAll(): Promise<
@@ -32,25 +33,41 @@ export default class EventChainService {
       package: string;
       created: Date;
       keywords: string[];
+      uniqueMessageHash: string;
     }>
   > {
     const ids = (await IDBService.listStores())
       .filter((name) => name.match(/^ownable:\w+$/))
       .map((name) => name.replace(/^ownable:(\w+)$/, "$1"));
 
-    return (
-      await Promise.all(
-        ids.map(async (id) => {
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        try {
           const {
+            chain,
+            package: packageCid,
+            uniqueMessageHash,
+            created,
+            keywords,
+          } = await this.load(id);
+          return {
             chain,
             package: packageCid,
             created,
             keywords,
-          } = await this.load(id);
-          return { chain, package: packageCid, created, keywords };
-        })
-      )
-    ).sort(({ created: a }, { created: b }) => a.getTime() - b.getTime());
+            uniqueMessageHash,
+          };
+        } catch (error) {
+          console.error(`Failed to load chain with id ${id}:`, error);
+          return null;
+        }
+      })
+    );
+
+    // Filter out null
+    return results
+      .filter((result): result is NonNullable<typeof result> => result !== null)
+      .sort(({ created: a }, { created: b }) => a.getTime() - b.getTime());
   }
 
   static async load(id: string): Promise<{
@@ -58,6 +75,7 @@ export default class EventChainService {
     package: string;
     created: Date;
     keywords: string[];
+    uniqueMessageHash: string;
   }> {
     const chainInfo = (await IDBService.getMap(`ownable:${id}`).then((map) =>
       Object.fromEntries(map.entries())
@@ -68,6 +86,7 @@ export default class EventChainService {
       package: packageCid,
       created,
       keywords,
+      uniqueMessageHash,
     } = chainInfo;
 
     return {
@@ -75,6 +94,7 @@ export default class EventChainService {
       package: packageCid,
       created,
       keywords,
+      uniqueMessageHash,
     };
   }
 
@@ -83,6 +103,7 @@ export default class EventChainService {
       chain: EventChain;
       stateDump: StateDump;
       keywords?: string[];
+      uniqueMessageHash?: string;
     }>
   ): Promise<void> {
     const anchors: Array<{ key: Binary; value: Binary }> = [];
@@ -148,4 +169,18 @@ export default class EventChainService {
   public static async verify(chain: EventChain) {
     return await LTOService.verifyAnchors(...chain.anchorMap);
   }
+
+  // public static async verify(chain: EventChain) {
+  //   let anchors: any[];
+
+  //   if (Array.isArray(chain.anchorMap)) {
+  //     anchors = chain.anchorMap;
+  //   } else if (chain.anchorMap && typeof chain.anchorMap === "object") {
+  //     anchors = Object.values(chain.anchorMap);
+  //   } else {
+  //     throw new Error("chain.anchorMap is not an iterable or a valid object");
+  //   }
+
+  //   return await LTOService.verifyAnchors(...anchors);
+  // }
 }

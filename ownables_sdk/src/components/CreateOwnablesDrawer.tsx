@@ -2,12 +2,9 @@ import {
   Box,
   Button,
   CircularProgress,
-  FormControlLabel,
   Icon,
   IconButton,
   MenuItem,
-  Radio,
-  RadioGroup,
   Select,
   Typography,
 } from "@mui/material";
@@ -20,31 +17,26 @@ import LtoInput, { LtoInputRefMethods } from "./common/LtoInput";
 import { useRef } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
-  AlertTitle,
-  DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle,
-  Hidden,
 } from "@mui/material";
-import LTOService from "../services/LTO.service";
+import LTOService, { getNetworkFromQuery } from "../services/LTO.service";
 import useInterval from "../utils/useInterval";
 import Dialog from "@mui/material/Dialog";
 import JSZip from "jszip";
 import axios from "axios";
 import heic2any from "heic2any";
-import HighlightOffIcon from "@mui/icons-material/HighlightOff";
-import { Transfer as TransferTx } from "@ltonetwork/lto";
+import { getNetwork, Transfer as TransferTx } from "@ltonetwork/lto";
 import { TypedOwnable } from "../interfaces/TypedOwnableInfo";
 import { useSnackbar } from "notistack";
 import TagInputField from "./common/TagInputField";
 import Loading from "./Loading";
-import Modal from "@mui/material/Modal";
 import EventChainService from "../services/EventChain.service";
 import { sendRNPostMessage } from "../utils/postMessage";
-import { FileCopy, FileCopyOutlined } from "@mui/icons-material";
+import { FileCopyOutlined, InfoRounded } from "@mui/icons-material";
 import { activityLogService } from "../services/ActivityLog.service";
+import { sign } from "@ltonetwork/http-message-signatures";
+import { AppConfig, Network } from "../AppConfig";
 
 interface Props {
   open: boolean;
@@ -58,9 +50,6 @@ interface Props {
 interface StyledButtonProps {
   transparent: boolean;
 }
-const contentContainerStyle = {
-
-};
 
 const StyledButton = styled(Button) <StyledButtonProps>`
   text-transform: none;
@@ -95,6 +84,10 @@ const closeModalBtnStyle = {
   padding: 0,
   color: themeColors.error,
 };
+const infoButtonStyle = {
+  color: themeColors.iconLiner,
+  cursor: "pointer",
+};
 const LTO_REPRESENTATION = 100000000;
 
 const CreateOwnablesDrawer = (props: Props) => {
@@ -119,14 +112,14 @@ const CreateOwnablesDrawer = (props: Props) => {
     description: "",
     keywords: [],
     evmAddress: "",
-    network: "ethereum",
+    network: "arbitrum",
     image: null,
   });
 
   const [recipient, setShowAddress] = useState<string | undefined>();
   const [noConnection, setNoConnection] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState("ethereum");
+  const [selectedNetwork, setSelectedNetwork] = useState("arbitrum");
   const [thumbnail, setThumbnail] = useState<Blob | null>(null);
   const [blurThumbnail, setBlurThumbnail] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
@@ -142,51 +135,55 @@ const CreateOwnablesDrawer = (props: Props) => {
   const [transactionIdMessage, setTransactionIdMessage] = useState<string | null>(null);
   const [createOwnableMessage, setCreateOwnableMessage] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const network = getNetworkFromQuery();
 
   const fetchBuildAmount = useCallback(async () => {
     try {
       const response =
         await axios.get(
-          `${process.env.REACT_APP_OBUILDER}/api/v1/availableChains`,
-          // `${process.env.REACT_APP_OBUILDER}/api/v1/templateCost?templateId=1`,
-          // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1',
-          // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
-          // 'http://localhost:3000/api/v1/templateCost?templateId=1&chain='+selectedNetwork,
-          // {
-          //   headers: {
-          //     Accept: "*/*",
-          //   },
-          // }
+          `${AppConfig.OBUILDER()}/api/v1/availableChains`,
         );
-      const allBuildCosts = response.data as any;
-      const availableChains = response.data as IAvailableChains;
-      const selectedChain = availableChains[selectedNetwork];
+      let _ = new Object();
+      Object.keys(response.data).forEach((key) => {
+        //@ts-ignore
+        _[key] = response.data[key].testnet;
+      });
+      const allBuildCosts = _;
+      const availableChains = _ as IAvailableChains;
+      //@ts-ignore
+      let selectedChain = availableChains[selectedNetwork] || availableChains["arbitrum"];
+      if (!selectedChain) {
+        //check if there is a chain available and select the first one
+        const keys = Object.keys(availableChains);
+        if (keys.length > 0) {
+          selectedChain = availableChains[keys[0]];
+        }
+      }
+      console.log("selectedChain", selectedChain);
+      setSelectedChain(selectedChain.name);
       const templateCostValue = selectedChain?.templateCost["1"];
       const value = (typeof templateCostValue === 'number' ? templateCostValue / LTO_REPRESENTATION : Number(templateCostValue) / LTO_REPRESENTATION) + 1;
-      setSelectedChain(selectedChain.name);
       setAvailableChains(availableChains);
       setAllBuildCosts(allBuildCosts);
       setBuildCost(value);
+      console.log("OBUILDER", AppConfig.OBUILDER());
       const address = await axios.get(
-        `${process.env.REACT_APP_OBUILDER}/api/v1/ServerWalletAddressLTO`,
-        // 'http://obuilder-env.eba-ftdayif2.eu-west-1.elasticbeanstalk.com/api/v1/ServerWalletAddressLTO',
-        // "http://localhost:3000/api/v1/ServerWalletAddressLTO",
-        // {
-        //   headers: {
-        //     Accept: "*/*",
-        //   },
-        // }
+        `${AppConfig.OBUILDER()}/api/v1/GetServerInfo`,
       );
-      console.log("address", address.data.serverWalletAddressLTO);
-      const serverAddress = address.data.serverWalletAddressLTO;
-      // for testing now use 3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo
-      // const serverAddress = "3NBq1gTwDg2SfQvArc3C7E9PCFnS7hqqdzo";
+      let serverAddress;
+      if (network === Network.MAINNET) {
+        serverAddress = address.data.serverLtoWalletAddress_L;
+      } else {
+        serverAddress = address.data.serverLtoWalletAddress_T;
+      }
       console.log("serverAddress", serverAddress);
       const calculatesAmount =
         parseFloat(templateCostValue.toString()) / LTO_REPRESENTATION + 1;
       console.log("calculatesAmount", calculatesAmount);
       if (calculatesAmount < 1.1) {
         console.log("error server is not ready yet");
+        setNoConnection(true);
         return;
       } else {
         setBuildCost(calculatesAmount);
@@ -201,11 +198,15 @@ const CreateOwnablesDrawer = (props: Props) => {
   }, [selectedNetwork]);
 
   useEffect(() => {
-    fetchBuildAmount();
-  }, [fetchBuildAmount]);
+    if (open) {
+      fetchBuildAmount();
+    }
+  }, [fetchBuildAmount, open]);
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    setCreateOwnableMessage(null);
+    setTransactionId(null);
     onClose();
   };
 
@@ -217,30 +218,10 @@ const CreateOwnablesDrawer = (props: Props) => {
     onClose();
   };
 
-  const { enqueueSnackbar } = useSnackbar();
-
-  const handleCopy = (e: any) => {
-    const value = e.currentTarget.textContent;
-    if (value) {
-      if (window.navigator?.clipboard) {
-        window.navigator.clipboard.writeText(value);
-      } else {
-        const el = document.createElement('textarea');
-        el.value = value;
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-      }
-    }
-    enqueueSnackbar("Address copied to clipboard", { variant: "success" });
-  }
-
   const handleFileUploadClick = () => {
     // let rn app know that the user wants to upload a file so to set the state
     // properly
     sendRNPostMessage(JSON.stringify({ type: "uploadFileStart" }));
-
     const fileInput = fileInputRef.current;
     if (fileInput) {
       fileInput.click();
@@ -266,10 +247,10 @@ const CreateOwnablesDrawer = (props: Props) => {
       description: "",
       keywords: [],
       evmAddress: "",
-      network: "ethereum",
+      network: "arbitrum",
       image: null,
     });
-    setSelectedNetwork("ethereum");
+    setSelectedNetwork("arbitrum");
   };
 
   const loadBalance = () => {
@@ -313,6 +294,7 @@ const CreateOwnablesDrawer = (props: Props) => {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLoading(true);
     let file = e.target.files?.[0] || null;
 
     if (file && file.type === "image/heic") {
@@ -330,18 +312,20 @@ const CreateOwnablesDrawer = (props: Props) => {
       const resizedImage = await resizeImage(file);
       file = new File([resizedImage], file.name, { type: "image/webp" });
       // Create a thumbnail from the resized image
+      setOwnable((prevOwnable) => ({
+        ...prevOwnable,
+        image: file,
+      }));
       const thumbnailImage = await createThumbnail(resizedImage);
       setThumbnail(thumbnailImage);
     }
     sendRNPostMessage(JSON.stringify({ type: "uploadFileEnd" }));
+    setLoading(false);
 
-    setOwnable((prevOwnable) => ({
-      ...prevOwnable,
-      image: file,
-    }));
   };
 
   async function createThumbnail(blob: Blob): Promise<Blob> {
+    return blob;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -391,6 +375,7 @@ const CreateOwnablesDrawer = (props: Props) => {
   };
 
   async function resizeImage(file: File): Promise<Blob> {
+    return file;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -482,7 +467,8 @@ const CreateOwnablesDrawer = (props: Props) => {
       const value = chainCost?.templateCost["1"];
       const chainCostValue = typeof value === 'number' ? value : Number(value);
       if (chainCostValue) {
-        return (chainCostValue / LTO_REPRESENTATION) + 1;
+        const _ = (chainCostValue / LTO_REPRESENTATION) + 1;
+        return _?.toFixed(4) || 0;
       } else {
         return 0;
       }
@@ -550,6 +536,22 @@ const CreateOwnablesDrawer = (props: Props) => {
       const account = await LTOService.getAccount();
       const transaction = await LTOService.broadcast(tx!.signWith(account));
       setCreateOwnableMessage("Contacting oBuilder...");
+      const url = `${AppConfig.OBUILDER()}/api/v1/upload`;
+      const request = {
+        headers: {},
+        method: "POST",
+        url,
+      };
+      const signedRequest = await sign(request, { signer: account });
+      request.url =
+        request.url + `?ltoNetworkId=${getNetworkFromQuery()}`;
+      console.log("signedRequest", signedRequest);
+      const headers1 = {
+        "Content-Type": "multipart/form-data",
+        Accept: "*/*",
+      };
+      const combinedHeaders = { ...signedRequest.headers, ...headers1 };
+      console.log("combinedHeaders", combinedHeaders);
       setTimeout(() => {
         if (transaction.id) {
           const imageType = "webp";
@@ -588,15 +590,13 @@ const CreateOwnablesDrawer = (props: Props) => {
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
           zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-            const url = `${process.env.REACT_APP_OBUILDER}/api/v1/upload`;
+            const url = `${AppConfig.OBUILDER()}/api/v1/upload?ltoNetworkId=${getNetwork(account.address)}`;
             const formData = new FormData();
             formData.append("file", zipFile, formattedName + ".zip");
+
             axios
-              .post(url, formData, {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                  Accept: "*/*",
-                },
+              .post(request.url, formData, {
+                headers: combinedHeaders,
               })
               .then((res) => {
                 console.log(res.data);
@@ -612,6 +612,8 @@ const CreateOwnablesDrawer = (props: Props) => {
               })
               .catch((err) => {
                 console.log(err);
+                setOpenDialog(false);
+                setBuildError("Something went wrong. Please try again");
               });
           });
         }
@@ -655,53 +657,12 @@ const CreateOwnablesDrawer = (props: Props) => {
       <Box sx={{ color: "white" }}>
         <Box
           display={"flex"}
-          p={2}
+          p={1}
           flexDirection={"row"}
           alignItems={"flex-start"}
         >
-          <Box p={1} width={"100%"}>
-            {/* <Box p={2}> */}
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="flex-start"
-            >
-              <Box component="div" sx={{ width: "100%" }}>
-                {" "}
-                {/* Make the Box full width */}
-                <Typography
-                  sx={{ fontSize: 12, color: "white" }}
-                  color="text.secondary"
-                >
-                  LTO Network Address
-                </Typography>
-                <Typography
-                  sx={{ fontSize: 12, fontWeight: 600 }}
-                  component="div"
-                  onClick={e => handleCopy(e)}
-                  style={{ cursor: "pointer" }}
-                >
-                  {ltoWalletAddress}
-                </Typography>
-                <Typography variant="body2" sx={{}}>
-                  Balance: {balance !== undefined ? balance + " LTO" : ""}
-                </Typography>
-                {/* <Typography variant="body2" sx={{ mt: 1 }}>
-                  build cost:{" "}
-                  {showAmount !== undefined ? showAmount + " LTO" : ""} (incl.
-                  Fee: 1 LTO)
-                </Typography> */}
-              </Box>
-              <Hidden smUp>
-                <IconButton
-                  onClick={handleClose}
-                  size="small"
-                  sx={{ mr: 2, mt: -1 }}
-                >
-                  <HighlightOffIcon />
-                </IconButton>
-              </Hidden>
-            </Box>
+          <Box p={0} width={"100%"}>
+
             <Box p={0} width={"100%"}>
               {" "}
               {/* Make the Box full width */}
@@ -710,6 +671,85 @@ const CreateOwnablesDrawer = (props: Props) => {
                 flexDirection="column"
                 width={"100%"}
               >
+                {/* <Box p={2}> */}
+                <p className="text">
+                  Welcome to the oBuilder. Here you can create your very own Ownables and  for a small fee they will register on the LTO Network blockchain.<br /><br />
+                  Learn More
+                  <IconButton
+                    aria-label="info"
+                    onClick={() => sendRNPostMessage(JSON.stringify({ type: "openInfo" }))}
+                    sx={infoButtonStyle}
+                  >
+                    <InfoRounded style={{ fontSize: 20, color: 'white' }} />
+                  </IconButton>
+                </p>
+                <StyledButton transparent={false} onClick={handleFileUploadClick}>
+                  Choose an Image
+                </StyledButton>
+                <br></br>
+                <input
+                  id="fileUpload"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.heic"
+                  onChange={handleImageUpload}
+                  style={{ marginBottom: "10px", display: "none" }} />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-around",
+                    width: "100%", // Make the div full width
+                  }}
+                >
+                  {ownable.image && (
+                    <div>
+                      <img
+                        src={URL.createObjectURL(ownable.image)}
+                        alt="Selected"
+                        style={{ width: "100px", height: "auto" }} />
+                    </div>
+                  )}
+                  {thumbnail && (
+                    <>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: "smaller", lineHeight: "1" }}>
+                          Wallet
+                          <br />
+                          thumbnail
+                        </div>
+                        <img
+                          src={URL.createObjectURL(thumbnail)}
+                          alt="Thumbnail"
+                          style={{
+                            width: "50px",
+                            height: "auto",
+                            filter: blurThumbnail ? "blur(5px)" : "none",
+                          }} />
+                      </div>
+                    </>
+                  )}
+                </div>
+                <br></br>
+                {thumbnail && (
+                  <>
+                    <Button onClick={() => setBlurThumbnail(!blurThumbnail)}>
+                      {blurThumbnail ? "Unblur Thumbnail" : "Blur Thumbnail"}
+                    </Button>
+                    <br></br>
+                    <Button>
+                      <label htmlFor="thumbUpload" className="custom-file-upload">
+                        Change Thumbnail
+                      </label>
+                    </Button>
+                    <input
+                      id="thumbUpload"
+                      type="file"
+                      accept="image/*,.heic"
+                      onChange={handleThumbnailUpload}
+                      style={{ marginBottom: "10px", display: "none" }} />
+                  </>
+                )}
                 {" "}
                 {/* Make the Box full width */}
                 <Typography
@@ -786,73 +826,7 @@ const CreateOwnablesDrawer = (props: Props) => {
               <br></br>
               <br></br>
               <br></br>
-              <StyledButton transparent={false} onClick={handleFileUploadClick}>
-                Choose File
-              </StyledButton>
-              <br></br>
-              <input
-                id="fileUpload"
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.heic"
-                onChange={handleImageUpload}
-                style={{ marginBottom: "10px", display: "none" }} />
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-around",
-                  width: "100%", // Make the div full width
-                }}
-              >
-                {ownable.image && (
-                  <div>
-                    <img
-                      src={URL.createObjectURL(ownable.image)}
-                      alt="Selected"
-                      style={{ width: "100px", height: "auto" }} />
-                  </div>
-                )}
-                {thumbnail && (
-                  <>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: "smaller", lineHeight: "1" }}>
-                        Wallet
-                        <br />
-                        thumbnail
-                      </div>
-                      <img
-                        src={URL.createObjectURL(thumbnail)}
-                        alt="Thumbnail"
-                        style={{
-                          width: "50px",
-                          height: "auto",
-                          filter: blurThumbnail ? "blur(5px)" : "none",
-                        }} />
-                    </div>
-                  </>
-                )}
-              </div>
-              <br></br>
-              {thumbnail && (
-                <>
-                  <Button onClick={() => setBlurThumbnail(!blurThumbnail)}>
-                    {blurThumbnail ? "Unblur Thumbnail" : "Blur Thumbnail"}
-                  </Button>
-                  <br></br>
-                  <Button>
-                    <label htmlFor="thumbUpload" className="custom-file-upload">
-                      Change Thumbnail
-                    </label>
-                  </Button>
-                  <input
-                    id="thumbUpload"
-                    type="file"
-                    accept="image/*,.heic"
-                    onChange={handleThumbnailUpload}
-                    style={{ marginBottom: "10px", display: "none" }} />
-                </>
-              )}
+
               {errorMessage && (
                 <div style={{ color: "red" }}>{errorMessage}</div>
               )}
@@ -874,38 +848,104 @@ const CreateOwnablesDrawer = (props: Props) => {
               </Box>
             </Box>
           </Box>
+          {/* Server Connection Dialog */}
           <Dialog
             open={noConnection}
             hideBackdrop
             onClose={() => setNoConnection(false)}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
           >
-            <Alert variant="outlined" severity="warning">
-              <AlertTitle>No server Connection</AlertTitle>
-              The server seems to be down, please try again later.
-            </Alert>
+            <DialogContent>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <b>Error Connecting to Server</b>
+                  <p>
+                    The server seems to be down, please try again later.
+                  </p>
+                  <Button onClick={() => {
+                    setNoConnection(false);
+                    setLowBalance(false);
+                    setShowNoBalance(false);
+                    props.onClose();
+                  }
+                  } sx={{ backgroundColor: themeColors.primary, color: "white" }}>
+                    Ok
+                  </Button>
+                </div>
+              </DialogContentText>
+            </DialogContent>
           </Dialog>
           <Dialog
-            open={showNoBalance}
-            hideBackdrop
-            onClose={() => setShowNoBalance(false)}
-          >
-            <Alert variant="outlined" severity="warning">
-              <AlertTitle>Your balance is zero</AlertTitle>A minumum of{" "}
-              {showAmount + 1} LTO is required to build a ownable.
-            </Alert>
-          </Dialog>
-          <Dialog
-            open={lowBalance}
+            open={lowBalance || showNoBalance}
             hideBackdrop
             onClose={() => setLowBalance(false)}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
           >
-            <Alert variant="outlined" severity="warning">
-              <AlertTitle>
-                Your balance is to low. A A minumum of {showAmount + 1} LTO is
-                required to build a ownable.{" "}
-              </AlertTitle>
-              Please top up.
-            </Alert>
+            <DialogContent>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <br />
+                  <b>WARNING</b>
+                  <>
+                    Your balance is too low.<br /> A minimum of {(showAmount + 1).toFixed(4)} LTO is
+                    required to build an ownable.
+                  </>
+                </div>
+                <Button onClick={() => {
+                  setLowBalance(false);
+                  setNoConnection(false);
+                  props.onClose();
+                }} sx={{ backgroundColor: themeColors.primary, color: "white" }}>
+                  Ok
+                </Button>
+              </DialogContentText>
+            </DialogContent>
           </Dialog>
           <Dialog open={openDialog} onClose={handleCloseDialog}
             sx={{
@@ -977,11 +1017,43 @@ const CreateOwnablesDrawer = (props: Props) => {
           <Dialog
             open={buildError !== null}
             onClose={() => setBuildError(null)}
+            sx={{
+              "& .MuiDialog-paper": {
+                backgroundColor: "#141414",
+                color: "white",
+                borderRadius: "10px",
+                width: "100%",
+              },
+              "& .MuiDialogTitle-root": {
+                borderBottom: "1px solid #141414",
+                color: "white",
+              },
+              "& .MuiDialogActions-root": {
+                padding: "10px",
+                justifyContent: "center",
+              },
+              "& .MuiDialogContent-root": {
+                padding: "20px",
+              },
+            }}
           >
-            <Alert severity="error">{buildError}</Alert>
+            <DialogContent>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <b>oBuilder Status</b>
+                  <p>{buildError}</p>
+                </div>
+              </DialogContentText>
+            </DialogContent>
           </Dialog>
         </Box>
       </Box>
+      <Loading show={loading} />
     </LtoDrawer>
   );
 };

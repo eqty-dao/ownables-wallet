@@ -83,7 +83,7 @@ interface StyledButtonProps {
   transparent: boolean;
 }
 
-const StyledButton = styled(MButton)<StyledButtonProps>`
+const StyledButton = styled(MButton) <StyledButtonProps>`
   text-transform: none;
   height: 48px;
   color: #ffffff;
@@ -125,11 +125,14 @@ const CollapsedItem = (props: Props) => {
   return (
     <Container>
       <CollapseHeader>
-        <CollapsedItemWithTitle
-          {...props}
-          onEdit={toggleCanDelete}
-          isOpen={open}
-        />
+        <div style={{ width: '110%' }}>
+          <CollapsedItemWithTitle
+            {...props}
+            onEdit={toggleCanDelete}
+            isOpen={open}
+            onClick={toggle}
+          />
+        </div>
         {open ? <ArrowUp onClick={toggle} /> : <ArrowDown onClick={toggle} />}
       </CollapseHeader>
       {open && <CollapseContent>{props.children}</CollapseContent>}
@@ -139,6 +142,7 @@ const CollapsedItem = (props: Props) => {
 
 interface CollapsedItemWithTitleProps {
   isOpen: boolean;
+  onClick: () => void;
 }
 
 type CollapsedItemWithTitlePropsType = CollapsedItemWithTitleProps & Props;
@@ -209,10 +213,15 @@ const CollapsedItemWithTitle = (props: CollapsedItemWithTitlePropsType) => {
     }
 
     return (
-      <React.Fragment>
-        <Title titleColor={props.titleColor}>{props.title}</Title>
-        {renderEditIcon()}
-      </React.Fragment>
+      <div style={{ width: '100%', display: 'flex' }}>
+        <div style={{ maxWidth: '100%' }}>
+          <Title titleColor={props.titleColor}>{props.title}</Title>
+          {renderEditIcon()}
+        </div>
+        <div style={{ width: '40%' }} onClick={props.onClick}>
+          <p></p>
+        </div>
+      </div>
     );
   };
 

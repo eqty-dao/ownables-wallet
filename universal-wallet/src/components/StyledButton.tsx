@@ -8,14 +8,16 @@ export const StyledButton = ({
   disabled,
   type = 'primary',
   textStyle,
+  onLongPress,
 }: {
   text: string;
   onPress: () => void;
   disabled?: boolean;
   type?: 'primary' | 'secondary' | 'textOnly' | 'danger';
   textStyle?: Text['props']['style'];
+  onLongPress?: () => void;
 }) => (
-  <ButtonContainer disabled={disabled} type={disabled ? 'disabled' : type} onPress={onPress}>
+  <ButtonContainer disabled={disabled} type={disabled ? 'disabled' : type} onPress={onPress} onLongPress={onLongPress}>
     <ButtonText style={textStyle} type={disabled ? 'disabled' : type}>
       {text}
     </ButtonText>

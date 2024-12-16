@@ -37,6 +37,8 @@ import { RelayService } from "../../services/Relay.service";
 import { enqueueSnackbar } from "notistack";
 import { sendRNPostMessage } from "../../utils/postMessage";
 import SessionStorageService from "../../services/SessionStorage.service";
+import LocalStorageService from "../../services/LocalStorage.service";
+import IDBService from "../../services/IDB.service";
 
 interface OwnableProps {
   chain: EventChain;
@@ -58,12 +60,13 @@ interface OwnableState {
   metadata: TypedMetadata;
 }
 interface OwnableDetailsModalProps {
-  onClose: (shouldRefresh: boolean) => void;
   chain: EventChain;
   packageCid: string;
+  uniqueMessageHash: string;
+  onDelete: () => void;
   onConsume: (info: TypedOwnableInfo) => void;
   onError: (title: string, message: string) => void;
-  onDelete: () => void;
+  onClose: (shouldRefresh: boolean) => void;
   children?: ReactNode;
 
 }
@@ -128,6 +131,7 @@ const paperStyle = {
   position: "relative",
   borderRadius: "16px",
   overflow: "hidden",
+  backgroundColor: "transparent",
 };
 
 const checkIcon = <CircleCheckIcon style={{ width: "40px", height: "40px" }} />;
@@ -139,7 +143,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
   constructor(props: OwnableDetailsModalProps) {
     super(props);
-    this.pkg = PackageService.info(props.packageCid);
+    this.pkg = PackageService.info(props.packageCid) as TypedPackage || { title: "", name: "", cid: "", versions: [] };
     this.iframeRef = createRef();
     this.state = {
       showMenu: false,
@@ -198,7 +202,27 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         });
         //Remove ownable from relay's inbox
         if (this.pkg.uniqueMessageHash) {
+          console.log(this.pkg.uniqueMessageHash);
+          //Remove ownable from relay's inbox
           await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+
+          //remove ownable from IDB
+          //await OwnableService.delete(this.chain.id);
+
+          //remove hash from localstorage messageHashes
+          await LocalStorageService.removeItem(
+            "messageHashes",
+            this.pkg.uniqueMessageHash
+          );
+
+          //remove package from localstorage packages
+          // await LocalStorageService.removeByField(
+          //   "packages",
+          //   "uniqueMessageHash",
+          //   this.pkg.uniqueMessageHash
+          // );
+
+          //this.props.onRemove();
         }
       } else {
         enqueueSnackbar("Server is down", { variant: "error" });
@@ -214,6 +238,39 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       console.error("Error during transfer:", error);
     }
   }
+
+  // private async transfer(to: string): Promise<void> {
+  //   try {
+  //     const value = await RelayService.isRelayUp();
+
+  //     if (value) {
+  //       await this.execute({ transfer: { to: to } });
+  //       const zip = await OwnableService.zip(this.chain);
+  //       const content = await zip.generateAsync({
+  //         type: "uint8array",
+  //       });
+  //       const messageHash = await RelayService.sendOwnable(to, content);
+  //       enqueueSnackbar(`Ownable ${messageHash} sent Successfully!!`, {
+  //         variant: "success",
+  //       });
+  //       //Remove ownable from relay's inbox
+  //       if (this.pkg.uniqueMessageHash) {
+  //         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+  //       }
+  //     } else {
+  //       enqueueSnackbar("Server is down", { variant: "error" });
+  //     }
+
+  //     // const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+  //     //   this.chain.state?.base58,
+  //     //   8,
+  //     //   ""
+  //     // )}.zip`;
+  //     // asDownload(content, filename);
+  //   } catch (error) {
+  //     console.error("Error during transfer:", error);
+  //   }
+  // }
 
   private async bridge(
     address: string,
@@ -258,23 +315,27 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
-    if (!stateDump) stateDump = this.state.stateDump;
+    try {
+      if (!stateDump) stateDump = this.state.stateDump;
 
-    if (this.pkg.hasWidgetState)
-      await OwnableService.rpc(this.chain.id).refresh(stateDump);
+      if (this.pkg.hasWidgetState)
+        await OwnableService.rpc(this.chain.id).refresh(stateDump);
 
-    const info = (await OwnableService.rpc(this.chain.id).query(
-      { get_info: {} },
-      stateDump
-    )) as TypedOwnableInfo;
-    const metadata = this.pkg.hasMetadata
-      ? ((await OwnableService.rpc(this.chain.id).query(
-        { get_metadata: {} },
+      const info = (await OwnableService.rpc(this.chain.id).query(
+        { get_info: {} },
         stateDump
-      )) as TypedMetadata)
-      : this.state.metadata;
+      )) as TypedOwnableInfo;
+      const metadata = this.pkg.hasMetadata
+        ? ((await OwnableService.rpc(this.chain.id).query(
+          { get_metadata: {} },
+          stateDump
+        )) as TypedMetadata)
+        : this.state.metadata;
 
-    this.setState({ info, metadata });
+      this.setState({ info, metadata });
+    } catch (error) {
+      console.error("Error during refresh:", error);
+    }
   }
 
   private async apply(partialChain: EventChain): Promise<void> {
@@ -296,7 +357,11 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
   async onLoad(): Promise<void> {
     if (!this.pkg.isDynamic) {
-      await OwnableService.initStore(this.chain, this.pkg.cid);
+      await OwnableService.initStore(
+        this.chain,
+        this.pkg.cid,
+        this.pkg.uniqueMessageHash
+      );
       return;
     }
 
@@ -306,13 +371,16 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     });
 
     try {
-      await OwnableService.init(this.chain, this.pkg.cid, rpc);
+      await OwnableService.init(
+        this.chain,
+        this.pkg.cid,
+        rpc,
+        this.props.uniqueMessageHash
+      );
       this.setState({ initialized: true });
     } catch (e) {
       if (e instanceof Cancelled) return;
       this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
-      sendRNPostMessage(JSON.stringify({ type: "sdkerror", message: ownableErrorMessage(e) }));
-      throw e;
     }
   }
 
@@ -337,7 +405,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       return;
     }
   }
-
+  //@ts-ignore
   private windowMessageHandler = async (event: MessageEvent) => {
     if (
       !isObject(event.data) ||
@@ -350,6 +418,43 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
     await this.execute(event.data.msg);
   };
+
+  downloadImag = async () => {
+    try {
+      const images = await IDBService.getAll(`package:${this.pkg.cid}`);
+      console.log('Fetched images:', images);
+
+      if (images.length > 0) {
+        const image = images.find((i: any) => ["webp", "png", "jpeg", "jpg", "gif"].includes(i.name?.split(".")[1]));
+        console.log('Selected image:', image);
+
+        if (image) {
+          // const wasm = (await PackageService.getAsset(
+          //   cid,
+          //   "ownable_bg.wasm",
+          //   (fr, file) => fr.readAsArrayBuffer(file)
+          // )) as ArrayBuffer;
+          const assest = await PackageService.getAsset(this.pkg.cid, image.name, (fr, file) => fr.readAsArrayBuffer(file));
+          console.log('Fetched image:', assest);
+          //download image
+          const blob = new Blob([assest], { type: image.type });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = image.name;
+          a.click();
+          URL.revokeObjectURL(url);
+
+        } else {
+          console.error('No valid image found');
+        }
+      } else {
+        console.error('No images found in IndexedDB');
+      }
+    } catch (e) {
+      console.error("OwnableThumb -> getImage -> e", e);
+    }
+  }
 
   async componentDidMount() {
     window.addEventListener("message", this.windowMessageHandler);
@@ -390,240 +495,6 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     OwnableService.clearRpc(this.chain.id);
     window.removeEventListener("message", this.windowMessageHandler);
   }
-  // private readonly pkg: TypedPackage;
-  // private readonly iframeRef: RefObject<HTMLIFrameElement>;
-  // private busy = false;
-
-  // constructor(props: OwnableDetailsModalProps) {
-  //   super(props);
-  //   this.pkg = PackageService.info(props.packageCid);
-  //   this.iframeRef = createRef();
-  //   this.state = {
-  //     showMenu: false,
-  //     showInfo: false,
-  //     showAddToCollection: false,
-  //     pkgId: "",
-  //     showTransferDialog: false,
-  //     initialized: false,
-  //     applied: new EventChain(this.props.chain.id).latestHash,
-  //     stateDump: [],
-  //     metadata: {
-  //       name: this.pkg.title,
-  //       description: this.pkg.description,
-  //     },
-  //     showBridgeDialog: false,
-  //   };
-  // }
-
-  // get chain(): EventChain {
-  //   return this.props.chain;
-  // }
-
-  // get isTransferred(): boolean {
-  //   return !!this.state.info && this.state.info.owner !== LTOService.address;
-  // }
-
-  // get hasNFT(): boolean {
-  //   return this.pkg.keywords?.includes("hasNFT") ?? false;
-  // }
-
-  // get nftNetwork(): string {
-  //   const nftNetwork = this.state.info?.nft?.network;
-  //   return nftNetwork || "";
-  // }
-
-  // private async transfer(to: string): Promise<void> {
-  //   try {
-  //     const value = await RelayService.isRelayUp();
-
-  //     if (value) {
-  //       await this.execute({ transfer: { to: to } });
-  //       const zip = await OwnableService.zip(this.chain);
-  //       const content = await zip.generateAsync({
-  //         type: "uint8array",
-  //       });
-  //       await RelayService.sendOwnable(to, content);
-  //       enqueueSnackbar("Ownable sent Successfully!!", { variant: "success" });
-  //       //Remove ownable from relay's inbox
-  //       if (this.pkg.uniqueMessageHash) {
-  //         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
-  //       }
-  //     } else {
-  //       enqueueSnackbar("Server is down", { variant: "error" });
-  //     }
-
-  //     // const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
-  //     //   this.chain.state?.base58,
-  //     //   8,
-  //     //   ""
-  //     // )}.zip`;
-  //     // asDownload(content, filename);
-  //   } catch (error) {
-  //     console.error("Error during transfer:", error);
-  //   }
-  // }
-
-  // private async refresh(stateDump?: StateDump): Promise<void> {
-  //   if (!stateDump) stateDump = this.state.stateDump;
-
-  //   if (this.pkg.hasWidgetState)
-  //     await OwnableService.rpc(this.chain.id).refresh(stateDump);
-
-  //   const info = (await OwnableService.rpc(this.chain.id).query(
-  //     { get_info: {} },
-  //     stateDump
-  //   )) as TypedOwnableInfo;
-  //   const metadata = this.pkg.hasMetadata
-  //     ? ((await OwnableService.rpc(this.chain.id).query(
-  //       { get_metadata: {} },
-  //       stateDump
-  //     )) as TypedMetadata)
-  //     : this.state.metadata;
-
-  //   this.setState({ info, metadata });
-  // }
-
-  // private async apply(partialChain: EventChain): Promise<void> {
-  //   if (this.busy) return;
-  //   this.busy = true;
-
-  //   const stateDump =
-  //     (await EventChainService.getStateDump(
-  //       this.props.chain.id,
-  //       partialChain.state
-  //     )) || // Use stored state dump if available
-  //     (await OwnableService.apply(partialChain, this.state.stateDump));
-
-  //   await this.refresh(stateDump);
-
-  //   this.setState({ applied: this.props.chain.latestHash, stateDump });
-  //   this.busy = false;
-  // }
-
-  // private async execute(msg: TypedDict): Promise<void> {
-  //   let stateDump: StateDump;
-
-  //   try {
-  //     stateDump = await OwnableService.execute(
-  //       this.chain,
-  //       msg,
-  //       this.state.stateDump
-  //     );
-  //   } catch (error) {
-  //     this.props.onError(
-  //       "The Ownable returned an error",
-  //       ownableErrorMessage(error)
-  //     );
-  //     return;
-  //   }
-
-  //   await OwnableService.store(this.chain, stateDump);
-
-  //   await this.refresh(stateDump);
-  //   this.setState({ applied: this.chain.latestHash, stateDump });
-  // }
-
-  // private async bridge(
-  //   address: string,
-  //   fee: number | null,
-  //   nftNetwork?: string
-  // ): Promise<void> {
-  //   try {
-  //     const bridgeAddress = await BridgeService.getBridgeAddress();
-  //     await this.execute({ transfer: { to: bridgeAddress } });
-  //     const zip = await OwnableService.zip(this.chain);
-  //     const content = await zip.generateAsync({
-  //       type: "uint8array",
-  //     });
-  //     const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
-  //       this.chain.state?.base58,
-  //       8,
-  //       ""
-  //     )}.zip`;
-  //     const transactionId = await BridgeService.payBridgingFee(
-  //       fee,
-  //       bridgeAddress
-  //     );
-  //     const contentBlob = new Blob([content], {
-  //       type: "application/octet-stream",
-  //     });
-  //     if (transactionId) {
-  //       await BridgeService.bridgeOwnableToNft(
-  //         address,
-  //         transactionId,
-  //         filename,
-  //         contentBlob
-  //       );
-  //     }
-  //     //remove ownable from relay's inbox
-  //     if (this.pkg.uniqueMessageHash) {
-  //       await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
-  //     }
-  //     enqueueSnackbar("Successfully bridged!!", { variant: "success" });
-  //     this.onClose();
-  //   } catch (error) {
-  //     console.error("Error while attempting to bridge:", error);
-  //   }
-  // }
-
-  // private windowMessageHandler = async (event: MessageEvent) => {
-  //   if (
-  //     !isObject(event.data) ||
-  //     !("ownable_id" in event.data) ||
-  //     event.data.ownable_id !== this.chain.id
-  //   )
-  //     return;
-  //   if (this.iframeRef.current!.contentWindow !== event.source)
-  //     throw Error("Not allowed to execute msg on other Ownable");
-
-  //   await this.execute(event.data.msg);
-  // };
-
-  // async componentDidMount() {
-  //   window.addEventListener("message", this.windowMessageHandler);
-  // }
-
-  // async componentDidUpdate(
-  //   _: OwnableDetailsModalProps,
-  //   prev: OwnableDetailsModalState
-  // ): Promise<void> {
-  //   const partial = this.props.chain.startingAfter(this.state.applied);
-
-  //   if (partial.events.length > 0) await this.apply(partial);
-  //   else if (
-  //     this.state.initialized !== prev.initialized ||
-  //     this.state.applied.hex !== prev.applied.hex
-  //   )
-  //     await this.refresh();
-  // }
-
-  // async onLoad(): Promise<void> {
-  //   if (!this.pkg.isDynamic) {
-  //     await OwnableService.initStore(this.chain, this.pkg.cid);
-  //     return;
-  //   }
-
-  //   const iframeWindow = this.iframeRef.current!.contentWindow;
-
-  //   const rpc = rpcConnect<Required<OwnableRPC>>(window, iframeWindow, "*", {
-  //     timeout: 5000,
-  //   });
-
-  //   try {
-  //     await OwnableService.init(this.chain, this.pkg.cid, rpc);
-  //     this.setState({ initialized: true });
-  //   } catch (e) {
-  //     throw e;
-  //     sendRNPostMessage(JSON.stringify({ type: "sdkerror", data:`onLoad${e}` }));
-  //     if (e instanceof Cancelled) return;
-  //     this.props.onError("Failed to forge Ownable", ownableErrorMessage(e));
-  //   }
-  // }
-
-  // componentWillUnmount() {
-  //   OwnableService.clearRpc(this.chain.id);
-  //   window.removeEventListener("message", this.windowMessageHandler);
-  // }
 
   toggleMenu = () => {
     this.setState((prevState) => ({
@@ -731,6 +602,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             onTransfer={this.toggleShowTransferDialog}
             onAddToCollection={this.toggleAddToCollection}
             showBridge={() => this.setState({ showBridgeDialog: true })}
+            downloadImage={this.downloadImag}
           />
           <OwnableInfoDrawer
             open={this.state.showInfo}

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Modal} from 'react-native';
+import { Modal, TouchableOpacity } from 'react-native';
 import {
   CloseIconContainer,
   FlexContainer,
@@ -10,8 +10,10 @@ import {
   ModalTitle,
   TopSpace,
 } from './styles/BottomModal.styles';
-import {StyledButton} from './StyledButton';
+import { StyledButton } from './StyledButton';
 import Icon from './Icon';
+import { Text } from 'react-native';
+import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 
 export const BottomModal = ({
   title,
@@ -26,14 +28,14 @@ export const BottomModal = ({
   hideCancelButton,
 }: {
   title: string;
-  body: {text: string; heading?: boolean}[];
+  body: { text: string; heading?: boolean }[];
   onSubmit: () => void;
   submitButtonType: 'danger' | 'primary' | 'secondary';
   submitText: string;
   cancelText?: string;
   onCancel: () => void;
   visible: boolean;
-  type?: 'default' | 'terms';
+  type?: 'default' | 'terms' | 'biometric';
   hideCancelButton?: boolean;
 }) => {
   return (
@@ -46,7 +48,7 @@ export const BottomModal = ({
               <Icon icon="xmark" color="#909092" size={20} />
             </CloseIconContainer>
             <ModalTitle type={type}>{title}</ModalTitle>
-            {body.map(({text, heading}: {text: string; heading?: boolean}, index: number) =>
+            {body.map(({ text, heading }: { text: string; heading?: boolean }, index: number) =>
               heading ? (
                 <ModalSubTitle key={index}>{text}</ModalSubTitle>
               ) : (
@@ -56,6 +58,41 @@ export const BottomModal = ({
               ),
             )}
           </ModalSubContainer>
+          {
+            // If the type is 'terms', we don't need to show the buttons
+            type === 'biometric' && (
+              <ModalSubContainer>
+                {/* Would you like to enable biometric authentication for this app?\n\nThis feature allows you to use the available biometric technology such as Face ID, Fingerprint, or Iris to access your account securely and conveniently, without having to enter your password each time. By enabling biometric authentication, you agree to our Privacy Policy and Terms of Service.\n\n Would you like to proceed? */}
+                {/* Biometric authentication  Privacy Policy  adn Terms of Service */}
+                <ModalBody
+                  type={type}
+                >
+                  Would you like to enable biometric authentication for this app?
+                </ModalBody>
+                <ModalBody
+                  type={type}
+                >
+                  This feature allows you to use the available biometric technology such as Face ID, Fingerprint, or Iris to access your account securely and conveniently, without having to enter your password each time. By enabling biometric authentication, you agree to our
+                  <TouchableOpacity onPress={() => {
+                    InAppBrowser.open("https://www.ltonetwork.com/documents/privacy-policy.html");
+                  }} style={{}}>
+                    <Text style={{ color: '#909092', textDecorationLine: 'underline' }}> Privacy Policy </Text>
+                  </TouchableOpacity>
+                  and {""}
+                  <TouchableOpacity onPress={() => {
+                    InAppBrowser.open("https://www.ltonetwork.com/documents/Terms%20and%20Conditions%20LTO%20Network%20B.V.%20-%2016.01.2019.pdf");
+                  }}>
+                    <Text style={{ color: '#909092', textDecorationLine: 'underline' }}> Terms of Service </Text>
+                  </TouchableOpacity>
+                </ModalBody>
+                <ModalBody
+                  type={type}
+                >
+                  Would you like to proceed?
+                </ModalBody>
+              </ModalSubContainer>
+            )
+          }
           <ModalSubContainer>
             <StyledButton text={submitText} onPress={onSubmit} type={submitButtonType} />
             {!hideCancelButton && <StyledButton text={cancelText} onPress={onCancel} type="textOnly" />}

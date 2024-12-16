@@ -144,7 +144,7 @@ export default function CreateLeaseScreen({navigation, route}: RootStackScreenPr
       <StyledTitle>{WALLET.LEASE}</StyledTitle>
       <FormContainer>
         <InputField
-          label="Address"
+          label="Node Address"
           value={recipient}
           onChangeText={setRecipient}
           error={!LTOService.isValidAddress(recipient)}
@@ -160,7 +160,7 @@ export default function CreateLeaseScreen({navigation, route}: RootStackScreenPr
           numeric={true}
         />
         <Card label="0.08 LTO" subLabel="Fee" />
-        <StyledButton text="Send" onPress={handleSend} disabled={sendButtonDisabled} />
+        <StyledButton text="Start Lease" onPress={handleSend} disabled={sendButtonDisabled} />
       </FormContainer>
       <ConfirmationDialog
         visible={dialogVisible}

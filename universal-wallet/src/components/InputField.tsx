@@ -13,6 +13,7 @@ export const InputField = ({
   numeric,
   secureTextEntry,
   disabled,
+  autoCapitalize
 }: {
   label: string;
   value: string;
@@ -24,6 +25,7 @@ export const InputField = ({
   numeric?: boolean;
   secureTextEntry?: boolean;
   disabled?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }) => {
   const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
 
@@ -38,6 +40,7 @@ export const InputField = ({
           onChangeText={text => onChangeText(numeric ? text.replace(/[^0-9\.]/g, '') : text)}
           placeholder={placeholder}
           secureTextEntry={secureTextEntry && !passwordVisible}
+          autoCapitalize={autoCapitalize}
         />
         {secureTextEntry && (
           <TouchableIcon

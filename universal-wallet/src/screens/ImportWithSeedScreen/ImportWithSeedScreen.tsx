@@ -8,19 +8,18 @@ import { Title } from '../../components/Title';
 import { BackButton } from '../../components/BackButton';
 import { InputField } from '../../components/InputField';
 import { StyledButton } from '../../components/StyledButton';
+import { Text } from 'react-native';
 
 export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
   const [seedPhrase, setSeedPhrase] = useState<string>('');
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
-
-  const validateSeedPhrase = (seed: string): boolean => {
-    const regExp = /^[a-zA-Z]+( [a-zA-Z]+)*$/;
-    return regExp.test(seed);
-  };
-
   const showMessage = (message: string) => {
     setShowMessage(true);
     setMessageInfo(message);
+  };
+  const validateSeedPhrase = (seed: string): boolean => {
+    const regExp = /^[a-zA-Z]+( [a-zA-Z]+)*$/;
+    return regExp.test(seed);
   };
 
   const handleImportFromSeed = async () => {
@@ -56,11 +55,23 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
         onChangeText={setSeedPhrase}
         value={seedPhrase}
         placeholder={IMPORT_WITHSEEDS.INPUT_SEEDPHRASE.PLACEHOLDER}
+        autoCapitalize="none"
       />
       <StyledButton
         text={IMPORT_WITHSEEDS.BUTTON_IMPORT}
-        onPress={handleImportFromSeed}
+        onPress={() => {
+          setSeedPhrase('');
+          handleImportFromSeed();
+        }}
       />
+      <Text
+        style={{
+          color: '#ffffff',
+          padding: 10,
+          borderRadius: 5,
+          marginTop: 20,
+        }}
+      >Note:  You can only use one wallet address at a time. To use another wallet address, you can remove the current account at anytime and add a different one.</Text>
     </ScreenContainer>
   );
 }

@@ -1140,6 +1140,8 @@ PODS:
     - React-Core
   - RNCClipboard (1.14.0):
     - React-Core
+  - RNDeviceInfo (14.0.1):
+    - React-Core
   - RNFS (2.20.0):
     - React-Core
   - RNInAppBrowser (3.7.0):
@@ -1240,6 +1242,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
+  - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNFS (from `../node_modules/react-native-fs`)
   - RNInAppBrowser (from `../node_modules/react-native-inappbrowser-reborn`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -1380,6 +1383,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNCClipboard:
     :path: "../node_modules/@react-native-clipboard/clipboard"
+  RNDeviceInfo:
+    :path: "../node_modules/react-native-device-info"
   RNFS:
     :path: "../node_modules/react-native-fs"
   RNInAppBrowser:
@@ -1464,6 +1469,7 @@ SPEC CHECKSUMS:
   ReactCommon: 2aa35648354bd4c4665b9a5084a7d37097b89c10
   RNCAsyncStorage: 826b603ae9c0f88b5ac4e956801f755109fa4d5c
   RNCClipboard: 090462274cc05b02628bd158baf6d73c3abe8441
+  RNDeviceInfo: 825f0d2f4381327317f12d1522720a8f76e6a19e
   RNFS: 4ac0f0ea233904cb798630b3c077808c06931688
   RNInAppBrowser: e36d6935517101ccba0e875bac8ad7b0cb655364
   RNScreens: b6b64d956af3715adbfe84808694ae82d3fec74f

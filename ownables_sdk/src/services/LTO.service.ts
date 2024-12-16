@@ -2,19 +2,66 @@ import { Account, Binary, LTO, Transaction } from "@ltonetwork/lto";
 import LocalStorageService from "./LocalStorage.service";
 import SessionStorageService from "./SessionStorage.service";
 import CryptoJS from "crypto-js";
+import { sendRNPostMessage } from "../utils/postMessage";
+import { Env, Network } from "../AppConfig";
 
 const getSeedFromQuery = () => {
   const queryParams = new URLSearchParams(window.location.search);
   return queryParams.get("seed");
 }
 
-const seed = getSeedFromQuery();
+// Function to derive Network from query parameters
+export const getNetworkFromQuery: () => Network = (): Network => {
+  const queryParams = new URLSearchParams(window.location.search);
+  const networkValue = queryParams.get("network");
 
-const sessionSeed = SessionStorageService.get('@seed') || seed;
+  // Map the string to the corresponding Network enum value
+  if (networkValue === Network.MAINNET) {
+    return Network.MAINNET;
+  } else if (networkValue === Network.TESTNET) {
+    return Network.TESTNET;
+  }
 
-export const lto = new LTO(process.env.REACT_APP_LTO_NETWORK_ID);
-if (process.env.REACT_APP_LTO_API_URL)
-  lto.nodeAddress = process.env.REACT_APP_LTO_API_URL;
+  return Network.MAINNET;
+};
+
+
+const seed = getSeedFromQuery() as string;
+
+const decryptedSeed = () => {
+  sendRNPostMessage(JSON.stringify({ type: "Enterning decryptedSeed", data: seed }));
+  return seed;
+  // const encryptData = (data: string): string => {
+  //   const key = process.env.REACT_APP_SECURE_KEY as string;
+  //   console.log('key:', key);
+  //   return CryptoJS.AES.encrypt(data, key).toString();
+  // };
+
+  // try {
+  //   console.log('seed:', seed);
+  //   console.log('process.env.REACT_APP_SECURE', process.env.REACT_APP_SECURE_KEY);
+  //   const encryptedSeed = encryptData(seed);
+  //   console.log('encryptedSeed:', encryptedSeed);
+  //   const _ = decryptData(seed);
+  //   sendRNPostMessage(JSON.stringify({ type: "decryptedSeed", data: _ }));
+  //   return _;
+  // } catch (error) {
+  //   console.error('Error decrypting seed:', error);
+  //   sendRNPostMessage(JSON.stringify({ type: "decryptedSeedError", data: JSON.stringify(error) }));
+  //   return seed;
+  // }
+}
+
+
+export var lto = new LTO(getNetworkFromQuery() as string === "T" ? "T" : "M");
+
+if (getNetworkFromQuery() === "T") {
+  lto = new LTO("T");
+  lto.nodeAddress = process.env.REACT_APP_LTO_API_URL_T as string;
+} else {
+  lto = new LTO('L');
+  lto.nodeAddress = process.env.REACT_APP_LTO_API_URL_M as string;
+}
 
 const SECURE_KEY = process.env.REACT_APP_SECURE_KEY;
 
@@ -22,9 +69,12 @@ const encryptData = (data: string, key: string): string => {
   return CryptoJS.AES.encrypt(data, key).toString();
 };
 
-const decryptData = (encryptedData: string, key: string): string => {
+const decryptData = (encryptedData: string): string => {
+  const key = process.env.REACT_APP_SECURE_KEY as string;
   const bytes = CryptoJS.AES.decrypt(encryptedData, key);
-  return bytes.toString(CryptoJS.enc.Utf8);
+  const _ = bytes.toString(CryptoJS.enc.Utf8);
+  console.log('decryptedData:', _);
+  return _;
 };
 
 export default class LTOService {
@@ -40,19 +90,19 @@ export default class LTOService {
   }
 
   public static unlock(password: string): void {
-    this._account = lto.account({ seed: sessionSeed });
+    this._account = lto.account({ seed: decryptedSeed() });
   }
 
   public static get account(): Account {
     if (!this._account) {
-      this._account = lto.account({ seed: sessionSeed });
+      this._account = lto.account({ seed: decryptedSeed() });
     }
     return this._account;
   }
 
   public static get address(): string {
     if (this._account) return this._account.address;
-    return lto.account({ seed: sessionSeed }).address;
+    return lto.account({ seed: decryptedSeed() }).address;
   }
 
   public static storeAccount(nickname: string, password: string): void {
@@ -88,9 +138,15 @@ export default class LTOService {
     }
   }
 
-  public static importAccount(seed: string): void {
+  public static importAccount(): void {
     try {
-      this._account = lto.account({ seed: sessionSeed });
+      // this._account = lto.account({ seed: decryptedSeed() });
+      const network = getNetworkFromQuery() || "L";
+      const seed = decryptedSeed();
+      sendRNPostMessage(JSON.stringify({ type: "importAccount", data: { seed, network } }));
+      lto = new LTO(network);
+      lto.nodeAddress = network === "T" ? process.env.REACT_APP_LTO_API_URL_T as string : process.env.REACT_APP_LTO_API_URL_M as string;
+      this._account = lto.account({ seed });
     } catch (error) {
       throw new Error("Error importing account from seeds");
     }
@@ -108,7 +164,8 @@ export default class LTOService {
       const response = await fetch(url);
       return response.json();
     } catch (error) {
-      throw new Error("Error fetching account details");
+      console.error(error);
+      // throw new Error("Error fetching account details");
     }
   }
 
@@ -196,7 +253,7 @@ export default class LTOService {
 
   public static getAccount = async (): Promise<Account> => {
     if (!this.account) {
-      return lto.account({ seed: sessionSeed });
+      return lto.account({ seed: decryptedSeed() });
     }
     return this.account
   }

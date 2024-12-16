@@ -1,4 +1,5 @@
 import TypedDict from "../interfaces/TypedDict";
+import { sendRNPostMessage } from "../utils/postMessage";
 
 const DB_NAME = "ownables";
 
@@ -23,11 +24,6 @@ export default class IDBService {
   }
 
   static async get(store: string, key: string): Promise<any> {
-    // Check if store exists, create it if not
-    if (!(await this.hasStore(store))) {
-      await this.createStore(store);
-    }
-
     return new Promise(async (resolve, reject) => {
       const tx = (await this.db)
         .transaction(store, "readonly")
@@ -53,23 +49,27 @@ export default class IDBService {
 
   static async getMap(store: string): Promise<Map<any, any>> {
     return new Promise(async (resolve, reject) => {
-      const tx = (await this.db)
-        .transaction(store, "readonly")
-        .objectStore(store)
-        .openCursor();
+      try {
+        const tx = (await this.db)
+          .transaction(store, "readonly")
+          .objectStore(store)
+          .openCursor();
 
-      const map = new Map();
+        const map = new Map();
 
-      tx.onsuccess = () => {
-        let cursor = tx.result;
-        if (cursor) {
-          map.set(cursor.primaryKey, cursor.value);
-          cursor.continue();
-        } else {
-          return resolve(map);
-        }
-      };
-      tx.onerror = (event) => reject(this.error(event));
+        tx.onsuccess = () => {
+          let cursor = tx.result;
+          if (cursor) {
+            map.set(cursor.primaryKey, cursor.value);
+            cursor.continue();
+          } else {
+            return resolve(map);
+          }
+        };
+        tx.onerror = (event) => reject(this.error(event));
+      } catch (error) {
+        //sendRNPostMessage(JSON.stringify({ data: "sdkerror", error: error }));
+      }
     });
   }
 
@@ -86,11 +86,6 @@ export default class IDBService {
   }
 
   static async set(store: string, key: string, value: any): Promise<void> {
-    // Check if store exists, create it if not
-    if (!(await this.hasStore(store))) {
-      await this.createStore(store);
-    }
-
     return new Promise(async (resolve, reject) => {
       const tx = (await this.db)
         .transaction(store, "readwrite")
@@ -106,59 +101,29 @@ export default class IDBService {
     store: string,
     map: TypedDict | Map<any, any>
   ): Promise<void>;
-
   static async setAll(
     data: TypedDict<TypedDict | Map<any, any>>
   ): Promise<void>;
-
   static async setAll(a: any, b?: any): Promise<void> {
+    const storeNames: string | string[] = b ? a : Object.keys(a);
+    const data: { [_: string]: TypedDict | Map<any, any> } = b
+      ? Object.fromEntries([[a, b]])
+      : a;
+
     return new Promise(async (resolve, reject) => {
-      try {
-        const db = await this.db;
-        let tx: IDBTransaction;
+      const tx = (await this.db).transaction(storeNames, "readwrite");
 
-        // Case 1: if both `a` and `b` are defined, treat it as (store, map)
-        if (b !== undefined) {
-          const store = a as string;
-          const map = b as TypedDict | Map<any, any>;
-          tx = db.transaction([store], "readwrite");
-          const objectStore = tx.objectStore(store);
-
-          if (map instanceof Map) {
-            for (const [key, value] of map.entries()) {
-              objectStore.put(value, key);
-            }
-          } else {
-            for (const [key, value] of Object.entries(map)) {
-              objectStore.put(value, key);
-            }
-          }
-
-          // Case 2: if only `a` is defined, treat it as a `TypedDict` (batch operation)
-        } else {
-          const data = a as TypedDict<TypedDict | Map<any, any>>;
-          tx = db.transaction(Object.keys(data), "readwrite");
-
-          for (const [store, map] of Object.entries(data)) {
-            const objectStore = tx.objectStore(store);
-
-            if (map instanceof Map) {
-              for (const [key, value] of map.entries()) {
-                objectStore.put(value, key);
-              }
-            } else {
-              for (const [key, value] of Object.entries(map)) {
-                objectStore.put(value, key);
-              }
-            }
-          }
+      for (const [store, map] of Object.entries(data)) {
+        const objectStore = tx.objectStore(store);
+        for (const [key, value] of map instanceof Map
+          ? map.entries()
+          : Object.entries(map)) {
+          objectStore.put(value, key);
         }
-
-        tx.oncomplete = () => resolve();
-        tx.onerror = (event) => reject(this.error(event));
-      } catch (error) {
-        reject(error);
       }
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = (event) => reject(this.error(event));
     });
   }
 
@@ -183,10 +148,7 @@ export default class IDBService {
     this.db = new Promise(async (resolve, reject) => {
       const request = window.indexedDB.open(DB_NAME, version + 1);
 
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        action(db); // Apply upgrade logic here, e.g., creating object stores
-      };
+      request.onupgradeneeded = () => action(request.result);
       request.onsuccess = () => resolve(request.result);
       request.onerror = (e) => reject(e);
     });
@@ -207,6 +169,14 @@ export default class IDBService {
     return (await this.db).objectStoreNames.contains(store);
   }
 
+  // static async createStore(...stores: string[]): Promise<void> {
+  //   await this.upgrade((db) => {
+  //     for (const store of stores) {
+  //       db.createObjectStore(store);
+  //     }
+  //   });
+  // }
+
   static async createStore(...stores: string[]): Promise<void> {
     await this.upgrade((db) => {
       for (const store of stores) {
@@ -215,17 +185,25 @@ export default class IDBService {
         }
       }
     });
+
+    // Check that the store(s) now exist
+    const db = await this.db;
+    for (const store of stores) {
+      if (!db.objectStoreNames.contains(store)) {
+        throw new Error(`Failed to create store ${store}.`);
+      }
+    }
   }
 
   public static async deleteStore(store: string | RegExp): Promise<void> {
     const stores =
       store instanceof RegExp
         ? Array.from((await this.db).objectStoreNames).filter((name) =>
-            name.match(store)
-          )
+          name.match(store)
+        )
         : (await this.db).objectStoreNames.contains(store)
-        ? store
-        : [];
+          ? store
+          : [];
 
     if (stores.length === 0) return;
 

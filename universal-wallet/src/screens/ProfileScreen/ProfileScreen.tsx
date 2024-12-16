@@ -170,7 +170,7 @@ export default function ProfileScreen({ navigation }: RootStackScreenProps<'Prof
         body={[{ text: PROFILE.DELETE_ACCOUNT_MESSAGE }, { text: PROFILE.DELETE_ACCOUNT_MESSAGE_2 }]}
         onSubmit={deleteAccount}
         submitButtonType="danger"
-        submitText="Delete Account"
+        submitText="Remove Account"
         onCancel={() => setShowConfirmDelete(false)}
         visible={showConfirmDelete}
       />

@@ -22,7 +22,12 @@ export const CheckBoxCard = ({
   <CheckBoxContainer>
     <CheckBox value={value} onPress={onChange} />
     <CheckBoxLabelContainer onPress={onPressText}>
-      <CheckBoxLabel>{label}</CheckBoxLabel>
+      <CheckBoxLabel
+      style={{
+        color: value == true  ? '#ffffff' : '#510094',
+        backgroundColor : value == true ? '#000000' : '#ffffff',
+      }}
+      >{label}</CheckBoxLabel>
     </CheckBoxLabelContainer>
   </CheckBoxContainer>
 );

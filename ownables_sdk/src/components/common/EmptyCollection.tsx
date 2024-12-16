@@ -1,6 +1,7 @@
 import { Box } from "@mui/material";
 import { ReactComponent as EmptyCollectionIcon } from "../../assets/empty_collection.svg";
 import styled from "@emotion/styled";
+import { StaticCollections } from "../../services/Collection.service";
 
 const Title = styled.span`
   color: #ffffff;
@@ -22,9 +23,10 @@ const Container = styled(Box)``;
 
 interface Props {
   title: string;
+  id?: string;
 }
 
-const EmptyCollection = ({title}: Props) => {
+const EmptyCollection = ({title,id}: Props) => {
   return (
     <Container
       flex={1}
@@ -35,7 +37,9 @@ const EmptyCollection = ({title}: Props) => {
     >
       <EmptyCollectionIcon />
       <Title>{title}</Title>
-      <HelperText>This collection is currently empty</HelperText>
+      {id==StaticCollections.CONSUMED?<p
+      style={{color:"white",fontSize:"14px",lineHeight:"21px"}}
+      >This exciting new feature is coming soon !</p>:<HelperText>This collection is currently empty</HelperText>}
     </Container>
   );
 };

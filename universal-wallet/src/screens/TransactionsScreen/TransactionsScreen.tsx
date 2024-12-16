@@ -56,7 +56,8 @@ export default function TransactionsScreen({navigation}: RootStackScreenProps<'T
       const data = Array.from(txsByDate.entries()).map(([date, txs]) => ({date, data: txs}));
       setTransactions(data);
     } catch (error) {
-      throw new Error(`Error retrieving latest transactions. ${error}`);
+      console.log('TransactionScree:loadTransactions:Error retrieving latest transactions', error);
+      setTransactions([]);
     }
   };
 

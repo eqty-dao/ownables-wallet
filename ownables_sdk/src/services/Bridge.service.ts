@@ -2,10 +2,11 @@ import axios from "axios";
 import LTOService from "./LTO.service";
 import { sign } from "@ltonetwork/http-message-signatures";
 import SessionStorageService from "./SessionStorage.service";
+import { AppConfig } from "../AppConfig";
 
 export class BridgeService {
   private static obridgeUrl =
-    process.env.REACT_APP_OBRIDGE;
+    AppConfig.OBRIDGE();
 
   //Get cost of bridging
   static async getBridgeCost(templateId: number) {

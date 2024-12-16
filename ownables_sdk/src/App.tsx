@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, Dialog, DialogContent, DialogContentText, LinearProgress } from "@mui/material";
+import { Badge, Box, Dialog, DialogContent, DialogContentText, LinearProgress } from "@mui/material";
 import IDBService from "./services/IDB.service";
 import { TypedPackage } from "./interfaces/TypedPackage";
 import Loading from "./components/Loading";
@@ -51,6 +51,7 @@ import LocalStorageService from "./services/LocalStorage.service";
 import { InfoSharp } from "@mui/icons-material";
 import ActivityLogDrawer from "./components/ActivityLogs";
 import { activityLogService } from "./services/ActivityLog.service";
+import { PollingService } from "./services/Polling.service";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -129,22 +130,30 @@ export default function App() {
 
   const computeFilters = (packages: Array<string>) => {
     //const flatMap = packages.flatMap(item => item)
-    const foundOwnables = ownables.filter((item: any) =>
-      packages.some((chainId: string) => chainId === item.chain.id)
-    );
-    setFilteredOwnables(foundOwnables);
-    setFoundOwnables(foundOwnables);
+    try {
+      const foundOwnables = ownables.filter((item: any) =>
+        packages.some((chainId: string) => chainId === item.chain.id)
+      );
+      setFilteredOwnables(foundOwnables);
+      setFoundOwnables(foundOwnables);
+    } catch (error) {
+      console.error("Error filtering ownables", error);
+    }
   };
 
   const initializeCollections = async () => {
-    CollectionService.init();
-    // do a initial search to fill filteredPackages
-    filterBy("", "", StaticCollections.ALL);
-    // get all collections after initialize
-    getAll();
-    getAllIssuers();
-    // reset filter
-    resetFilter();
+    try {
+      CollectionService.init();
+      // do a initial search to fill filteredPackages
+      filterBy("", "", StaticCollections.ALL);
+      // get all collections after initialize
+      getAll();
+      getAllIssuers();
+      // reset filter
+      resetFilter();
+    } catch (error) {
+      console.error("Error initializing collections", error);
+    }
   };
 
   useEffect(() => {
@@ -172,32 +181,15 @@ export default function App() {
 
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      const messageCount = await CheckForMessages.getNewMessageCount();
-      setMessages(messageCount);
-    };
-    const intervalId = setInterval(fetchMessages, 15000);
-    return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
     const seed = window.localStorage.getItem("seed");
     sendRNPostMessage(JSON.stringify({ type: "gotSeed!", data: seed }));
     if (seed) {
-      sendRNPostMessage(JSON.stringify({ type: "seed", data: seed }));
-      window.sessionStorage.setItem("@seed", seed);
-      console.log(`GOT SEED: ${seed}`);
-      // remove from the local storage
-      window.localStorage.removeItem("@seed");
       sendRNPostMessage(JSON.stringify({ type: 'seed', data: seed }));
       try {
-        LTOService.importAccount(seed);
+        LTOService.importAccount();
         if (LTOService.isUnlocked()) {
           console.log(`SETTING ADDRESS: ${LTOService.address}`);
-          sendRNPostMessage(
-            JSON.stringify({ type: "address", data: LTOService.address })
-          );
-          sendRNPostMessage(JSON.stringify({ type: 'address', data: LTOService.address }));
+          sendRNPostMessage(JSON.stringify({ type: 'WalletFromApp', data: LTOService.address }));
         }
         IDBService.open()
           .then(() => OwnableService.loadAll())
@@ -207,6 +199,7 @@ export default function App() {
             sendRNPostMessage(JSON.stringify({ type: 'loaded' }));
           });
         return () => { }
+        // check for messages every 5 seconds
       } catch (error) {
         console.error("Error importing account: ", error);
       }
@@ -228,11 +221,24 @@ export default function App() {
     // eslint-disable-next-line
   }, []);
 
+  useEffect(() => {
+    if (LTOService.address.length > 1) {
+      const stopPolling = PollingService.startPolling(
+        LTOService.address,
+        (newCount: any) => {
+          setMessages(newCount);
+        },
+        5000
+      );
+      return () => stopPolling();
+    }
+  }, [LTOService.address]);
+
   const deleteOwnable = async (id: string, packageCid: string) => {
     const pkg = PackageService.info(packageCid);
     setOwnables(() => ownables.filter((ownable) => ownable.chain.id !== id));
     await OwnableService.delete(id);
-    enqueueSnackbar(`${pkg.title} has been deleted`, {
+    enqueueSnackbar(`${pkg?.title} has been deleted`, {
       autoHideDuration: snackbarDuration,
       style: {
         backgroundColor: themeColors.error,
@@ -396,7 +402,7 @@ export default function App() {
 
     const foundedOwnables = items.filter((ownable) => {
       const pkg = PackageService.info(ownable.package);
-      const lowerCasedTitle = pkg.title.toLowerCase();
+      const lowerCasedTitle = pkg?.title?.toLowerCase() || "";
       const includesPartialKeyword = pkg && pkg.keywords ? pkg.keywords.some((keyword) => keyword.includes(queryFormat)) : false;
       const includesPartialTitle =
         lowerCasedTitle.includes(queryFormat) ||
@@ -413,7 +419,13 @@ export default function App() {
 
   const handleSearchFilter = () => setShowFilters(!showFilters);
 
-  const relayImport = async (pkg: TypedPackage[] | null) => {
+  const getPackageDisplayName = (str: string) => {
+    if (!str) return '';
+    const regex = new RegExp(/ownable/i);
+    return str?.replace(regex, "").replace(/[-_]+/, " ").trim()
+      .replace(/\b\w/, (c) => c.toUpperCase());
+  }
+  const relayImport = async (pkg: TypedPackage[] | null, triggerRefresh: boolean) => {
     try {
 
       sendRNPostMessage(JSON.stringify({ type: 'relay Import loop', data: "pkg" }));
@@ -421,7 +433,7 @@ export default function App() {
       sendRNPostMessage(JSON.stringify({ type: 'isEmpty', data: isEmpty }));
       if (pkg == null || pkg.length === 0 || isEmpty) {
         enqueueSnackbar(`Nothing to Load from relay`, {
-          variant: "error",
+          variant: "info"
         });
         setImportingFromRelay(false);
         return;
@@ -438,62 +450,79 @@ export default function App() {
 
       if (pkg != null && pkg.length > 0) {
         setImportLabel(`Starting Importing Ownables : (${pkg?.length || 0})`);
+        activityLogService.logActivity({
+          activity: `Importing Ownables from Relay : ${pkg?.length || 0}`,
+          timestamp: Date.now(),
+        });
         for (let i = 0; i < pkg.length; i += batchNumber) {
-          setImportLabel(`Importing Ownables : (${i + 1}/${pkg.length}):${pkg[i]?.name || ""}`);
+          setImportLabel(`Importing Ownables : (${i + 1}/${pkg.length}):${getPackageDisplayName(pkg[i]?.name || "")}`);
+          activityLogService.logActivity({
+            activity: `Importing Ownables from Relay : ${i + 1}/${pkg.length}`,
+            timestamp: Date.now(),
+          });
+          activityLogService.logActivity({
+            activity: `Importing Ownables from Relay : ${JSON.stringify(pkg[i])}`,
+            timestamp: Date.now(),
+          });
           const batch = pkg.slice(i, i + batchNumber);
           const filteredBatch = batch.filter(
             (item) => item !== null && item !== undefined
           );
 
-          if (
-            filteredBatch.some((data) =>
-              storedPackages.some((storedPkg) => storedPkg.cid === data.cid)
-            )
-          ) {
-            triggerRefresh = true;
-          }
-
           setOwnables((prevOwnables) => [
             ...prevOwnables,
             ...filteredBatch
-              .filter((data: any) => data.chain && data.cid)
-              .map((data: any) => ({
+              .filter((data: TypedPackage) => data.chain && data.cid)
+              .map((data: TypedPackage) => ({
                 chain: data.chain,
                 package: data.cid,
+                uniqueMessageHash: data.uniqueMessageHash, // Include uniqueMessageHash
               })),
           ]);
 
           enqueueSnackbar(`Ownable successfully loaded`, {
             variant: "success",
           });
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+
         }
         setImportingFromRelay(false);
+        LocalStorageService.remove("messageCount");
+        setMessages(0);
 
         //Trigger a refresh only if any package matched current one
-        if (triggerRefresh) {
-          setAlert({
-            severity: "info",
-            title: "New Ownables Detected",
-            message: "New ownables have been detected. Refreshing...",
-          });
+        // if (triggerRefresh) {
+        //   setAlert({
+        //     severity: "info",
+        //     title: "New Ownables Detected",
+        //     message: "New ownables have been detected. Refreshing...",
+        //   });
 
-          // setTimeout(() => {
-          //   window.location.reload();
-          // }, 4000);
-        } else {
-          enqueueSnackbar(`No matching packages found for refresh`, {
-            variant: "info",
-          });
-        }
+        //   // setTimeout(() => {
+        //   //   window.location.reload();
+        //   // }, 4000);
+        //   // LocalStorageService.set("messageCount", 0);
+        //   // setMessages(0);
+        // } else {
+        //   enqueueSnackbar(`No matching packages found for refresh`, {
+        //     variant: "info",
+        //   });
+        // }
       } else {
         enqueueSnackbar(`Nothing to Load from relay`, {
           variant: "error",
         });
+        LocalStorageService.remove("messageCount");
+        setMessages(0);
+        setImportingFromRelay(false);
+        setImportLabel(`Import from Relay Completed`);
       }
     } catch (error) {
       setImportingFromRelay(false);
       showError("Import failed", ownableErrorMessage(error));
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay failed`,
+        timestamp: Date.now(),
+      });
       throw error;
     }
   };
@@ -502,30 +531,57 @@ export default function App() {
     setImportingFromRelay(true);
     try {
       activityLogService.logActivity({
-        activity: "Importing Ownables from Relay",
+        activity: "Importing Ownables from Relay start api call",
         timestamp: Date.now(),
       });
       setImportLabel(`Importing From Relay, please wait...`);
       sendRNPostMessage(JSON.stringify({ type: 'import started' }));
+
       let pkg = await PackageService.importFromRelay();
       // filter out [null,null,null] from the response
+
       setImportLabel(`Import from Relay Completed , processing Ownables`);
       sendRNPostMessage(JSON.stringify({ type: 'import completed', data: pkg }));
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay completed`,
+        timestamp: Date.now(),
+      });
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay : ${JSON.stringify(pkg)}`,
+        timestamp: Date.now(),
+      });
       if (pkg == null) {
         setImportingFromRelay(false);
         return;
       }
       setImportLabel(`Relating Ownables : (${pkg?.length || 0})`);
-      const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null && p !== undefined);
-      if (filteredPackages.length === 0) {
-        sendRNPostMessage(JSON.stringify({ type: 'import completed', data: 'No Ownables found' }));
-        setImportingFromRelay(false);
-        return;
-      }
-      relayImport(filteredPackages);
+      // //@ts-ignore
+      // const filteredPackages = pkg.filter((p): p is TypedPackage => p !== null && p !== undefined);
+      // if (filteredPackages.length === 0) {
+      //   sendRNPostMessage(JSON.stringify({ type: 'import completed', data: 'No Ownables found' }));
+      //   setImportingFromRelay(false);
+      //   return;
+      // }
+      // //@ts-ignore
+      // relayImport(filteredPackages);
+      const [filteredPackages, triggerRefresh] = pkg as [
+        Array<TypedPackage | undefined>,
+        boolean
+      ];
+
+      const validPackages = Array.isArray(filteredPackages)
+        ? filteredPackages.filter(
+          (p): p is TypedPackage => p !== null && p !== undefined
+        )
+        : [];
+      relayImport(validPackages, triggerRefresh);
     } catch (error) {
       setImportingFromRelay(false);
       showError("Import failed", ownableErrorMessage(error));
+      activityLogService.logActivity({
+        activity: `Importing Ownables from Relay failed`,
+        timestamp: Date.now(),
+      });
       throw error;
     }
   };
@@ -597,10 +653,9 @@ export default function App() {
                     chain: chain,
                     packageCid: packageCid,
                   })}
-                  onError={showError} onDelete={function (): void {
-                    throw new Error("Function not implemented.");
-                  }} onDeleted={function (): void {
-                    throw new Error("Function not implemented.");
+                  onError={showError}
+                  onDeleted={function (): void {
+                    deleteOwnable(chain.id, packageCid);
                   }}                >
                   <If condition={consuming?.chain.id === chain.id}>
                     <LtoOverlay isForDetailsScreen={false} zIndex={1000} />
@@ -659,9 +714,8 @@ export default function App() {
                     chain: chain,
                     packageCid: packageCid,
                   })}
-                  onError={showError} onDelete={function (): void {
-                    throw new Error("Function not implemented.");
-                  }} onDeleted={function (): void {
+                  onError={showError}
+                  onDeleted={function (): void {
                     throw new Error("Function not implemented.");
                   }}                >
                   <If condition={consuming?.chain.id === chain.id}>
@@ -712,7 +766,19 @@ export default function App() {
           {
             id: HomePageEnums.ReceiveOwnables,
             title: "Receive Ownables",
-            icon: ReceiveIcon,
+            icon: message > 0 ? () =>
+              <div>
+                <ReceiveIcon />
+                <Badge
+                  badgeContent={message}
+                  color="error"
+                  sx={{
+                    position: "absolute",
+                  }}
+                />
+              </div>
+              :
+              ReceiveIcon,
           },
           {
             id: HomePageEnums.ActivityLogs,
@@ -747,6 +813,9 @@ export default function App() {
           }
           onConsume={onConsumeTapped}
           onError={showError}
+          uniqueMessageHash={
+            PackageService.info(selectedOwnable.packageCid)?.uniqueMessageHash || ""
+          }
         />
       )}
       <ConfirmDrawer
@@ -760,7 +829,7 @@ export default function App() {
         isPersistent={true}
       >
         Select which Ownable should consume this{" "}
-        <em>{consuming ? PackageService.info(consuming.package).title : ""}</em>
+        <em>{consuming ? PackageService.info(consuming.package)?.title : ""}</em>
       </ConfirmDrawer>
       <SnackbarProvider />
       <AlertDrawer
@@ -836,7 +905,6 @@ export default function App() {
           </DialogContentText>
           <LinearProgress />
         </DialogContent>
-
       </Dialog>
       <Loading show={!loaded} />
     </>

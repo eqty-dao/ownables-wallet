@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import styled from 'styled-components/native';
 
 export const FieldContainer = styled.View`
@@ -33,7 +34,7 @@ export const StyledInput = styled.TextInput.attrs({
   flex: 1;
   color: ${({disabled}) => (disabled ? '#656565' : '#fcfcf7')};
   font-family: Inter;
-  font-size: 16px;
+  font-size: ${Platform.OS === 'ios' ? '12px' : '14px'};
   font-weight: 400;
 `;
 

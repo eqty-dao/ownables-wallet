@@ -35,6 +35,7 @@ const styles = {
     alignItems: "center",
     width: "calc(100% - 30px)",
     marginLeft: "16px",
+    marginRight: "16px",
   },
   input: {
     ...themeStyles.fs16fw400lh21,
@@ -113,9 +114,9 @@ function LtoSearchBar({
           )}
         </form>
 
-        <FilterIconContainer onClick={onFilterClick}>
+        {/* <FilterIconContainer onClick={onFilterClick}>
           <FilterIcon color={isFiltering ? "#B770FF" : "#ffffff"} />
-        </FilterIconContainer>
+        </FilterIconContainer> */}
       </div>
     </>
   );
