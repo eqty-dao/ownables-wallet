@@ -76,7 +76,7 @@ android {
 
     namespace "com.ltonetwork.universal"
     defaultConfig {
-        applicationId "com.ltonetwork.universal"
+        applicationId "com2.ltonetwork.universal"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 37
