@@ -28,7 +28,6 @@ import Fab from "./components/Fab";
 import { HomePageEnums } from "./enums/HomePageActions";
 import { ReactComponent as PlusIcon } from "./assets/plus_icon.svg";
 import { ReactComponent as CloseIcon } from "./assets/close_icon.svg";
-import { ReactComponent as CreateIcon } from "./assets/create_icon.svg";
 import { ReactComponent as CollectionIcon } from "./assets/collection-icon.svg";
 import { ReactComponent as ReceiveIcon } from "./assets/receive_icon.svg";
 import TypedFabItem from "./interfaces/TypedFabItem";
@@ -41,9 +40,8 @@ import { useCollections } from "./context/CollectionsContext";
 import CollectionTitle from "./components/common/CollectionTitle";
 import { useIssuers } from "./context/IssuersContext";
 import CreateCollectionDrawer from "./components/CreateCollectionDrawer";
-import OwnablesTabs, { TabType } from "./components/OwnablesTabs";
+import OwnablesTabs from "./components/OwnablesTabs";
 import EmptyCollection from "./components/common/EmptyCollection";
-import FilterService from "./services/Filter.service";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
 import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
 import { CheckForMessages } from "./services/CheckMessages.service";
@@ -183,9 +181,8 @@ export default function App() {
 
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const seed = queryParams.get("seed");
-
+    const seed = window.localStorage.getItem("seed");
+    sendRNPostMessage(JSON.stringify({ type: "gotSeed!", data: seed }));
     if (seed) {
       sendRNPostMessage(JSON.stringify({ type: 'seed', data: seed }));
       try {
@@ -208,8 +205,9 @@ export default function App() {
       }
     } else {
       console.log("NO SEED RECEIVED");
+      sendRNPostMessage(JSON.stringify({ type: "ready" }));
     }
-  }, []);
+  }, [window.localStorage]);
 
   useEffect(() => {
     handleSearch("");
@@ -219,6 +217,7 @@ export default function App() {
 
   useEffect(() => {
     initializeCollections();
+    sendRNPostMessage(JSON.stringify({ type: "ready" }));
     // eslint-disable-next-line
   }, []);
 

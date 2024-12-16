@@ -86,7 +86,7 @@ export default class LTOService {
   }
 
   public static isUnlocked(): boolean {
-    return !!this._account;
+    return !!window.sessionStorage.getItem("seed");
   }
 
   public static unlock(password: string): void {
@@ -223,6 +223,9 @@ export default class LTOService {
             ({ key, value }) => [key.hex, value.hex]
           )
         );
+    (anchors as Array<{ key: Binary; value: Binary }>).map(
+      ({ key, value }) => [key.hex, value.hex]
+    )
     const url = this.apiUrl("/index/hash/verify?encoding=hex");
     const response = await fetch(url, {
       method: "POST",

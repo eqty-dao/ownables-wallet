@@ -13,30 +13,42 @@ import { Text } from 'react-native';
 export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
   const [seedPhrase, setSeedPhrase] = useState<string>('');
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
+  const showMessage = (message: string) => {
+    setShowMessage(true);
+    setMessageInfo(message);
+  };
+  const validateSeedPhrase = (seed: string): boolean => {
+    const regExp = /^[a-zA-Z]+( [a-zA-Z]+)*$/;
+    return regExp.test(seed);
+  };
 
   const handleImportFromSeed = async () => {
-    try {
-      const seed = seedPhrase.trim().toLowerCase();
+    if (!seedPhrase) {
+      showMessage('Please enter a seed phrase to import.');
+      return;
+    }
 
-      if (seed.split(' ').length === 15) {
-        await LTOService.importAccount(seed);
-        navigation.navigate('RegisterAccount', { data: 'seed' });
-      } else {
-        setShowMessage(true);
-        setMessageInfo('Seed phrase must have 15 words separated by one space!');
-      }
+    const trimmedSeed = seedPhrase.trim().toLowerCase();
+
+    if (!validateSeedPhrase(trimmedSeed)) {
+      showMessage('Invalid seed phrase, seed phase contains invalid characters.');
+      return;
+    }
+
+    try {
+      await LTOService.importAccount(trimmedSeed);
+      navigation.navigate('RegisterAccount', { data: 'seed' });
     } catch (error) {
-      console.error('Error importing account - ', error);
-      setShowMessage(true);
-      setMessageInfo('Failed to import account. Please try again.');
+      console.error('Error importing account:', error);
+      showMessage('Failed to import account. Please try again.');
     } finally {
-      setSeedPhrase('');
+      setSeedPhrase(''); // Clear the seed phrase from memory
     }
   };
 
   return (
     <ScreenContainer>
-      <BackButton onPress={() => navigation.goBack()} />
+      <BackButton onPress={navigation.goBack} />
       <Title title={IMPORT_WITHSEEDS.IMPORT_TITLE} />
       <InputField
         label={IMPORT_WITHSEEDS.INPUT_SEEDPHRASE.LABEL}

@@ -43,10 +43,12 @@ const NewOwnablesTabScreen = () => {
         );
     }
 
+    const sanitizeData = (data: any) => {
+        return data.replace(/\\/g, '');
+    }
+
     const handleMessageFromWeb = (event: any) => {
-        console.log('url:', url);
-        console.log('Message from WebView', event.nativeEvent.data);
-        const data = JSON.parse(event.nativeEvent.data);
+        const data = sanitizeData(JSON.parse(event.nativeEvent.data));
         if (data.type === 'sdkerror') {
             console.log('SDK error:', data.data);
             setSdkError(true);
@@ -105,6 +107,7 @@ const NewOwnablesTabScreen = () => {
                         backgroundColor="#0D0D0D"
                         source={{
                             uri: webviewUrl,
+                            //@ts-ignore
                             cacheMode: 'LOAD_CACHE_ELSE_NETWORK',
                             cacheEnabled: true
                         }}
@@ -115,8 +118,20 @@ const NewOwnablesTabScreen = () => {
                         incognito={false}
                         onMessage={handleMessageFromWeb}
                         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-                        onLoadStart={() => setWebViewLoading(true)}
-                        onLoadEnd={() => setWebViewLoading(false)}
+                        onLoadStart={() => {
+                            setWebViewLoading(true);
+                        }}
+                        onLoadEnd={() => {
+                            setWebViewLoading(false);
+                            const seed = LTOService.getSeed();
+                            if (!seed) {
+                                navigation.navigate('Root');
+                                return;
+                            }
+                            if (webViewRef.current) {
+                                webViewRef.current.injectJavaScript(`window.localStorage.setItem('@seed', '${seed}')`);
+                            }
+                        }}
                         onError={(syntheticEvent) => {
                             const { nativeEvent } = syntheticEvent;
                             console.warn('WebView error: ', nativeEvent);

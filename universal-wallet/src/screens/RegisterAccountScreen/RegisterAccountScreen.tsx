@@ -310,6 +310,8 @@ import DOMPurify from 'dompurify';
 
 export default function RegisterAccountScreen({ navigation, route }: RootStackScreenProps<'RegisterAccount'>) {
   const [dialogVisible, setDialogVisible] = useState(false);
+  const [showPinFallback, setShowPinFallback] = useState(false);
+  const [pin, setPin] = useState('');
 
   const [loginForm, setloginForm] = useState({
     nickname: '',
@@ -379,13 +381,17 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
       return { err: 'Password is required!' };
     }
 
+    if (!isStrongPassword(loginForm.password)) {
+      return {
+        err: 'Password must be atleast 8 characters long and include uppercase, lowercase, number and special character!',
+      };
+    }
     //F-2024-4595 - Insufficient Password Complexity
     if (!isStrongPassword(loginForm.password)) {
       return {
         err: 'Password must be at least 8 characters long and include an uppercase letter, lowercase letter, number, and special character!',
       };
     }
-
     if (loginForm.password !== loginForm.passwordConfirmation) {
       return { err: 'Passwords do not match!' };
     }
@@ -444,7 +450,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
       setDialogVisible(true);
       return true;
     } else {
-      handleAccount();
+      setShowPinFallback(true);
     }
   };
 
@@ -471,6 +477,19 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
     }
 
     return signatureResult.signature;
+  };
+
+  //"F-2024-4596 - Potential Biometric Authentication Bypass"
+  const handlePinAuthentication = () => {
+    const pinRegex = /^\d{8}$/;
+
+    if (!pinRegex.test(pin)) {
+      setMessageInfo('PIN must be exactly 8 numeric characters.');
+      setShowMessage(true);
+      return;
+    }
+
+    handleAccount();
   };
 
   return (
@@ -505,6 +524,25 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
           placeholder={REGISTER.INPUT_PASSWORD_REPEAT.PLACEHOLDER}
         />
       </FormContainer>
+
+      {showPinFallback ? (
+        <>
+          <InputField
+            label="Enter your PIN"
+            value={pin}
+            onChangeText={setPin}
+            placeholder="Enter a 8-digit PIN"
+            secureTextEntry={true}
+          />
+          <StyledButton text="Submit PIN" disabled={loading} onPress={handlePinAuthentication} />
+        </>
+      ) : (
+        <StyledButton
+          text={loading ? 'Please wait' : REGISTER.BUTTON_CREATE}
+          disabled={loading}
+          onPress={checkForBiometrics}
+        />
+      )}
 
       <CheckBoxCard
         label={REGISTER.CHECKBOX}

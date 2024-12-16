@@ -21,11 +21,12 @@ export default function OnboardingScreen() {
     setCurrentSlideIndex(currentIndex);
   };
 
+  //F-2024-4585 - Logic Error In ChangeSlide Function - Info
   const changeSlide = () => {
     let nextIndex = currentSlideIndex + 1;
 
     if (currentSlideIndex >= slides.length - 1) {
-      nextIndex = currentSlideIndex - 1;
+      nextIndex = 0;
     }
 
     setCurrentSlideIndex(nextIndex);
