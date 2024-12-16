@@ -56,6 +56,7 @@ import { activityLogService } from "./services/ActivityLog.service";
 import { PollingService } from "./services/Polling.service";
 import { RelayService } from "./services/Relay.service";
 import ImportOwnablesDrawer from "./components/ImportOwnables";
+import PackagesFab from "./components/PackagesFab";
 
 interface SelectedOwnable {
   chain: EventChain;
@@ -637,6 +638,13 @@ export default function App() {
     }
   };
 
+  const forge = async (pkg: TypedPackage) => {
+    const chain = await OwnableService.create(pkg);
+    setOwnables([...ownables, { chain, package: pkg.cid }]);
+    setShowPackages(false);
+    enqueueSnackbar(`${pkg.title} forged`, { variant: "success" });
+  };
+
   return (
     <>
       <div style={searchBarContainerStyle}>
@@ -780,11 +788,11 @@ export default function App() {
             title: "Create Collection",
             icon: CollectionIcon,
           },
-          // {
-          //   id: HomePageEnums.ImportPackage,
-          //   title: "Import Package",
-          //   icon: CreateIcon,
-          // },
+          {
+            id: HomePageEnums.ImportPackage,
+            title: "Import Package",
+            icon: CreateIcon,
+          },
           {
             id: HomePageEnums.CreateOwnables,
             title: "Create Ownables",
@@ -821,13 +829,13 @@ export default function App() {
         closeIcon={CloseIcon}
         badgeCount={message}
       />
-      {/* <PackagesFab
+      <PackagesFab
         open={showPackages}
         onClose={() => setShowPackages(false)}
         onSelect={forge}
-        onImportFR={relayImport}
         onError={showError}
-      /> */}
+        onImport={()=>{}}
+      />
       {isModalOpen && selectedOwnable != null && (
         <OwnableDetailsModal
           onClose={(shouldRefresh: boolean) =>
@@ -886,7 +894,7 @@ export default function App() {
       />
       <CreateOwnablesDrawer
         open={showCreateOwnableDrawer}
-        title="Create Ownable"
+        title="Build Ownable"
         onClose={() => setShowCreateOwnableDrawer(false)}
       />
       <ActivityLogDrawer

@@ -84,9 +84,8 @@ export default class PackageService {
         cid,
       }));
     }
-
     const set = new Map(
-      [...examples, ...local].map((pkg) => [pkg.name, pkg])
+      [...local].map((pkg) => [pkg.name, pkg])
     ).values();
 
     return Array.from(set).sort((a, b) => (a.title >= b.title ? 1 : -1));

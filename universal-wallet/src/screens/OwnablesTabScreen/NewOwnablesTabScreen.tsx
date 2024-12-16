@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, Button } from 'react-native';
+import React, { useContext, useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet, Text, Button, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useStaticServer } from '../../hooks/useStaticServer';
 import { MainScreenContainer } from '../../components/MainScreenContainer';
@@ -9,7 +9,10 @@ import { logoTitle } from '../../utils/images';
 import { useNavigation } from '@react-navigation/native';
 import { Icon as RneIcons } from 'react-native-elements'
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
-
+import RNFS from 'react-native-fs';
+import { Modal } from 'react-native';
+import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
+import { MessageContext } from '../../context/UserMessage.context';
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -20,6 +23,9 @@ const NewOwnablesTabScreen = () => {
     const navigation = useNavigation();
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [sdkError, setSdkError] = useState<boolean>(false);
+    const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
+    const [downloadModalMessage, setDownloadModalMessage] = useState<string>('');
+    const { showMessage, setShowMessage, setMessageInfo, messageInfo } = useContext(MessageContext);
 
     useEffect(() => {
         setWebviewUrl(url);
@@ -44,41 +50,107 @@ const NewOwnablesTabScreen = () => {
     }
 
     const handleMessageFromWeb = (event: any) => {
-        console.log('url:', url);
-        console.log('Message from WebView', event.nativeEvent.data);
-        const data = JSON.parse(event.nativeEvent.data);
-        if (data.type === 'sdkerror') {
-            console.log('SDK error:', data.data);
-            setSdkError(true);
-            setWebViewError(true);
-            setErrorMessage(JSON.stringify(data));
-            if (webViewRef.current) {
-                webViewRef.current.stopLoading();
-                webViewRef.current.reload();
+        try {
+            console.log('url:', url);
+            console.log('Message from WebView', event.nativeEvent.data);
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'sdkerror') {
+                console.log('SDK error:', data.data);
+                setSdkError(true);
+                setWebViewError(true);
+                setErrorMessage(JSON.stringify(data));
+                if (webViewRef.current) {
+                    webViewRef.current.stopLoading();
+                    webViewRef.current.reload();
+                }
+                setTimeout(() => {
+                    setSdkError(false);
+                    setWebViewError(false);
+                    setWebViewLoading(true);
+                    setWebviewUrl('');
+                    restartServer();
+                }, 5000);
             }
-            setTimeout(() => {
-                setSdkError(false);
-                setWebViewError(false);
-                setWebViewLoading(true);
-                setWebviewUrl('');
-                restartServer();
-            }, 5000);
-        }
 
-        if (data.type === 'address') {
-            console.log('Address:', data.data);
-            setWebviewUrl(url);
-            setWebViewLoading(false);
-        }
-        if (data.type === 'openInfo') {
-            console.log('Open Info:', data.data);
-            InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
+            if (data.type === 'downloadOwnable') {
+                const downloadOwnable = async (data: any) => {
+                    const { base64Data, filename } = data;
+                    const path = `${RNFS.DocumentDirectoryPath}/${filename}`;
+                    RNFS.writeFile(path, base64Data, 'base64').then(() => {
+                        console.log('File written to', path);
+                        setDownloadModalMessage(`Downloaded ${filename}`);
+                    }).catch((error) => {
+                        console.error('Error writing file:', error);
+                        setDownloadModalMessage(`Error downloading ${filename}`);
+                    }).finally(() => {
+                        setTimeout(() => {
+                            setShowDownloadModal(false);
+                            setMessageInfo(`Downloaded Ownable to ${Platform.OS === 'android' ? 'Downloads' : 'Files'}`);
+                            setShowMessage(true);
+                        }, 2000);
+                    });
+                }
+                if (Platform.OS === 'android') {
+                    //check for permissions 
+                    check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE)
+                        .then((result) => {
+                            switch (result) {
+                                case RESULTS.UNAVAILABLE:
+                                    console.log(
+                                        'This feature is not available (on this device / in this context)',
+                                    );
+                                    break;
+                                case RESULTS.DENIED:
+                                    console.log('The permission has not been requested / is denied but requestable');
+                                    request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE).then((result) => {
+                                        if (result === RESULTS.GRANTED) {
+                                            console.log('Permission granted');
+                                            downloadOwnable(data);
+                                        }
+                                    });
+                                    break;
+                                case RESULTS.GRANTED:
+                                    console.log('The permission is granted');
+                                    downloadOwnable(data);
+                                    break;
+                                case RESULTS.BLOCKED:
+                                    console.log('The permission is denied and not requestable anymore');
+                                    setErrorMessage('Permission denied unable to download ownable');
+                                    break;
+                            }
+                        })
+                        .catch((error) => {
+                            console.log('Error checking permissions:', error);
+                            setErrorMessage('Error checking permissions,please try again');
+                        });
+                } else {
+                    downloadOwnable(data);
+                }
+                setShowDownloadModal(true);
+
+            }
+
+            if (data.type === 'address') {
+                console.log('Address:', data.data);
+                setWebviewUrl(url);
+                setWebViewLoading(false);
+            }
+
+            if (data.type === 'openInfo') {
+                console.log('Open Info:', data.data);
+                InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
+            }
+        } catch (error) {
+            console.error('Error parsing message from WebView:', error);
         }
 
     }
 
     const handleShouldStartLoadWithRequest = (request: any): boolean => {
-        console.log('handleShouldStartLoadWithRequest', request.url);
+        // console.log('handleShouldStartLoadWithRequest', request.url);
+        if (request.url.startsWith('data:application/zip;base64,')) {
+            return false;
+        }
         return true;
     };
 
@@ -178,6 +250,25 @@ const NewOwnablesTabScreen = () => {
                     )
                 }
             </MainScreenContainer>
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={showDownloadModal}
+                onRequestClose={() => {
+                    setShowDownloadModal(false);
+                }}
+            >
+                <View style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    padding: 20,
+                }}>
+                    <ActivityIndicator size="large" />
+                    <Text style={{ color: 'white' }}>{downloadModalMessage}</Text>
+                </View>
+            </Modal>
             {/* BT: Left it here for debugging purposes */}
             {/* {webViewError && (
                 <View style={styles.errorOverlay}>

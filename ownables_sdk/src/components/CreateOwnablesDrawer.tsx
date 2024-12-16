@@ -839,7 +839,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                   size="large"
                   style={{ color: "white" }}
                 >
-                  Create
+                  Build
                 </StyledButton>
                 <Box height={8} />
                 <StyledButton transparent={true} onClick={onCancel}>

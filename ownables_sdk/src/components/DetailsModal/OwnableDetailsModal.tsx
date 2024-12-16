@@ -428,38 +428,25 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     await this.execute(event.data.msg);
   };
 
-  downloadImag = async () => {
+  downloadOwnable = async () => {
     try {
-      const images = await IDBService.getAll(`package:${this.pkg.cid}`);
-      console.log('Fetched images:', images);
+      const zip = await OwnableService.zip(this.chain);
+      const content = await zip.generateAsync({
+        type: "uint8array",
+      });
+      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+        this.chain.state?.base58,
+        8,
+        ""
+      )}.zip`;
+      const base64Data = btoa(
+        new Uint8Array(content).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
+      sendRNPostMessage(JSON.stringify({ type: "downloadOwnable", base64Data: base64Data, filename: filename }));
 
-      if (images.length > 0) {
-        const image = images.find((i: any) => ["webp", "png", "jpeg", "jpg", "gif"].includes(i.name?.split(".")[1]));
-        console.log('Selected image:', image);
-
-        if (image) {
-          // const wasm = (await PackageService.getAsset(
-          //   cid,
-          //   "ownable_bg.wasm",
-          //   (fr, file) => fr.readAsArrayBuffer(file)
-          // )) as ArrayBuffer;
-          const assest = await PackageService.getAsset(this.pkg.cid, image.name, (fr, file) => fr.readAsArrayBuffer(file));
-          console.log('Fetched image:', assest);
-          //download image
-          const blob = new Blob([assest], { type: image.type });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = image.name;
-          a.click();
-          URL.revokeObjectURL(url);
-
-        } else {
-          console.error('No valid image found');
-        }
-      } else {
-        console.error('No images found in IndexedDB');
-      }
     } catch (e) {
       console.error("OwnableThumb -> getImage -> e", e);
     }
@@ -623,7 +610,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             onTransfer={this.toggleShowTransferDialog}
             onAddToCollection={this.toggleAddToCollection}
             showBridge={() => this.setState({ showBridgeDialog: true })}
-            downloadImage={this.downloadImag}
+            downloadOwnable={this.downloadOwnable}
           />
           <OwnableInfoDrawer
             open={this.state.showInfo}
