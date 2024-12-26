@@ -79,7 +79,7 @@ android {
         applicationId "com2.ltonetwork.universal"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 37
+        versionCode 39
         versionName "0.2.3"
     }
     signingConfigs {

@@ -788,11 +788,11 @@ export default function App() {
             title: "Create Collection",
             icon: CollectionIcon,
           },
-          {
-            id: HomePageEnums.ImportPackage,
-            title: "Import Package",
-            icon: CreateIcon,
-          },
+          // {
+          //   id: HomePageEnums.ImportPackage,
+          //   title: "Import Package",
+          //   icon: CreateIcon,
+          // },
           {
             id: HomePageEnums.CreateOwnables,
             title: "Create Ownables",

@@ -151,11 +151,11 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         title: "Info",
         icon: InfoIcon,
       },
-      {
-        id: OwnableActionType.Download,
-        title: "Download",
-        icon: Download,
-      }
+      // {
+      //   id: OwnableActionType.Download,
+      //   title: "Download",
+      //   icon: Download,
+      // }
     ];
 
     if (props.isConsumable) {

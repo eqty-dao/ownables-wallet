@@ -73,7 +73,7 @@ const decryptData = (encryptedData: string): string => {
   const key = process.env.REACT_APP_SECURE_KEY as string;
   const bytes = CryptoJS.AES.decrypt(encryptedData, key);
   const _ = bytes.toString(CryptoJS.enc.Utf8);
-  console.log('decryptedData:', _);
+  //console.log('decryptedData:', _);
   return _;
 };
 

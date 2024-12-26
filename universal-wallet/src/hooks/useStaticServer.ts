@@ -24,7 +24,7 @@ export const decryptData = (encryptedData: string): string => {
   const key = SECURE_KEY;
   const bytes = CryptoJS.AES.decrypt(encryptedData, key);
   const _ = bytes.toString(CryptoJS.enc.Utf8);
-  console.log('decryptedData:', _);
+  //console.log('decryptedData:', _);
   return _;
 };
 
