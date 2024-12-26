@@ -15,17 +15,17 @@ interface PackagesFabProps {
   onClose: () => void;
   onSelect: (pkg: TypedPackage) => void;
   onError: (title: string, message: string) => void;
-  onImportFR: (pkg: any) => void;
+  onImport: (pkg: any) => void;
 }
 
 export default function PackagesFab(props: PackagesFabProps) {
-  const { open, onClose, onSelect, onError, onImportFR } = props;
+  const { open, onClose, onSelect, onError, onImport } = props;
   const [packages, setPackages] = React.useState<
     Array<TypedPackage | TypedPackageStub>
   >([]);
   const [isBusy, busy] = useBusy();
 
-  const updatePackages = () => setPackages(PackageService.list());
+  const updatePackages = () => setPackages([]);
   useEffect(updatePackages, []);
 
   const importPackages = async () => {
@@ -49,11 +49,15 @@ export default function PackagesFab(props: PackagesFabProps) {
     try {
       await busy(
         Promise.all(
-          Array.from(files).map((file) => PackageService.import(file))
+          Array.from(files).map(async(file) => {
+            const pkg = await PackageService.import(file);
+            onSelect(pkg);
+          })
         )
       );
       updatePackages();
     } catch (error) {
+      console.log(error);
       onError(
         "Failed to import package",
         (error as Error).message || (error as string)
@@ -65,7 +69,7 @@ export default function PackagesFab(props: PackagesFabProps) {
     try {
       const pkg = await PackageService.importFromRelay();
       console.log(pkg);
-      onImportFR(pkg);
+      onImport(pkg);
       //updatePackages();
     } catch (error) {
       onError(

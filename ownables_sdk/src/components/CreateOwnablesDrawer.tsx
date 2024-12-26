@@ -4,6 +4,7 @@ import {
   CircularProgress,
   Icon,
   IconButton,
+  LinearProgress,
   MenuItem,
   Select,
   Typography,
@@ -104,7 +105,7 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const ltoWalletAddress = LTOService.address;
   const [showNoBalance, setShowNoBalance] = useState(false);
-  const [balance, setBalance] = useState<number>();
+  const [balance, setBalance] = useState<number>(0);
   const [ownable, setOwnable] = useState<TypedOwnable>({
     owner: "",
     email: "",
@@ -136,6 +137,8 @@ const CreateOwnablesDrawer = (props: Props) => {
   const [createOwnableMessage, setCreateOwnableMessage] = useState<string | null>(null);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
   const network = getNetworkFromQuery();
 
   const fetchBuildAmount = useCallback(async () => {
@@ -254,11 +257,19 @@ const CreateOwnablesDrawer = (props: Props) => {
   };
 
   const loadBalance = () => {
-    if (!LTOService.isUnlocked()) return;
-
     LTOService.getBalance().then(({ regular }) => {
       setBalance(parseFloat((regular / 100000000).toFixed(2)));
       setAvailable(regular);
+      sendRNPostMessage(JSON.stringify({ type: "balance", data: balance }));
+      sendRNPostMessage(JSON.stringify({ type: "buildCost", data: buildCost }));
+      if (balance < 0.1) {
+        setLowBalance(true);
+      }
+      if (buildCost > balance) {
+        setLowBalance(true);
+      } else {
+        setLowBalance(false);
+      }
     });
   };
 
@@ -268,7 +279,8 @@ const CreateOwnablesDrawer = (props: Props) => {
   useEffect(() => {
     if (balance !== undefined && balance < 0.1) {
       setShowNoBalance(true);
-      return;
+    } else {
+      setShowNoBalance(false);
     }
   }, [balance]);
 
@@ -570,7 +582,7 @@ const CreateOwnablesDrawer = (props: Props) => {
               PLACEHOLDER1_NAME: "ownable_" + formattedName,
               PLACEHOLDER1_DESCRIPTION: description,
               PLACEHOLDER1_VERSION: "0.1.0",
-              // PLACEHOLDER1_AUTHORS: ownerName + " <" + ownerEmail + ">",
+              PLACEHOLDER1_AUTHORS: ownerName + " <" + ownerEmail + ">",
               PLACEHOLDER1_KEYWORDS: tags,
               PLACEHOLDER2_TITLE: ownableName,
               PLACEHOLDER2_IMG: imageName + "." + imageType,
@@ -597,11 +609,20 @@ const CreateOwnablesDrawer = (props: Props) => {
             axios
               .post(request.url, formData, {
                 headers: combinedHeaders,
+                onUploadProgress: (progressEvent) => {
+                  let _progress = progressEvent.total ?
+                    Math.round((progressEvent.loaded * 100) / progressEvent.total) : progressEvent.progress || 0;
+                  setProgress(_progress);
+                },
               })
               .then((res) => {
                 console.log(res.data);
                 if (res.data.error) {
                   setBuildError(res.data.error);
+                  activityLogService.logActivity({
+                    activity: `Error creating ownable ${ownableName} ${res.data.error}`,
+                    timestamp: Date.now(),
+                  });
                   return;
                 }
                 setTransactionId(res.data.rid);
@@ -614,6 +635,10 @@ const CreateOwnablesDrawer = (props: Props) => {
                 console.log(err);
                 setOpenDialog(false);
                 setBuildError("Something went wrong. Please try again");
+                activityLogService.logActivity({
+                  activity: `Error creating ownable ${ownableName} ${err}`,
+                  timestamp: Date.now(),
+                });
               });
           });
         }
@@ -839,7 +864,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                   size="large"
                   style={{ color: "white" }}
                 >
-                  Create
+                  Build
                 </StyledButton>
                 <Box height={8} />
                 <StyledButton transparent={true} onClick={onCancel}>
@@ -1003,6 +1028,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                   <div>
                     <p style={{ color: 'green', fontSize: '0.8rem', marginLeft: 10 }}>{createOwnableMessage}</p>
                     <CircularProgress />
+                    <LinearProgress variant="determinate" value={progress} />
                   </div>
                 }
                 <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{transactionIdMessage}</p>

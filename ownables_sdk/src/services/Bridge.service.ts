@@ -2,18 +2,19 @@ import axios from "axios";
 import LTOService from "./LTO.service";
 import { sign } from "@ltonetwork/http-message-signatures";
 import SessionStorageService from "./SessionStorage.service";
-import { AppConfig } from "../AppConfig";
+import { AppConfig, Env } from "../AppConfig";
 
 export class BridgeService {
-  private static obridgeUrl =
-    AppConfig.OBRIDGE();
+  private static obridgeUrl = AppConfig.OBRIDGE();
+  private static netWork = AppConfig.Network();
 
   //Get cost of bridging
   static async getBridgeCost(templateId: number) {
     const url = `${this.obridgeUrl}/oBridgeCost?templateId=${templateId}`;
     try {
       const response = await axios.get(url);
-      return response.data;
+      let bridgeCost = response.data[`${this.netWork}`];
+      return bridgeCost;
     } catch (error) {
       console.error(`Error fetching bridge cost: ${error}`);
       return null;
@@ -22,10 +23,15 @@ export class BridgeService {
 
   //get the bridge address
   static async getBridgeAddress() {
-    const url = `${this.obridgeUrl}/GetObridgeWallet`;
+    const url = `${this.obridgeUrl}/ServerLtoWalletAddresses`;
     try {
       const response = await axios.get(url);
-      const bridgeAddress = response.data.oBridgeWalletAddressLTO;
+      let bridgeAddress;
+      if (this.netWork === "L") {
+        bridgeAddress = response.data.serverLtoWalletAddress_L;
+      } else {
+        bridgeAddress = response.data.serverLtoWalletAddress_T;
+      }
       SessionStorageService.set("bridgeWalletAddress", bridgeAddress);
       return bridgeAddress;
     } catch (error) {
@@ -54,37 +60,60 @@ export class BridgeService {
     filename: string,
     ownable: Blob
   ) {
-    const urlToSign = `${this.obridgeUrl}/bridgeOwnable?nftReceiverAddress=${nftReceiverAddress}`;
+    // let tx: TransferTx;
 
     try {
-      const request = {
-        headers: { "Content-Type": "multipart/form-data", Accept: "*/*" },
-        method: "POST",
-        url: urlToSign,
-      };
+      let bridgingCosts;
+      let bridgeAddress;
+      bridgingCosts = await this.getBridgeCost(1);
+      console.log("bridgingCosts", bridgingCosts);
+      if (bridgingCosts === null) {
+        console.log("Bridging Costs undefined. Maybe oBridge not reachable?");
+      }
+      bridgeAddress = await this.getBridgeAddress();
+      console.log("bridgeAddress", bridgeAddress);
+      if (bridgeAddress === null) {
+        console.log("Bridge Address undefined. Maybe oBridge not reachable?");
+      }
+      // tx = new TransferTx(bridgeAddress, bridgingCosts);
 
-      const account = LTOService.account;
+
+    } catch (err) {
+      console.log("Error:", err);
+    }
+    try {
+      const account = await LTOService.getAccount();
+      const ltoNetworkId = LTOService.getNetwork(account.address);
 
       if (!account) {
         return;
       }
 
+
+
+      const urlToSign = `${this.obridgeUrl}/bridgeOwnable`;
+      const request = {
+        headers: {},
+        method: "POST",
+        url: urlToSign,
+      };
       const signedRequest = await sign(request, { signer: account });
-      const formattedReq = JSON.stringify(signedRequest);
-      const encodedSignedRequest = encodeURIComponent(formattedReq);
+      request.url =
+        request.url + `?ltoNetworkId=${ltoNetworkId}&ltoTransactionId=${txId}&nftReceiverAddress=${nftReceiverAddress}`;
+
+      const headers1 = {
+        "Content-Type": "multipart/form-data",
+        Accept: "*/*",
+      };
+      const combinedHeaders = { ...signedRequest.headers, ...headers1 };
+      //   console.log("combinedHeaders", combinedHeaders);
 
       const formData = new FormData();
       formData.append("file", ownable, filename);
-
-      const url = `${this.obridgeUrl}/bridgeOwnable?nftReceiverAddress=${nftReceiverAddress}&ltoTransactionId=${txId}&signedLtoRequest=${encodedSignedRequest}`;
-
-      const res = await axios.post(url, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Accept: "*/*",
-        },
+      const response = await axios.post(request.url, formData, {
+        headers: combinedHeaders
       });
-      console.log(res);
+      console.log("response", response);
     } catch (err) {
       console.error("bridging failed", err);
     }

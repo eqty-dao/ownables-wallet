@@ -1,4 +1,4 @@
-import { Account, Binary, LTO, Transaction } from "@ltonetwork/lto";
+import { Account, Binary, getNetwork, LTO, Transaction } from "@ltonetwork/lto";
 import LocalStorageService from "./LocalStorage.service";
 import SessionStorageService from "./SessionStorage.service";
 import CryptoJS from "crypto-js";
@@ -73,7 +73,7 @@ const decryptData = (encryptedData: string): string => {
   const key = process.env.REACT_APP_SECURE_KEY as string;
   const bytes = CryptoJS.AES.decrypt(encryptedData, key);
   const _ = bytes.toString(CryptoJS.enc.Utf8);
-  console.log('decryptedData:', _);
+  //console.log('decryptedData:', _);
   return _;
 };
 
@@ -256,5 +256,8 @@ export default class LTOService {
       return lto.account({ seed: decryptedSeed() });
     }
     return this.account
+  }
+  public static getNetwork(ltoAddress: string): string {
+    return getNetwork(ltoAddress);
   }
 }

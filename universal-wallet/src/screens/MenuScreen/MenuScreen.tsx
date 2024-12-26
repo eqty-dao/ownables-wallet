@@ -18,7 +18,7 @@ import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import PressToCopy from '../../components/PressToCopy';
 import { useClipboard } from '@react-native-clipboard/clipboard';
 import DeviceInfo from 'react-native-device-info';
-import { encryptData ,decryptData} from '../../hooks/useStaticServer';
+import { encryptData, decryptData } from '../../hooks/useStaticServer';
 
 export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
@@ -30,16 +30,8 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
 
 
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-        }
-        return true;
-      });
-      return () => backHandler.remove();
-    }
     const getInitialData = async () => {
+      // get the device id
       const id = (await DeviceInfo.getUniqueId()) + "-652"
       // hash the id to make it more secure
       const encryptedId = encryptData(id);
@@ -51,6 +43,16 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
     getInitialData().catch(error => {
       console.log(error);
     });
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        }
+        return true;
+      });
+      return () => backHandler.remove();
+    }
+
 
   }, []);
 

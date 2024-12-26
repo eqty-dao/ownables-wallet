@@ -3,8 +3,8 @@ import {LTO_EXPLORER_URL, LTO_WALLET_URL} from '@env';
 //F-2024-4584 - Insecure URL Handling in navigateToWebsite
 import {sanitizeUrl} from './validateUrl';
 
-const EXPLORER_URL = LTO_EXPLORER_URL || 'https://explorer.testnet.lto.network';
-const WALLET_URL = LTO_WALLET_URL || 'https://wallet.testnet.lto.network';
+const EXPLORER_URL = LTO_EXPLORER_URL || 'https://explorer.lto.network';
+const WALLET_URL = LTO_WALLET_URL || 'https://wallet.lto.network';
 
 export const navigateTo = async (url: string) => {
   const sanitized = sanitizeUrl(url);

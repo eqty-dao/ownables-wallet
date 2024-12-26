@@ -24,7 +24,7 @@ export const decryptData = (encryptedData: string): string => {
   const key = SECURE_KEY;
   const bytes = CryptoJS.AES.decrypt(encryptedData, key);
   const _ = bytes.toString(CryptoJS.enc.Utf8);
-  console.log('decryptedData:', _);
+  //console.log('decryptedData:', _);
   return _;
 };
 
@@ -92,14 +92,14 @@ const useStaticServer = () => {
     if (Platform.OS === 'android') {
       return;
     }
-    server.isRunning().then((running: boolean) => {
-      console.log('server.isRunning:', running);
-      if (!running) {
-        setUrl('');
-        setLoading(true);
-        startServer();
-      }
-    });
+    // server.isRunning().then((running: boolean) => {
+    //   console.log('server.isRunning:', running);
+    //   if (!running) {
+    //     setUrl('');
+    //     setLoading(true);
+    //     startServer();
+    //   }
+    // });
   }, [server?.isRunning()]);
   return { url, loading, restartServer };
 };

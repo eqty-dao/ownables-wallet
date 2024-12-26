@@ -279,7 +279,13 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   ): Promise<void> {
     try {
       const bridgeAddress = await BridgeService.getBridgeAddress();
+
+      //   const previousHash: string = this.chain.latestHash.hex;
+
       await this.execute({ transfer: { to: bridgeAddress } });
+
+      this.chain.validate();
+
       const zip = await OwnableService.zip(this.chain);
       const content = await zip.generateAsync({
         type: "uint8array",
@@ -297,6 +303,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         type: "application/octet-stream",
       });
       if (transactionId) {
+
         await BridgeService.bridgeOwnableToNft(
           address,
           transactionId,
@@ -308,6 +315,12 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       if (this.pkg.uniqueMessageHash) {
         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
       }
+      const hashes = JSON.parse(localStorage.getItem("messageHashes") || "[]");
+
+      const updatedHashes = hashes.filter(
+        (item: any) => item.uniqueMessageHash !== this.pkg.uniqueMessageHash
+      );
+      localStorage.setItem("messageHashes", JSON.stringify(updatedHashes));
       enqueueSnackbar("Successfully bridged!!", { variant: "success" });
     } catch (error) {
       console.error("Error while attempting to bridge:", error);
@@ -315,27 +328,23 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   private async refresh(stateDump?: StateDump): Promise<void> {
-    try {
-      if (!stateDump) stateDump = this.state.stateDump;
+    if (!stateDump) stateDump = this.state.stateDump;
 
-      if (this.pkg.hasWidgetState)
-        await OwnableService.rpc(this.chain.id).refresh(stateDump);
+    if (this.pkg.hasWidgetState)
+      await OwnableService.rpc(this.chain.id).refresh(stateDump);
 
-      const info = (await OwnableService.rpc(this.chain.id).query(
-        { get_info: {} },
+    const info = (await OwnableService.rpc(this.chain.id).query(
+      { get_info: {} },
+      stateDump
+    )) as TypedOwnableInfo;
+    const metadata = this.pkg.hasMetadata
+      ? ((await OwnableService.rpc(this.chain.id).query(
+        { get_metadata: {} },
         stateDump
-      )) as TypedOwnableInfo;
-      const metadata = this.pkg.hasMetadata
-        ? ((await OwnableService.rpc(this.chain.id).query(
-          { get_metadata: {} },
-          stateDump
-        )) as TypedMetadata)
-        : this.state.metadata;
+      )) as TypedMetadata)
+      : this.state.metadata;
 
-      this.setState({ info, metadata });
-    } catch (error) {
-      console.error("Error during refresh:", error);
-    }
+    this.setState({ info, metadata });
   }
 
   private async apply(partialChain: EventChain): Promise<void> {
@@ -419,38 +428,25 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     await this.execute(event.data.msg);
   };
 
-  downloadImag = async () => {
+  downloadOwnable = async () => {
     try {
-      const images = await IDBService.getAll(`package:${this.pkg.cid}`);
-      console.log('Fetched images:', images);
+      const zip = await OwnableService.zip(this.chain);
+      const content = await zip.generateAsync({
+        type: "uint8array",
+      });
+      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+        this.chain.state?.base58,
+        8,
+        ""
+      )}.zip`;
+      const base64Data = btoa(
+        new Uint8Array(content).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
+      sendRNPostMessage(JSON.stringify({ type: "downloadOwnable", base64Data: base64Data, filename: filename }));
 
-      if (images.length > 0) {
-        const image = images.find((i: any) => ["webp", "png", "jpeg", "jpg", "gif"].includes(i.name?.split(".")[1]));
-        console.log('Selected image:', image);
-
-        if (image) {
-          // const wasm = (await PackageService.getAsset(
-          //   cid,
-          //   "ownable_bg.wasm",
-          //   (fr, file) => fr.readAsArrayBuffer(file)
-          // )) as ArrayBuffer;
-          const assest = await PackageService.getAsset(this.pkg.cid, image.name, (fr, file) => fr.readAsArrayBuffer(file));
-          console.log('Fetched image:', assest);
-          //download image
-          const blob = new Blob([assest], { type: image.type });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = image.name;
-          a.click();
-          URL.revokeObjectURL(url);
-
-        } else {
-          console.error('No valid image found');
-        }
-      } else {
-        console.error('No images found in IndexedDB');
-      }
     } catch (e) {
       console.error("OwnableThumb -> getImage -> e", e);
     }
@@ -572,14 +568,26 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
               onLoad={() => this.onLoad()}
             />
 
-            <If condition={this.isTransferred}>
+            <If condition={this.isTransferred && !this.isBridged}>
               <Tooltip
                 title="You're unable to interact with this Ownable, because it has been transferred to a different account."
                 followCursor
               >
-                <LtoOverlay isForDetailsScreen={true}>
-                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={true}>
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
                     Transferred
+                  </LtoOverlayBanner>
+                </LtoOverlay>
+              </Tooltip>
+            </If>
+            <If condition={this.isBridged && this.isTransferred}>
+              <Tooltip
+                title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+                followCursor
+              >
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                    Bridged
                   </LtoOverlayBanner>
                 </LtoOverlay>
               </Tooltip>
@@ -602,7 +610,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             onTransfer={this.toggleShowTransferDialog}
             onAddToCollection={this.toggleAddToCollection}
             showBridge={() => this.setState({ showBridgeDialog: true })}
-            downloadImage={this.downloadImag}
+            downloadOwnable={this.downloadOwnable}
           />
           <OwnableInfoDrawer
             open={this.state.showInfo}

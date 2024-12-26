@@ -39,7 +39,7 @@ export class PollingService {
           .filter((message: any) => message.hash)
           .map((message: any) => message.hash);
 
-        const newLastModified = response.headers?.["last-modified"];
+        const newLastModified = response.data.headers?.["last-modified"];
         if (newLastModified) {
           LocalStorageService.set("lastModified", newLastModified);
         }

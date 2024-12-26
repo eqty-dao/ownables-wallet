@@ -7,6 +7,7 @@ import { ReactComponent as ConsumeIcon } from "../../assets/consume_icon.svg";
 import { ReactComponent as TransferIcon } from "../../assets/transfer_icon.svg";
 import { ReactComponent as InfoIcon } from "../../assets/info_icon.svg";
 import { ReactComponent as PlusIcon } from "../../assets/plus_icon.svg";
+import { ReactComponent as Download } from "../../assets/arrow_down.svg";
 import { SwapHoriz } from "@mui/icons-material"
 import { EventChain } from "@ltonetwork/lto";
 import { TypedMetadata } from "../../interfaces/TypedOwnableInfo";
@@ -48,7 +49,7 @@ interface OwnableActionsFabProps {
   onTransfer: (address: string) => void;
   onAddToCollection: (pkg: string) => void;
   showBridge: () => void;
-  downloadImage: () => void;
+  downloadOwnable: () => void;
 }
 
 const wasConsumed = (chain: EventChain): boolean => {
@@ -126,7 +127,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         break
       case OwnableActionType.Download:
         props.onClose();
-        props.downloadImage();
+        props.downloadOwnable();
         break
       default:
         console.error("Unknown action:", action);
@@ -153,7 +154,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
       // {
       //   id: OwnableActionType.Download,
       //   title: "Download",
-      //   icon: InfoIcon,
+      //   icon: Download,
       // }
     ];
 

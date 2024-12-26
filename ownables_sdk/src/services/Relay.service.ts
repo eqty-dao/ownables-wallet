@@ -25,6 +25,7 @@ export class RelayService {
       const request = {
         headers: {
           ...options.headers, // Include optional headers in the request
+
         },
         method,
         url,
@@ -37,7 +38,7 @@ export class RelayService {
         url: signedRequest.url,
         headers: {
           ...signedRequest.headers,
-          ...options.headers, // Ensure optional headers are included after signing
+          ...options.headers, // Ensure optional headers are included after signing,
         },
         validateStatus: (status) => {
           return (status >= 200 && status < 300) || status === 304;
@@ -76,7 +77,58 @@ export class RelayService {
       console.error("Error sending message:", error);
     }
   }
+  static async getOwnableData(hash: string): Promise<any | null> {
+    if (!hash) {
+      console.error("Hash not provided");
+      return null;
+    }
+    const sender = LTOService.account;
+    try {
+      const messageUrl = `${this.relayURL}/inboxes/${sender.address}/${hash}`;
 
+      const infoResponse = await this.handleSignedRequest(
+        "GET",
+        messageUrl,
+      );
+      if (!infoResponse) {
+        console.warn("Skipping response without a data:", infoResponse);
+        return null;
+      }
+      const message = Message.from(infoResponse.data);
+      return { message, messageHash: infoResponse.data.hash };
+    } catch (error) {
+      console.error(
+        `Failed to process message with hash ${hash}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * List all ownables for the current sender.
+   */
+  static async listOwnables() {
+    const sender = LTOService.account;
+    if (!sender) {
+      console.error("Account not initialized");
+      return [];
+    }
+
+    const address = sender.address;
+    const url = `${this.relayURL}/inboxes/${address}/list`;
+
+    try {
+      const response = await this.handleSignedRequest("GET", url);
+      if (response && response.data && response.data.metadata) {
+        return response.data.metadata;
+      }
+      return [];
+    } catch (error) {
+      console.error("Failed to list ownables:", error);
+      return [];
+    }
+  }
   /**
    * Return just message hashes
    */

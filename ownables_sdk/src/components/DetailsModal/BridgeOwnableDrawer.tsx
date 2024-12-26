@@ -112,7 +112,10 @@ export default function BridgeOwnableDrawer(
   const handleFee = async () => {
     try {
       const feeObject = await BridgeService.getBridgeCost(1);
-      const fee = feeObject[props.nftNetwork];
+      let fee = feeObject[props.nftNetwork];
+      if(fee === undefined) {
+        fee = feeObject['arbitrum'];
+      }
       setBridgeFee(fee / 100000000);
     } catch (error) {
       console.error("Error fetching fee:", error);
