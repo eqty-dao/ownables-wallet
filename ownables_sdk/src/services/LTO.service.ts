@@ -5,7 +5,7 @@ import CryptoJS from "crypto-js";
 import { sendRNPostMessage } from "../utils/postMessage";
 import { Env, Network } from "../AppConfig";
 
-const getSeedFromQuery = () => {
+export const getSeedFromQuery = () => {
   const queryParams = new URLSearchParams(window.location.search);
   return queryParams.get("seed");
 }
@@ -86,7 +86,7 @@ export default class LTOService {
   }
 
   public static isUnlocked(): boolean {
-    return !!window.sessionStorage.getItem("seed");
+    return this._account !== undefined;
   }
 
   public static unlock(password: string): void {
@@ -255,6 +255,7 @@ export default class LTOService {
     if (!this.account) {
       return lto.account({ seed: decryptedSeed() });
     }
+    console.log('this.account:', this.account.address);
     return this.account
   }
   public static getNetwork(ltoAddress: string): string {

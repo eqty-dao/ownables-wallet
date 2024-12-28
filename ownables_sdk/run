@@ -53,7 +53,7 @@ build(){
     cp -f env.stg .env
   fi
 
-  yarn run build
+  npm run build
 }
 
 moveToAndroid(){

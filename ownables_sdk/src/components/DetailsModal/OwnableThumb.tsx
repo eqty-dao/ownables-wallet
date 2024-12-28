@@ -23,6 +23,7 @@ import { themeStyles } from "../../theme/themeStyles";
 import { Cancelled, connect as rpcConnect } from "simple-iframe-rpc";
 import { ReactComponent as CircleCheckIcon } from "../../assets/circle_check_icon.svg";
 import IDBService from "../../services/IDB.service";
+import { RedeemService } from "../../services/Redeem.service";
 
 
 interface OwnableProps {
@@ -42,6 +43,8 @@ interface OwnableState {
   stateDump: StateDump;
   info?: TypedOwnableInfo;
   metadata: TypedMetadata;
+  isRedeemable: boolean;
+  redeemAddress?: string;
 }
 export interface OwnableThumbProps {
   chain: EventChain;
@@ -93,6 +96,7 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
       applied: new EventChain(this.chain.id).latestHash,
       stateDump: [],
       metadata: { name: this?.pkg?.title || "", description: this?.pkg?.description || "" },
+      isRedeemable: false
     };
   }
 
@@ -120,6 +124,32 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
     return nftNetwork || "";
   }
 
+  private async checkRedeemable(): Promise<boolean> {
+    try {
+      const genesisAddress = await RedeemService.getOwnableCreator(
+        this.chain.events
+      );
+
+      this.chain.validate();
+
+      const response = await RedeemService.isRedeemable(
+        genesisAddress,
+        this.pkg.name
+      );
+      return response.isRedeemable;
+    } catch (error) {
+      console.error("Error checking redeemable status:", error);
+      return false;
+    }
+  }
+
+  get isRedeemed(): boolean {
+    const ownedBySwap =
+      !!this.state.info && this.state.info.owner === this.state.redeemAddress;
+    return (
+      this.isTransferred && ownedBySwap && this.state.isRedeemable === true
+    );
+  }
   private async transfer(to: string): Promise<void> {
     try {
       const value = await RelayService.isRelayUp();
@@ -301,6 +331,15 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
       }
     }
     //this.setState({ bridgeAddress });
+    try {
+      const [isRedeemable, redeemAddress] = await Promise.all([
+        this.checkRedeemable(),
+        RedeemService.redeemAddress(),
+      ]);
+      this.setState({ isRedeemable, redeemAddress });
+    } catch (error) {
+      console.error("Error checking redeemable status:", error);
+    }
   }
 
   shouldComponentUpdate(
@@ -548,6 +587,19 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
               </LtoOverlay>
             </Tooltip>
           </If>
+          <If condition={this.isRedeemed}>
+            <Tooltip
+              title="You're unable to interact with this Ownable, because it has been sent to the redeemed."
+              followCursor
+            >
+              <LtoOverlay isForDetailsScreen={true}>
+                <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={true}>
+                  Redeemed
+                </LtoOverlayBanner>
+              </LtoOverlay>
+            </Tooltip>
+          </If>
+
         </Paper>
         <div onClick={this.props.onOpenModal}>
           <p style={ownableNameStyle}>{this.state.metadata?.name}</p>

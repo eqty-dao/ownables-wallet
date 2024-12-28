@@ -258,10 +258,11 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const loadBalance = () => {
     LTOService.getBalance().then(({ regular }) => {
+      if(regular === undefined) return;
       setBalance(parseFloat((regular / 100000000).toFixed(2)));
       setAvailable(regular);
-      sendRNPostMessage(JSON.stringify({ type: "balance", data: balance }));
-      sendRNPostMessage(JSON.stringify({ type: "buildCost", data: buildCost }));
+      // sendRNPostMessage(JSON.stringify({ type: "balance", data: balance }));
+      // sendRNPostMessage(JSON.stringify({ type: "buildCost", data: buildCost }));
       if (balance < 0.1) {
         setLowBalance(true);
       }
