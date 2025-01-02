@@ -1,88 +1,55 @@
-#!/bin/bash
+#!/bin/zsh
+
+# fail if any command fails
 set -e
 
-# Colors for logging
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m' # No Color
+# debug log
+set -x
 
-# Log function
-log() {
-    echo -e "${GREEN}🔔 $1${NC}"
-}
+echo "🧩 Stage: Post-clone is activated .... "
+export CI="false"
 
-error() {
-    echo -e "${RED}❌ $1${NC}"
-    exit 1
-}
+chmod +x /Volumes/workspace/repository/universal-wallet/ios/ci_scripts/ci_post_clone.sh
 
-# Directory setup
+# Set base directory relative to the script for easier navigation
 BASE_DIR="/Volumes/workspace/repository/universal-wallet/"
-BASE_CLIENT_DIR="/Volumes/workspace/repository/universal-wallet/"
-ENV_FILE=".env"
-ENV_SOURCE=".env.stg"
+DESTINATION_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env"
+SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.stg"
 
-log "Stage: Post-clone is activated...."
+ls -la $BASE_DIR
 
-# Make script executable
-chmod +x "${BASH_SOURCE[0]}"
-
-# Export CI=false to prevent CI-specific behavior
-export CI=false
-
-# Navigate to base directory
-cd "$BASE_DIR" || error "Failed to change directory to $BASE_DIR"
-
-# Copy the appropriate environment file based on the branch
+#copy the appropriate environment file to the root directory based on the branch
 if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
-    ENV_SOURCE=".env.prod"
+    SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.prod"
 fi
 
-cp "$ENV_SOURCE" "$BASE_DIR$ENV_FILE" || error "Failed to copy $ENV_SOURCE to $ENV_FILE"
-log "$ENV_SOURCE file copied to $ENV_FILE"
+cp $SOURCE_ENV_FILE $DESTINATION_ENV_FILE && echo "🔧 $SOURCE_ENV_FILE file is copied to $DESTINATION_ENV_FILE"
+
+# Install dependencies using Homebrew. This is MUST! Do not delete.
 brew install node cocoapods
 
-# Install dependencies
-log "Installing npm dependencies..."
-npm i || error "Yarn installation failed"
-log "Yarn dependencies installed successfully"
+cd $BASE_DIR
+npm i && echo "🔧 NPM dependencies are installed successfully"
 
-# Navigate to ios directory and run pod-install
-cd "ios" || error "Failed to change directory to ios"
-log "Running pod-install..."
-npx pod-install || error "Pod installation failed"
+cd $BASE_DIR/ios
+pod install
 
-# Return to base directory and run prebuild
-cd "$BASE_DIR" || error "Failed to return to $BASE_DIR"
-log "Running prebuild..."
-./run prebuild || error "Prebuild failed"
+cd $BASE_DIR
+./run prebuild && echo "🔧 Prebuild is done successfully"
 
-log "Stage: Post-clone completed successfully"
-# #!/bin/zsh
-
-# # fail if any command fails
-# set -e
-
-# # debug log
-# set -x
-
-# echo "🧩 Stage: Post-clone is activated .... "
-# export CI="false"
-
-# chmod +x /Volumes/workspace/repository/universal-wallet/ios/ci_scripts/ci_post_clone.sh
-
-# # Set base directory relative to the script for easier navigation
-# BASE_DIR="/Volumes/workspace/repository/universal-wallet/"
+echo "🎯 Stage: Post-clone is done .... "
 # BASE_CLIENT_DIR="/Volumes/workspace/repository/universal-wallet/"
 
 # # detect the branch name and set the environment variable
 # # if branch name is 'master' use '.env.production' file else use '.env.develop' file
 # ENV_FILE=".env"
-# ENV_SOURCE="$BASE_DIR.env.stg"
+# ENV_SOURCE="$BASE_DIR"
 # pwd
+
 # if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
 #     ENV_SOURCE="$BASE_DIR.env.prod"
 # fi
+# ls -la $ENV_SOURCE
 
 # cp $ENV_SOURCE $BASE_DIR$ENV_FILE && echo "🔧 $ENV_SOURCE file is copied to $ENV_FILE"
 # [[ "$CI_COMMIT_REF_NAME" != "main" ]] && cp $ENV_SOURCE "$BASE_DIR.env.prod"
@@ -103,4 +70,4 @@ log "Stage: Post-clone completed successfully"
 
 # echo "🎯 Stage: Post-clone is done .... "
 
-# # The exit command is implicit in scripts if no error occurs, and because we use set -e, it will exit on error automatically
+# The exit command is implicit in scripts if no error occurs, and because we use set -e, it will exit on error automatically
