@@ -46,7 +46,7 @@ jobs:
         run: npm install -g yarn
       - name: Install dependencies and prebuild
         working-directory: .
-        run: cd universal-wallet && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk" >>$GITHUB_ENV
+        run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk" >>$GITHUB_ENV
 
       # Upload to github release
       - name: Upload APK to GitHub Release
