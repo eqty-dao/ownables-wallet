@@ -13,10 +13,10 @@ chmod +x /Volumes/workspace/repository/universal-wallet/ios/ci_scripts/ci_post_c
 
 # Set base directory relative to the script for easier navigation
 BASE_DIR="/Volumes/workspace/repository/universal-wallet/"
+OWNABLES_DIR="/Volumes/workspace/repository/ownables_sdk/"
 DESTINATION_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env"
 SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.stg"
 
-ls -la $BASE_DIR
 
 #copy the appropriate environment file to the root directory based on the branch
 if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
@@ -27,6 +27,9 @@ cp $SOURCE_ENV_FILE $DESTINATION_ENV_FILE && echo "🔧 $SOURCE_ENV_FILE file is
 
 # Install dependencies using Homebrew. This is MUST! Do not delete.
 brew install node cocoapods
+
+cd $OWNABLES_DIR
+npm i && echo "🔧 NPM dependencies are installed successfully for ownables"
 
 cd $BASE_DIR
 npm i && echo "🔧 NPM dependencies are installed successfully"
