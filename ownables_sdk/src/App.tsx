@@ -40,7 +40,7 @@ import { useCollections } from "./context/CollectionsContext";
 import CollectionTitle from "./components/common/CollectionTitle";
 import { useIssuers } from "./context/IssuersContext";
 import CreateCollectionDrawer from "./components/CreateCollectionDrawer";
-import OwnablesTabs from "./components/OwnablesTabs";
+import OwnablesTabs, { TabType } from "./components/OwnablesTabs";
 import EmptyCollection from "./components/common/EmptyCollection";
 import DeleteOwnableOverlay from "./components/DeleteOwnableOverlay";
 import CreateOwnablesDrawer from "./components/CreateOwnablesDrawer";
