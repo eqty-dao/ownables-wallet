@@ -35,7 +35,8 @@ cd $BASE_DIR/ios
 pod install
 
 cd $BASE_DIR
-./run prebuild && echo "🔧 Prebuild is done successfully"
+
+./run prebuild && cd ios && pod install && cd .. && npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios && echo "🔧 Prebuild is done successfully"
 
 echo "🎯 Stage: Post-clone is done .... "
 # BASE_CLIENT_DIR="/Volumes/workspace/repository/universal-wallet/"
