@@ -18,14 +18,14 @@ BASE_CLIENT_DIR="/Volumes/workspace/repository/universal-wallet/"
 # detect the branch name and set the environment variable
 # if branch name is 'master' use '.env.production' file else use '.env.develop' file
 ENV_FILE=".env"
-ENV_SOURCE="$BASE_DIRenv.stg"
+ENV_SOURCE="$BASE_DIR.env.stg"
 
-if [[ "$CI_COMMIT_REF_NAME" == "master" ]]; then
-    ENV_SOURCE="$BASE_DIRenv.production"
+if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
+    ENV_SOURCE="$BASE_DIR.env.production"
 fi
 
 cp $ENV_SOURCE $BASE_DIR$ENV_FILE && echo "🔧 $ENV_SOURCE file is copied to $ENV_FILE"
-[[ "$CI_COMMIT_REF_NAME" != "master" ]] && cp $ENV_SOURCE "$BASE_DIR.env.production"
+[[ "$CI_COMMIT_REF_NAME" != "main" ]] && cp $ENV_SOURCE "$BASE_DIR.env.production"
 
 # Install dependencies using Homebrew. This is MUST! Do not delete.
 brew install node yarn cocoapods
