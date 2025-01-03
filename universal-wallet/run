@@ -963,6 +963,8 @@ app_prebuild() {
   # generate ownables sdk
   cd ../ownables_sdk && npm run build 
   cd ../universal-wallet
+  echo "if _html folder is not present, create it"
+  if [ ! -d "_html" ]; then mkdir _html ; fi
   echo "Removing old ownables from build"
   rm -rf build/
   echo "If build folder is not present, create it"
