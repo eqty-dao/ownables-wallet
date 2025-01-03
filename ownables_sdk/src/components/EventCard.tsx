@@ -6,6 +6,7 @@ import If from "./If";
 import ReactJson from "react-json-view";
 import LTOService from "../services/LTO.service";
 import { Cancel, CheckCircle } from "@mui/icons-material";
+import { sendRNPostMessage } from "../utils/postMessage";
 
 interface EventCardProps {
   event: Event;
@@ -87,10 +88,11 @@ export default function EventCard(props: EventCardProps) {
             <div style={{ marginTop: 10 }}>
               <strong>Anchor tx: </strong>
               <Link
-                href={
-                  process.env.REACT_APP_LTO_EXPLORER_URL +
-                  "/transaction/" +
-                  anchorTx
+                onClick={() =>
+                  sendRNPostMessage(JSON.stringify({
+                    type:"openExplorer",
+                    data: `${process.env.REACT_APP_LTO_EXPLORER_URL}/transaction/${anchorTx}`
+                  }))
                 }
               >
                 {anchorTx}

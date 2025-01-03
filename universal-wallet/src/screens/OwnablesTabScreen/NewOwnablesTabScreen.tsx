@@ -145,6 +145,9 @@ const NewOwnablesTabScreen = () => {
                 console.log('Open Info:', data.data);
                 InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
             }
+            if(data.type === 'openExplorer'){
+                InAppBrowser.open(data.data);
+            }
         } catch (error) {
             console.error('Error parsing message from WebView:', error);
         }
