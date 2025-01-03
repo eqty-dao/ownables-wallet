@@ -1,12 +1,12 @@
-name: Staging android APK to email
+name: Production Test APK Build
 
 # Controls when the workflow will run
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: ["staging"]
+    branches: ["main"]
   pull_request:
-    branches: ["staging"]
+    branches: ["main"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -26,32 +26,35 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: "18.x"
-      # Copy appropriate env file based on branch
-      - name: Copy env file
-        run: if[ ${{ github.ref }} == 'refs/heads/main' ]; then cp ${{ github.workspace }}/universal-wallet/.env.prod ${{ github.workspace }}/universal-wallet/.env; else cp ${{ github.workspace }}/universal-wallet/.env.stag ${{ github.workspace }}/universal-wallet/.env; fi
 
-      # Creat staging release
+      # Creat develop release
       - name: create release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.run_id }}.staging
-          release_name: Staging ${{ github.workflow_ref }}
+          tag_name: ${{ github.run_id }}.production.test
+          release_name: Production ${{ github.workflow_ref }}
           body: |
-            Staging ${{ github.workflow_ref }} release
+            Production ${{ github.workflow_ref }} release
           draft: false
           prerelease: false
+
+      # Copy appropriate env file based on branch
+      - name: Copy env file
+        run: if[ ${{ github.ref }} == 'refs/heads/main' ]; then cp ${{ github.workspace }}/universal-wallet/.env.prod ${{ github.workspace }}/universal-wallet/.env; else cp ${{ github.workspace }}/universal-wallet/.env.stag ${{ github.workspace }}/universal-wallet/.env; fi
 
       # Prebuild the expo project
       - name: Install Expo CLI
         run: npm install -g yarn
       - name: Install dependencies and prebuild
         working-directory: .
-        run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/debug/app-debug.apk" >>$GITHUB_ENV
+        run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV
+      - name: Build AAB
+        run: ./run prebuild && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
 
-      # Upload to github release
+      # Upload apk to GitHub release
       - name: Upload APK to GitHub Release
         uses: actions/upload-release-asset@v1
         env:
@@ -59,7 +62,17 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.APK_PATH }}
-          asset_name: app-debug.apk
+          asset_name: app-release.apk
+          asset_content_type: application/vnd.android.package-archive
+      # Upload aab to GitHub release
+      - name: Upload AAB to GitHub Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.AAB_PATH }}
+          asset_name: app-release.aab
           asset_content_type: application/vnd.android.package-archive
 
       # Get the download URL of the APK
@@ -69,8 +82,8 @@ jobs:
           echo "::set-output name=DOWNLOAD_URL::$(curl -s -X GET -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' 'https://api.github.com/repos/${{ github.repository }}/releases/latest' | jq -r '.assets[0].browser_download_url')" &&
           echo DOWNLOAD_URL=$(curl -s -X GET -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' 'https://api.github.com/repos/${{ github.repository }}/releases/latest' | jq -r '.assets[0].browser_download_url') >> $GITHUB_ENV &&
           echo $DOWNLOAD_URL
-          #   # Email the APK to the team
 
+    #   # Email the APK to the team
     #   - name: Email APK to Team
     #     uses: dawidd6/action-send-mail@v2
     #     with:
