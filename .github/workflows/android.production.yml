@@ -44,10 +44,11 @@ jobs:
       # Copy appropriate env file based on branch
       - name: Copy env file
         run: |
+          pwd
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            cp ${{ github.workspace }}/universal-wallet/.env.prod ${{ github.workspace }}/universal-wallet/.env
+            cp universal-wallet/.env.prod universal-wallet/.env
           else 
-            cp ${{ github.workspace }}/universal-wallet/.env.stag ${{ github.workspace }}/universal-wallet/.env
+            cp universal-wallet/.env.stag universal-wallet/.env
           fi
 
       # Prebuild the expo project
