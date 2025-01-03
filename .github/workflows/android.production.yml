@@ -44,7 +44,7 @@ jobs:
       # Copy appropriate env file based on branch
       - name: Copy env file
         run: |
-          ls -la 
+          ls -la universal-wallet
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             cp /universal-wallet/.env.prod /universal-wallet/.env
           else 
