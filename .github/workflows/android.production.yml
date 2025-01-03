@@ -43,7 +43,12 @@ jobs:
 
       # Copy appropriate env file based on branch
       - name: Copy env file
-        run: if[ ${{ github.ref }} == 'refs/heads/main' ]; then cp ${{ github.workspace }}/universal-wallet/.env.prod ${{ github.workspace }}/universal-wallet/.env; else cp ${{ github.workspace }}/universal-wallet/.env.stag ${{ github.workspace }}/universal-wallet/.env; fi
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            cp ${{ github.workspace }}/universal-wallet/.env.prod ${{ github.workspace }}/universal-wallet/.env
+          else 
+            cp ${{ github.workspace }}/universal-wallet/.env.stag ${{ github.workspace }}/universal-wallet/.env
+          fi
 
       # Prebuild the expo project
       - name: Install Expo CLI
