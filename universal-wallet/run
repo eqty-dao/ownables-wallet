@@ -53,7 +53,7 @@ code_check_lint() {
 
 ci_install() {
   npm install --global yarn
-  yarn install
+  npm install
 }
 
 
@@ -321,7 +321,7 @@ android_create_js_bundle() {
 }
 
 android_build_apk() {
-  cp -f env.stg .env
+  cp -f .env.stg .env
 
   # android_create_js_bundle
 
@@ -333,7 +333,7 @@ android_build_apk() {
 
 android_build_aab() {
   ## TODO Temporary still use staging environment variables for now
-  cp -f env.stg .env
+  cp -f .env.stg .env
 
   # android_create_js_bundle
 
@@ -406,12 +406,12 @@ ios_build_ipa() {
   if [ "$TYPE" = "adhoc" ]; then
     E_METHOD=ad-hoc
     PROVISION_PROFILE_NAME=${APP_BUNDLEID}-adhoc
-    cp -f env.stg .env
+    cp -f .env.stg .env
   elif [ "$TYPE" = "appstore" ]; then
     E_METHOD=app-store
     PROVISION_PROFILE_NAME=${APP_BUNDLEID}-appstore
     ## TODO Temporary still use staging environment variables for now
-    cp -f env.stg .env
+    cp -f .env.stg .env
   else
     echo "Please specify adhoc or appstore as an option"
     exit -1

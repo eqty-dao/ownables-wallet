@@ -46,9 +46,9 @@ jobs:
         run: |
           ls -la universal-wallet
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            cp universal-wallet/env.prod universal-wallet/.env
+            cp universal-wallet/.env.prod universal-wallet/.env
           else 
-            cp universal-wallet/env.stag universal-wallet/.env
+            cp universal-wallet/.env.stag universal-wallet/.env
           fi
 
       # Prebuild the expo project

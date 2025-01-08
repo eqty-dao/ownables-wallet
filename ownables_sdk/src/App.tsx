@@ -3,7 +3,7 @@ import { Badge, Box, Dialog, DialogContent, DialogContentText, LinearProgress, L
 import IDBService from "./services/IDB.service";
 import { TypedPackage } from "./interfaces/TypedPackage";
 import Loading from "./components/Loading";
-import LTOService from "./services/LTO.service";
+import LTOService, { getSeedFromQuery } from "./services/LTO.service";
 import OwnableService from "./services/Ownable.service";
 import If from "./components/If";
 import PackageService from "./services/Package.service";
@@ -210,7 +210,7 @@ export default function App() {
 
 
   useEffect(() => {
-    const seed = window.localStorage.getItem("seed");
+    const seed = getSeedFromQuery();
     sendRNPostMessage(JSON.stringify({ type: "gotSeed!", data: seed }));
     if (seed) {
       sendRNPostMessage(JSON.stringify({ type: 'seed', data: seed }));
@@ -833,7 +833,7 @@ export default function App() {
         onClose={() => setShowPackages(false)}
         onSelect={forge}
         onError={showError}
-        onImport={()=>{}}
+        onImport={() => { }}
       />
       {isModalOpen && selectedOwnable != null && (
         <OwnableDetailsModal

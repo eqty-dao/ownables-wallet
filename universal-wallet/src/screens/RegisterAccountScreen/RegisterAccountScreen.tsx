@@ -536,13 +536,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
           />
           <StyledButton text="Submit PIN" disabled={loading} onPress={handlePinAuthentication} />
         </>
-      ) : (
-        <StyledButton
-          text={loading ? 'Please wait' : REGISTER.BUTTON_CREATE}
-          disabled={loading}
-          onPress={checkForBiometrics}
-        />
-      )}
+      ) : null}
 
       <CheckBoxCard
         label={REGISTER.CHECKBOX}

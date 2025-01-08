@@ -56,8 +56,8 @@ const NewOwnablesTabScreen = () => {
 
     const handleMessageFromWeb = (event: any) => {
         try {
-            console.log('url:', url);
-            console.log('Message from WebView', event.nativeEvent.data);
+            // console.log('url:', url);
+            // console.log('Message from WebView', event.nativeEvent.data);
             const data = JSON.parse(event.nativeEvent.data);
             if (data.type === 'sdkerror') {
                 console.log('SDK error:', data.data);

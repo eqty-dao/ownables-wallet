@@ -5,7 +5,7 @@ import CryptoJS from "crypto-js";
 import { sendRNPostMessage } from "../utils/postMessage";
 import { Env, Network } from "../AppConfig";
 
-const getSeedFromQuery = () => {
+export const getSeedFromQuery = () => {
   const queryParams = new URLSearchParams(window.location.search);
   return queryParams.get("seed");
 }
