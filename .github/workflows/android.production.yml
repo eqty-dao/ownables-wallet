@@ -52,11 +52,18 @@ jobs:
           fi
 
       # Prebuild the expo project
-      - name: Install Expo CLI
-        run: npm install -g yarn
-      - name: Install dependencies and prebuild
+      - name: Prebuild the ownables_sdk
         working-directory: .
-        run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV && ./run prebuild && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
+        run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild
+        # run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV && ./run prebuild && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
+      # Create a separate directory for the APK
+      - name: Create APK directory
+        run: mkdir -p /home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/apk
+      - name: build apk and copy to apk directory
+        run: cd universal-wallet && chmod +x ./run && ./run build-apk && cp android/app/build/outputs/apk/release/app-release.apk /home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/apk/app-release.apk && echo "APK_PATH=/home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/apk/app-release.apk" >>$GITHUB_ENV
+      #Build apk
+      - name: Build AAB
+        run: cd universal-wallet && chmod +x ./run && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
 
       # Upload apk to GitHub release
       - name: Upload APK to GitHub Release
@@ -65,7 +72,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.APK_PATH }}
+          asset_path: /home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/apk/app-release.apk
           asset_name: app-release.apk
           asset_content_type: application/vnd.android.package-archive
       # Upload aab to GitHub release
