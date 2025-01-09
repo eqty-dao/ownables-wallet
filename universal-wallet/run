@@ -321,26 +321,25 @@ android_create_js_bundle() {
 }
 
 android_build_apk() {
-  cp -f .env.stg .env
-
   # android_create_js_bundle
 
   # ./gradlew assembleDebug; cd ..
   # ls -alh android/app/build/outputs/apk/release/*.apk
-  npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/ --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew assembleDebug && cd ..
-  ls -alh android/app/build/outputs/apk/debug/*.apk
+  npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/ --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew assembleRelease && cd ..
+  ls -alh android/app/build/outputs/apk/release/*.apk
+  #copy it to the root 
+  cp android/app/build/outputs/apk/release/*.apk .
 }
 
 android_build_aab() {
   ## TODO Temporary still use staging environment variables for now
-  cp -f .env.stg .env
-
   # android_create_js_bundle
 
   # cd android ; ./gradlew bundleRelease ; cd ..
   # ls -alh android/app/build/outputs/bundle/release/*.aab
   npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew bundleRelease && cd ..
   ls -alh android/app/build/outputs/bundle/release/*.aab
+  cp android/app/build/outputs/bundle/release/*.aab .
 }
 
 android_upload_aab() {

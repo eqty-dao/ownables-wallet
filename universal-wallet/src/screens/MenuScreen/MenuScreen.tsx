@@ -91,7 +91,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
       );
       // snackbar
       setShowMessage(true);
-      setMessageInfo(response ? 'Airdrop claimed successfully' : 'Airdrop claim failed');
+      setMessageInfo(response ? 'Thank you. Your Airdrop claim has been validated' : 'Airdrop claim failed');
       setHasNotClaimed(response);
     } catch (error) {
       console.log(error);

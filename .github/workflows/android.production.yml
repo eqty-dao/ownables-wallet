@@ -58,12 +58,12 @@ jobs:
         # run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV && ./run prebuild && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
       # Create a separate directory for the APK
       - name: Create APK directory
-        run: mkdir -p /home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/apk
+        run: mkdir -p /home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/APK
       - name: build apk and copy to apk directory
-        run: cd universal-wallet && chmod +x ./run && ./run build-apk && cp /home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/android/app/build/outputs/apk/debug/app-debug.apk /home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/APK/ && echo "APK_PATH=/home/runner/work/lto-universal-wallet-develop/lto-universal-wallet-develop/APK/app-debug.apk" >>$GITHUB_ENV
+        run: cd universal-wallet && chmod +x ./run && ./run build-apk && "APK_PATH=$(pwd)/app-release.apk" >>$GITHUB_ENV
       #Build apk
       - name: Build AAB
-        run: cd universal-wallet && chmod +x ./run && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
+        run: cd universal-wallet && chmod +x ./run && ./run build-aab && echo "AAB_PATH=$(pwd)/app-release.aab" >>$GITHUB_ENV
 
       # Upload apk to GitHub release
       - name: Upload APK to GitHub Release
