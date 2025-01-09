@@ -32,8 +32,10 @@ jobs:
           ls -la universal-wallet
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             cp universal-wallet/.env.prod universal-wallet/.env
+            cat universal-wallet/.env
           else 
-            cp universal-wallet/.env.stag universal-wallet/.env
+            cp universal-wallet/.env.stg universal-wallet/.env
+            cat universal-wallet/.env
           fi
 
       # Creat staging release
@@ -55,7 +57,7 @@ jobs:
         run: npm install -g yarn
       - name: Install dependencies and prebuild
         working-directory: .
-        run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-debug.apk" >>$GITHUB_ENV
+        run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV
 
       # Upload to github release
       - name: Upload APK to GitHub Release
@@ -65,7 +67,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.APK_PATH }}
-          asset_name: app-debug.apk
+          asset_name: app-release.apk
           asset_content_type: application/vnd.android.package-archive
 
       # Get the download URL of the APK
