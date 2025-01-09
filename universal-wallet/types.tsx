@@ -1,10 +1,10 @@
-import {MaterialTopTabScreenProps} from '@react-navigation/material-top-tabs';
-import {CompositeScreenProps, NavigatorScreenParams} from '@react-navigation/native';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import { MaterialTopTabScreenProps } from '@react-navigation/material-top-tabs';
+import { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList {}
+    interface RootParamList extends RootStackParamList { }
   }
 }
 
@@ -13,16 +13,17 @@ export type RootStackParamList = {
   SignUp: undefined;
   SignIn: undefined;
   ImportSeed: undefined;
-  RegisterAccount: {data: string};
+  RegisterAccount: { data: string };
   Root: NavigatorScreenParams<RootTabParamList> | undefined;
   QrReader: undefined;
   Menu: undefined;
   Profile: undefined;
   CreateTransfer: undefined;
-  CreateLease: {address: string} | undefined;
-  Lease: {address: string};
+  CreateLease: { address: string } | undefined;
+  Lease: { address: string };
   Transactions: undefined;
   LockedScreen: undefined;
+  Airdrop: undefined;
 };
 
 export type RootStackScreenProps<Screen extends keyof RootStackParamList> = NativeStackScreenProps<

@@ -79,7 +79,7 @@ android {
         applicationId "com.rlwebserverexample"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 39
+        versionCode 41
         versionName "1.0"
     }
     signingConfigs {

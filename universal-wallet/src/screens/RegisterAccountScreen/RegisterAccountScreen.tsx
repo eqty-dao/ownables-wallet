@@ -213,6 +213,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
         />
       </FormContainer>
 
+
       <CheckBoxCard
         label={REGISTER.CHECKBOX}
         value={checked}

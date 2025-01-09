@@ -57,7 +57,7 @@ function RootNavigator(): any {
     userAlias: null as boolean | null,
     appStateVisible: AppState.currentState,
   });
-  const {network} = useUserSettings();
+  const { network } = useUserSettings();
 
   const appState = useRef(AppState.currentState);
   const navigator = useNavigation();
@@ -68,14 +68,14 @@ function RootNavigator(): any {
     if (appState.current.match(/active/) && nextAppState === 'background') {
       lockOutTimer = setTimeout(() => {
         console.log('Inactivity detected', currentAction);
-        console.log('App has come to the background!',appState.current);
-        if (!currentAction && !appState.current.match(/active/)  && userAlias) {
+        console.log('App has come to the background!', appState.current);
+        if (!currentAction && !appState.current.match(/active/) && userAlias) {
           navigator.navigate('SignIn');
         }
-      }, 30*1000);
+      }, 30 * 1000);
     }
     if (appState.current.match(/background/) && nextAppState === 'active') {
-      console.log('App has come to the foreground!',appState.current, nextAppState, currentAction, lockOutTimer);
+      console.log('App has come to the foreground!', appState.current, nextAppState, currentAction, lockOutTimer);
       clearTimeout(lockOutTimer);
     }
 

@@ -19,7 +19,8 @@ import PressToCopy from '../../components/PressToCopy';
 import { useClipboard } from '@react-native-clipboard/clipboard';
 import DeviceInfo from 'react-native-device-info';
 import { encryptData, decryptData } from '../../hooks/useStaticServer';
-
+import valid_decoded_values from '../AirdropTabScreen/valid_decoded_values.json';
+import AirdropTabScreen from '../AirdropTabScreen/AirdropTabScreen';
 export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
   const [installationId, setInstallationId] = useState('');
@@ -27,6 +28,9 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
   const [data, setString] = useClipboard();
   const { width } = useWindowDimensions();
+  const isEmulator = DeviceInfo.isEmulatorSync();
+  const [validatInstallId, setValidatInstallId] = useState(false);
+  const [hasNotClaimed, setHasNotClaimed] = useState(false);
 
 
   useEffect(() => {
@@ -35,10 +39,11 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
       const id = (await DeviceInfo.getUniqueId()) + "-652"
       // hash the id to make it more secure
       const encryptedId = encryptData(id);
-      // const decryptedId = decryptData('U2FsdGVkX18ym1SkOyLXguGsWGb/jrhTUwIJy2jdsYOpl7bS7nwKvmMuG8qGKmFPh7VNu64dN7dkyDQarRErcg');
+      // const decryptedId = decryptData(encryptedId);
       // console.log(encryptedId);
       // console.log(decryptedId);
       setInstallationId(encryptedId.toString());
+      setValidatInstallId(valid_decoded_values.includes(id));
     }
     getInitialData().catch(error => {
       console.log(error);
@@ -76,6 +81,36 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
         throw new Error(`Error retrieving data. ${error}`);
       });
   };
+
+  const validateAirdrop = async () => {
+    try {
+      const _installationId = installationId + "-652" + (isEmulator ? "1" : "0");
+      const response = await LTOService.validateAirdrop(
+        _installationId,
+        accountAddress
+      );
+      // snackbar
+      setShowMessage(true);
+      setMessageInfo(response ? 'Thank you. Your Airdrop claim has been validated' : 'Airdrop claim failed');
+      setHasNotClaimed(response);
+    } catch (error) {
+      console.log(error);
+      setShowMessage(true);
+      setMessageInfo('Airdrop claim failed');
+      setHasNotClaimed(false);
+    }
+  }
+
+  const checkClaimStatus = async () => {
+    const status = await LTOService.checkIfAlreadyClaimed(accountAddress);
+    setHasNotClaimed(status);
+  };
+
+  useEffect(() => {
+    if (accountAddress) {
+      checkClaimStatus();
+    }
+  }, [accountAddress]);
 
   const logOut = () => {
     LTOService.lock();
@@ -154,6 +189,16 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             style={{ position: 'absolute', right: -20, top: 25 }}
           />
         </View>
+        {
+          !isEmulator && validatInstallId && !hasNotClaimed && (
+            <StyledButton
+              text={'Validate Airdrop'}
+              onPress={validateAirdrop}
+              type="secondary"
+              textStyle={{ fontWeight: '600' }}
+            />
+          )
+        }
         <MainScreenMinorContainer>
           <StyledButton
             text={'My Account'}

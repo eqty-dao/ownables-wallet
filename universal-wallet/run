@@ -53,7 +53,7 @@ code_check_lint() {
 
 ci_install() {
   npm install --global yarn
-  yarn install
+  npm install
 }
 
 
@@ -321,26 +321,25 @@ android_create_js_bundle() {
 }
 
 android_build_apk() {
-  cp -f env.stg .env
-
   # android_create_js_bundle
 
   # ./gradlew assembleDebug; cd ..
   # ls -alh android/app/build/outputs/apk/release/*.apk
-  npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/ --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew assembleDebug && cd ..
-  ls -alh android/app/build/outputs/apk/debug/*.apk
+  npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/ --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew assembleRelease && cd ..
+  ls -alh android/app/build/outputs/apk/release/*.apk
+  #copy it to the root 
+  cp android/app/build/outputs/apk/release/*.apk .
 }
 
 android_build_aab() {
   ## TODO Temporary still use staging environment variables for now
-  cp -f env.stg .env
-
   # android_create_js_bundle
 
   # cd android ; ./gradlew bundleRelease ; cd ..
   # ls -alh android/app/build/outputs/bundle/release/*.aab
   npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --reset-cache true && cd android/ && chmod +x ./gradlew && ./gradlew clean && ./gradlew bundleRelease && cd ..
   ls -alh android/app/build/outputs/bundle/release/*.aab
+  cp android/app/build/outputs/bundle/release/*.aab .
 }
 
 android_upload_aab() {
@@ -406,12 +405,12 @@ ios_build_ipa() {
   if [ "$TYPE" = "adhoc" ]; then
     E_METHOD=ad-hoc
     PROVISION_PROFILE_NAME=${APP_BUNDLEID}-adhoc
-    cp -f env.stg .env
+    cp -f .env.stg .env
   elif [ "$TYPE" = "appstore" ]; then
     E_METHOD=app-store
     PROVISION_PROFILE_NAME=${APP_BUNDLEID}-appstore
     ## TODO Temporary still use staging environment variables for now
-    cp -f env.stg .env
+    cp -f .env.stg .env
   else
     echo "Please specify adhoc or appstore as an option"
     exit -1
@@ -963,6 +962,8 @@ app_prebuild() {
   # generate ownables sdk
   cd ../ownables_sdk && npm run build 
   cd ../universal-wallet
+  echo "if _html folder is not present, create it"
+  if [ ! -d "_html" ]; then mkdir _html ; fi
   echo "Removing old ownables from build"
   rm -rf build/
   echo "If build folder is not present, create it"

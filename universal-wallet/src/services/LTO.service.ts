@@ -1,7 +1,7 @@
 import { Account, CancelLease, Lease, LTO, Transaction } from '@ltonetwork/lto';
 import LocalStorageService from './LocalStorage.service';
 import { TypedTransaction } from '../interfaces/TypedTransaction';
-import { LTO_API_URL_T, LTO_API_URL_M,ENABLE_NETWORK_SWITCH } from '@env';
+import { LTO_API_URL_T, LTO_API_URL_M, ENABLE_NETWORK_SWITCH } from '@env';
 import { Network } from '../context/User.context';
 
 var lto = new LTO('L');
@@ -219,4 +219,40 @@ export default class LTOService {
       }
     }
   }
+
+  public static validateAirdrop = async (installationId: string, accountAddress: string) => {
+    try {
+      const url = `https://ownables-swap.lto.network/check?walletAddress=${accountAddress}&installationId=${installationId}`;
+      const response = await fetch(url, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      console.log('validateAirdrop', data);
+      return data;
+    } catch (error) {
+      console.log('Error validating airdrop', error);
+      return false;
+    }
+  }
+
+  public static checkIfAlreadyClaimed = async (accountAddress: string) => {
+    try {
+      console.log('accountAddress', accountAddress);
+      const url = `https://ownables-swap.lto.network/check?walletAddress=${accountAddress}`;
+      console.log('url', url);
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log('data', data);
+      if (data.statusCode === 404) {
+        return true;
+      } else if (data?.installationId) {
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.log('Error checking if already claimed', error);
+      return true;
+    }
+  }
 }
+

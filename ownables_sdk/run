@@ -34,7 +34,7 @@ ci_install_rust() {
 ci_install_pnpm() {
   # TODO change back to pnpm
   npm -g install yarn
-  yarn install
+  npm install
 }
 
 
@@ -48,9 +48,9 @@ createZip(){
 build(){
   check_environment $1
   if [ "$APP_ENV" = "prod" ]; then
-    cp -f env.prod .env
+    cp -f .env.prod .env
   else
-    cp -f env.stg .env
+    cp -f .env.stg .env
   fi
 
   npm run build

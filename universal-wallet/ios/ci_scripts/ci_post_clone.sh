@@ -25,6 +25,9 @@ fi
 
 cp $SOURCE_ENV_FILE $DESTINATION_ENV_FILE && echo "🔧 $SOURCE_ENV_FILE file is copied to $DESTINATION_ENV_FILE"
 
+#print the environment file
+cat $DESTINATION_ENV_FILE
+
 # Install dependencies using Homebrew. This is MUST! Do not delete.
 brew install node cocoapods
 
