@@ -100,7 +100,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
         if (response.code) {
           setAirdropModalCode(response.code);
         }
-        setAirdropModalMessage("Thank you. Your Airdrop claim has been validated");
+        setAirdropModalMessage("Success!");
         setAirdropModalVisible(true);
       } else {
         setAirdropModalCode('');
@@ -214,7 +214,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
               textStyle={{ fontWeight: '600' }} />
               <BottomModal
                 title={airdropModalMessage}
-                body={[{ text: airdropModalCode ? `Your Airdrop Code is: ${airdropModalCode}` : '' }]}
+                body={[{ text: airdropModalCode ? `Thank you ! Your Airdrop claim has been validated, your code is: ` : '' }]}
                 onSubmit={() => {
                   setAirdropModalVisible(false);
                 }}
@@ -224,6 +224,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
                 visible={airdropModalVisible}
                 cancelText=''
                 hideCancelButton={true}
+                copyText={airdropModalCode}
               />
             </>
           )

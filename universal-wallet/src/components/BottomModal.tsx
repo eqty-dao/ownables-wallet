@@ -1,5 +1,5 @@
-import React from 'react';
-import { Modal, TouchableOpacity } from 'react-native';
+import React, { useContext } from 'react';
+import { Alert, Modal, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import {
   CloseIconContainer,
   FlexContainer,
@@ -14,6 +14,12 @@ import { StyledButton } from './StyledButton';
 import Icon from './Icon';
 import { Text } from 'react-native';
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
+import PressToCopy from './PressToCopy';
+import { Card } from './Card';
+import { useClipboard } from '@react-native-clipboard/clipboard';
+import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
+import { Input } from 'react-native-elements';
+import { MessageContext } from '../context/UserMessage.context';
 
 export const BottomModal = ({
   title,
@@ -26,6 +32,7 @@ export const BottomModal = ({
   visible,
   type = 'default',
   hideCancelButton,
+  copyText,
 }: {
   title: string;
   body: { text: string; heading?: boolean }[];
@@ -37,7 +44,13 @@ export const BottomModal = ({
   visible: boolean;
   type?: 'default' | 'terms' | 'biometric';
   hideCancelButton?: boolean;
+  copyText?: string;
 }) => {
+  const [data, setString] = useClipboard();
+  const { width } = useWindowDimensions();
+  const { setShowMessage, setMessageInfo } = useContext(MessageContext);
+
+
   return (
     <Modal transparent={true} visible={visible} animationType="fade">
       <FlexContainer>
@@ -57,6 +70,36 @@ export const BottomModal = ({
                 </ModalBody>
               ),
             )}
+            {copyText &&
+              <View style={{ flexDirection: 'row', width: '50%', alignSelf: 'center' }}>
+                <Input
+                  placeholder={copyText}
+                  value={copyText}
+                  editable={false}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
+                  inputStyle={{ color: '#ffff', fontSize: width * 0.035 }}
+                  style={{
+                    maxWidth: '100%',
+                    backgroundColor: '#656565',
+                    borderRadius: 10,
+                    paddingLeft: 10,
+                    marginBottom: 10
+                  }}
+                  label=""
+                  labelStyle={{ color: '#ffff', fontSize: width * 0.035 }}
+                />
+                <FontAwesome6
+                  name="copy"
+                  onPress={() => {
+                    setString(copyText);
+                    Alert.alert('Copied to clipboard!');
+                  }}
+                  size={24}
+                  color="#909092"
+                  style={{}}
+                />
+              </View>
+            }
           </ModalSubContainer>
           {
             // If the type is 'terms', we don't need to show the buttons
@@ -90,6 +133,7 @@ export const BottomModal = ({
                 >
                   Would you like to proceed?
                 </ModalBody>
+
               </ModalSubContainer>
             )
           }
