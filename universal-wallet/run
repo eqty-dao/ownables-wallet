@@ -971,6 +971,9 @@ app_prebuild() {
   echo "Copying ownables sdk to android and ios"
   cp -R ../ownables_sdk/build/* _html/
   mkdir -p android/app/src/main/assets/html ios/external/html
+  #if android/app/src/main/assets/build/ is not present, create it
+  if [ ! -d "android/app/src/main/assets/build/" ]; then mkdir -p android/app/src/main/assets/build/ ; fi
+  if [ ! -d "ios/external/html/" ]; then mkdir -p ios/external/html/ ; fi
   cp -R _html/* android/app/src/main/assets/build/
   cp -R _html/* ios/external/html/
   cp -R _html/* build/
