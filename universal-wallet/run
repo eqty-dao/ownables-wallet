@@ -970,6 +970,8 @@ app_prebuild() {
   mkdir -p build
   echo "Copying ownables sdk to android and ios"
   cp -R ../ownables_sdk/build/* _html/
+  ls -la _html/
+  ls -la ../ownables_sdk/build/
   mkdir -p android/app/src/main/assets/html ios/external/html
   #if android/app/src/main/assets/build/ is not present, create it
   if [ ! -d "android/app/src/main/assets/build/" ]; then mkdir -p android/app/src/main/assets/build/ ; fi
@@ -978,6 +980,9 @@ app_prebuild() {
   cp -R _html/* ios/external/html/
   cp -R _html/* build/
   echo "Done copying ownables sdk to android and ios"
+  ls -la android/app/src/main/assets/build/
+  ls -la ios/external/html/
+  ls -la build/
 }
 
 app_build_common() {
