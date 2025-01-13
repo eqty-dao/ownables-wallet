@@ -56,7 +56,7 @@ jobs:
       # Prebuild the expo project
       - name: Prebuild the ownables_sdk
         working-directory: .
-        run: cd ownables_sdk && ls -la && npm i && npm run rustup
+        run: cd ownables_sdk && ls -la && npm i && npm run rustup && npm run build
       - name: Prebuild the universal-wallet
         working-directory: .
         run: cd .. && cd universal-wallet && ls -la && npm i && chmod +x ./run && ./run prebuild
