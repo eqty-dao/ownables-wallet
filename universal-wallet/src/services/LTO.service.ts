@@ -220,18 +220,27 @@ export default class LTOService {
     }
   }
 
-  public static validateAirdrop = async (installationId: string, accountAddress: string) => {
+
+
+  public static validateAirdrop = async (installationId: string, accountAddress: string): Promise<AirdropResponse> => {
     try {
-      const url = `https://ownables-swap.lto.network/check?walletAddress=${accountAddress}&installationId=${installationId}`;
+      console.log('validateAirdrop', installationId);
+      const url = `https://ownables-swap.lto.network/check/store?walletAddress=${accountAddress}&installationId=${installationId}&secret=ASDFASDF141414`;
       const response = await fetch(url, {
         method: 'POST',
       });
-      const data = await response.json();
-      console.log('validateAirdrop', data);
-      return data;
+      console.log('response', response);
+      if (response.status === 201) {
+        const data = await response.json() as AirdropResponse;
+        data.success = true;
+        console.log('data', data);
+        return data;
+      }
+      return { message: 'Error validating airdrop', code: 'E0001', success: false };
+
     } catch (error) {
       console.log('Error validating airdrop', error);
-      return false;
+      return { message: 'Error validating airdrop', code: 'E0001', success: false };
     }
   }
 
@@ -256,3 +265,10 @@ export default class LTOService {
   }
 }
 
+
+
+export interface AirdropResponse {
+  message: string;
+  code?: string;
+  success?: boolean;
+}

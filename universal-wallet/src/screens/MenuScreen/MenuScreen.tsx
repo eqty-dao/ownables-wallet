@@ -12,7 +12,7 @@ import { MainScreenMinorContainer, MainScreenSubContainer } from '../../componen
 import { StyledButton } from '../../components/StyledButton';
 import { UserCard } from '../../components/UserCard';
 import { SocialsCard } from '../../components/SocialsCard';
-import { BackHandler, Platform, useWindowDimensions, View } from 'react-native';
+import { BackHandler, Modal, Platform, useWindowDimensions, View } from 'react-native';
 import { Input } from 'react-native-elements';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import PressToCopy from '../../components/PressToCopy';
@@ -20,7 +20,10 @@ import { useClipboard } from '@react-native-clipboard/clipboard';
 import DeviceInfo from 'react-native-device-info';
 import { encryptData, decryptData } from '../../hooks/useStaticServer';
 import valid_decoded_values from '../AirdropTabScreen/valid_decoded_values.json';
-import AirdropTabScreen from '../AirdropTabScreen/AirdropTabScreen';
+import { AirdropResponse } from '../../services/LTO.service';
+import { Card } from '../../components/Card';
+import { StyledLabel } from '../../components/styles/InputField.styles';
+import { BottomModal } from '../../components/BottomModal';
 export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
   const [installationId, setInstallationId] = useState('');
@@ -31,6 +34,9 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   const isEmulator = DeviceInfo.isEmulatorSync();
   const [validatInstallId, setValidatInstallId] = useState(false);
   const [hasNotClaimed, setHasNotClaimed] = useState(false);
+  const [airdropModalVisible, setAirdropModalVisible] = useState(false);
+  const [airdropModalMessage, setAirdropModalMessage] = useState('');
+  const [airdropModalCode, setAirdropModalCode] = useState('');
 
 
   useEffect(() => {
@@ -88,11 +94,21 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
       const response = await LTOService.validateAirdrop(
         _installationId,
         accountAddress
-      );
+      ) as AirdropResponse;
       // snackbar
-      setShowMessage(true);
-      setMessageInfo(response ? 'Thank you. Your Airdrop claim has been validated' : 'Airdrop claim failed');
-      setHasNotClaimed(response);
+      if (response.success) {
+        if (response.code) {
+          setAirdropModalCode(response.code);
+        }
+        setAirdropModalMessage("Success!");
+        setAirdropModalVisible(true);
+      } else {
+        setAirdropModalCode('');
+        setAirdropModalMessage('Something went wrong, please try again later');
+        setAirdropModalVisible(true);
+      }
+
+
     } catch (error) {
       console.log(error);
       setShowMessage(true);
@@ -191,12 +207,26 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
         </View>
         {
           !isEmulator && validatInstallId && !hasNotClaimed && (
-            <StyledButton
+            <><StyledButton
               text={'Validate Airdrop'}
               onPress={validateAirdrop}
               type="secondary"
-              textStyle={{ fontWeight: '600' }}
-            />
+              textStyle={{ fontWeight: '600' }} />
+              <BottomModal
+                title={airdropModalMessage}
+                body={[{ text: airdropModalCode ? `Thank you ! Your Airdrop claim has been validated, your code is: ` : '' }]}
+                onSubmit={() => {
+                  setAirdropModalVisible(false);
+                }}
+                submitButtonType="secondary"
+                submitText="Close"
+                onCancel={() => setAirdropModalVisible(false)}
+                visible={airdropModalVisible}
+                cancelText=''
+                hideCancelButton={true}
+                copyText={airdropModalCode}
+              />
+            </>
           )
         }
         <MainScreenMinorContainer>
