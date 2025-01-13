@@ -42,6 +42,13 @@ pod install
 
 cd $BASE_DIR
 
+echo "🔧 Build SDK"
+cd $OWNABLES_DIR
+npm i && npm run rustup && npm run build
+
+echo "🔧 Build SDK is done successfully"
+
+echo "🔧 Prebuild"
 ./run prebuild && cd ios && pod install && cd .. && npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios && echo "🔧 Prebuild is done successfully"
 
 echo "🎯 Stage: Post-clone is done .... "
