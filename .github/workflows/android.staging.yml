@@ -54,7 +54,7 @@ jobs:
 
       # Prebuild the expo project
       - name: Install Expo CLI
-        run: npm install -g yarn
+        run: npm install -g yarn && export CI=false
       - name: Install dependencies and prebuild
         working-directory: .
         run: cd ownables_sdk && npm i && npm run rustup &&  npm run build && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV
