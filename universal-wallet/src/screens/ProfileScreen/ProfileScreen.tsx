@@ -18,6 +18,7 @@ import { useWindowDimensions, View } from 'react-native';
 import Icon from '../../components/Icon';
 import PressToCopy from '../../components/PressToCopy';
 import { StyledInputWithCopy } from '../../components/styles/InputField.styles';
+import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
 
 export default function ProfileScreen({ navigation }: RootStackScreenProps<'Profile'>) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -141,7 +142,13 @@ export default function ProfileScreen({ navigation }: RootStackScreenProps<'Prof
           text="Show backup phrase"
           content={
             showSeedPhrase ? (
-              <Card label={seed} subLabel={PROFILE.PHRASE} type="secondary" />
+              <SeedPhraseInput
+                words={seed.split(' ')}
+                onWordChange={() => { }}
+                showCopyButton={true}
+                onPaste={() => { }}
+                showPasteButton={false}
+              />
             ) : (
               <StyledButton text="Show Seed Phrase" onPress={handleShowSeedPhrase} type="primary" />
             )
