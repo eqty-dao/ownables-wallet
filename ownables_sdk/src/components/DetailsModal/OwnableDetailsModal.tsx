@@ -20,7 +20,6 @@ import {
 } from "../../interfaces/TypedOwnableInfo";
 import ownableErrorMessage from "../../utils/ownableErrorMessage";
 import shortId from "../../utils/shortId";
-import asDownload from "../../utils/asDownload";
 import EventChainService from "../../services/EventChain.service";
 import isObject from "../../utils/isObject";
 import OwnableFrame from "../OwnableFrame";
@@ -38,7 +37,7 @@ import { enqueueSnackbar } from "notistack";
 import { sendRNPostMessage } from "../../utils/postMessage";
 import SessionStorageService from "../../services/SessionStorage.service";
 import LocalStorageService from "../../services/LocalStorage.service";
-import IDBService from "../../services/IDB.service";
+import { RedeemService } from "../../services/Redeem.service";
 
 interface OwnableProps {
   chain: EventChain;
@@ -83,6 +82,8 @@ interface OwnableDetailsModalState {
   metadata: TypedMetadata;
   pkgId: string;
   showBridgeDialog: boolean;
+  isRedeemable: boolean;
+  redeemAddress?: string;
 }
 
 const backButtonStyle = {
@@ -159,6 +160,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         description: this.pkg.description,
       },
       showBridgeDialog: false,
+      isRedeemable: false,
     };
   }
 
@@ -185,6 +187,34 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     const nftNetwork = this.state.info?.nft?.network;
     return nftNetwork || "";
   }
+
+  private async checkRedeemable(): Promise<boolean> {
+    try {
+      const genesisAddress = await RedeemService.getOwnableCreator(
+        this.chain.events
+      );
+
+      this.chain.validate();
+
+      const response = await RedeemService.isRedeemable(
+        genesisAddress,
+        this.pkg.name
+      );
+      return response.isRedeemable;
+    } catch (error) {
+      console.error("Error checking redeemable status:", error);
+      return false;
+    }
+  }
+
+  get isRedeemed(): boolean {
+    const ownedBySwap =
+      !!this.state.info && this.state.info.owner === this.state.redeemAddress;
+    return (
+      this.isTransferred && ownedBySwap && this.state.isRedeemable === true
+    );
+  }
+
 
   private async transfer(to: string): Promise<void> {
     try {
@@ -452,6 +482,43 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     }
   }
 
+  private async redeem(): Promise<void> {
+    try {
+      const redeemAddress = await RedeemService.redeemAddress();
+      const genesisAddress = await RedeemService.getOwnableCreator(
+        this.chain.events
+      );
+      const response = await RedeemService.isRedeemable(
+        genesisAddress,
+        this.pkg.name
+      );
+
+      await this.execute({ transfer: { to: redeemAddress } });
+
+      const zip = await OwnableService.zip(this.chain);
+      const content = await zip.generateAsync({
+        type: "uint8array",
+      });
+
+      await RelayService.sendOwnable(redeemAddress, content);
+      enqueueSnackbar("Successfully redeemed!", { variant: "success" });
+
+      const account = LTOService.getAccount();
+      const address = (await account).address;
+      console.log(address);
+
+      await RedeemService.storeDetail(address, response.value, this.chain.id);
+
+      if (this.pkg.uniqueMessageHash) {
+        console.log(this.pkg.uniqueMessageHash);
+        await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+      }
+    } catch (error) {
+      console.error("Error during redeem:", error);
+      enqueueSnackbar("Failed to redeem. Try again.", { variant: "error" });
+    }
+  }
+
   async componentDidMount() {
     window.addEventListener("message", this.windowMessageHandler);
 
@@ -464,6 +531,15 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       }
     }
     //this.setState({ bridgeAddress });
+    try {
+      const [isRedeemable, redeemAddress] = await Promise.all([
+        this.checkRedeemable(),
+        RedeemService.redeemAddress(),
+      ]);
+      this.setState({ isRedeemable, redeemAddress });
+    } catch (error) {
+      console.error("Error checking redeemable status:", error);
+    }
   }
 
   shouldComponentUpdate(
@@ -592,6 +668,18 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                 </LtoOverlay>
               </Tooltip>
             </If>
+            <If condition={this.isRedeemed}>
+              <Tooltip
+                title="You're unable to interact with this Ownable, because it has been sent to the redeemed."
+                followCursor
+              >
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                    Redeemed
+                  </LtoOverlayBanner>
+                </LtoOverlay>
+              </Tooltip>
+            </If>
           </Paper>
           <OwnableActionsFab
             onDelete={this.props.onDelete}
@@ -611,6 +699,13 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             onAddToCollection={this.toggleAddToCollection}
             showBridge={() => this.setState({ showBridgeDialog: true })}
             downloadOwnable={this.downloadOwnable}
+            title={this.pkg.name}
+            onRedeem={(value: number | null) => {
+              if (value !== null) {
+                this.redeem();
+              }
+            }}
+            isRedeemable={this.state.isRedeemable}
           />
           <OwnableInfoDrawer
             open={this.state.showInfo}
@@ -638,7 +733,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             nftNetwork={this.nftNetwork}
           />
           <AddToCollectionDrawer
-            title="Add to Collection"
+            title="Add to Cotegory"
             open={this.state.showAddToCollection}
             onClose={this.closeAddToCollection}
             pkgId={this.props.chain.id}

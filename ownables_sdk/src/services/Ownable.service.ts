@@ -165,7 +165,7 @@ export default class OwnableService {
     stateDump: StateDump
   ): Promise<StateDump> {
     const rpc = this.rpc(partialChain.id);
-    if(!rpc) return stateDump;
+    if (!rpc) return stateDump;
 
     for (const event of partialChain.events) {
       stateDump = (await this.applyEvent(rpc, event, stateDump)).state;
@@ -213,13 +213,13 @@ export default class OwnableService {
   ): Promise<StateDump> {
     try {
       const info = { sender: LTOService.account.publicKey, funds: [] };
-      if(!this.rpc(chain.id)) return stateDump;
+      if (!this.rpc(chain.id)) return stateDump;
       //@ts-ignore
-        const { state: newStateDump } = await this.rpc(chain.id).execute(
-          msg,
-          info,
-          stateDump
-        );
+      const { state: newStateDump } = await this.rpc(chain.id).execute(
+        msg,
+        info,
+        stateDump
+      );
 
       delete msg["@context"]; // Shouldn't be set
       new Event({ "@context": "execute_msg.json", ...msg })
@@ -271,7 +271,7 @@ export default class OwnableService {
     );
     if (!consumerState || !consumableState)
       throw Error("State mismatch for consume");
-    if(this.rpc(consumer.id) === undefined || (await this.rpc(consumable.id)) === undefined) return;
+    if (this.rpc(consumer.id) === undefined || (await this.rpc(consumable.id)) === undefined) return;
     //@ts-ignore
     const { events, state: consumableStateDump } = await this.rpc(
       consumable.id
@@ -291,7 +291,7 @@ export default class OwnableService {
       },
     };
 
-    if(this.rpc(consumer.id) === undefined || (await this.rpc(consumable.id)) === undefined) return;
+    if (this.rpc(consumer.id) === undefined || (await this.rpc(consumable.id)) === undefined) return;
     //@ts-ignore
     const { state: consumerStateDump } = await this.rpc(
       consumer.id
@@ -354,9 +354,6 @@ export default class OwnableService {
     try {
       const storeId = `ownable:${chain.id}`;
       const stateStoreId = `${storeId}.state`;
-
-      console.log(uniqueMessageHash);
-
       const chainData = {
         chain: chain.toJSON(),
         state: chain.state.hex,

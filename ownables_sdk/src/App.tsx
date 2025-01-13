@@ -784,7 +784,7 @@ export default function App() {
         actions={[
           {
             id: HomePageEnums.CreateCollection,
-            title: "Create Collection",
+            title: "Create Category",
             icon: CollectionIcon,
           },
           // {
@@ -888,7 +888,7 @@ export default function App() {
       />
       <CreateCollectionDrawer
         open={showCollectionDrawer}
-        title="Create Collection"
+        title="Create Category"
         onClose={() => setShowCollectionDrawer(false)}
       />
       <CreateOwnablesDrawer

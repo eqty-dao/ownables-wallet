@@ -116,7 +116,7 @@ const AddToCollectionDrawer = (props: Props) => {
           <Box height={40} />
           <Box display={"flex"} flexDirection={"column"} width={"100%"}>
             <StyledButton transparent={false} onClick={onAddToCollection}>
-              Add to Collection
+              Add to Category
             </StyledButton>
             <Box height={8} />
             <StyledButton transparent={true} onClick={onCancel}>

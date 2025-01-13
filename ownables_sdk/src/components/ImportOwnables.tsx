@@ -66,7 +66,6 @@ const ImportOwnablesDrawer = (props: Props) => {
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
-    console.log("ImportOwnablesDrawer -> open", open);
     if (!open) return;
     const fetchData = async () => {
       setStartTime(Date.now());
@@ -104,14 +103,12 @@ const ImportOwnablesDrawer = (props: Props) => {
       setLoading(false);
       return;
     }
-    console.log("ImportOwnablesDrawer -> metadata", metadata);
     setTotalOwnables(metadata?.length || 0);
     setDebugMessage(`Ownables found: ${metadata.length}`);
     for (const hash of metadata) {
       const index = ownables.findIndex((o) => o.uniqueMessageHash === hash.hash);
       setDebugMessage(`Fetching ownable: ${hash.hash}`);
       const ownable = await PackageService.importFromRelayByMessageHash(hash.hash);
-      console.log("ImportOwnablesDrawer -> ownable", ownable);
       setDebugMessage(`Done Fetching ownable: ${hash.hash}`);
       setLastResponse(ownable ? ownable.name : "No response");
       if (ownable) {
