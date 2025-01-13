@@ -58,6 +58,7 @@ jobs:
         working-directory: .
         run: cd ownables_sdk && ls -la && npm i && npm run rustup
       - name: Prebuild the universal-wallet
+        working-directory: .
         run: cd .. && cd universal-wallet && ls -la && npm i && chmod +x ./run && ./run prebuild
         # run: cd ownables_sdk && npm i && cd .. && cd universal-wallet && npm i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV && ./run prebuild && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
       # Create a separate directory for the APK
