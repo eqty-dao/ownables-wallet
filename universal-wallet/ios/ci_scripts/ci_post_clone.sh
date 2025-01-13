@@ -46,6 +46,8 @@ echo "🔧 Build SDK"
 cd $OWNABLES_DIR
 npm i && npm run rustup && npm run build
 
+cd $BASE_DIR
+
 echo "🔧 Build SDK is done successfully"
 
 echo "🔧 Prebuild"
