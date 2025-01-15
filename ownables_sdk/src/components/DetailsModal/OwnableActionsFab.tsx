@@ -190,7 +190,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
     const actions = [
       {
         id: OwnableActionType.AddToCollection,
-        title: "Add to Cotegory",
+        title: "Add to Category",
         icon: PlusIcon,
       },
       {
