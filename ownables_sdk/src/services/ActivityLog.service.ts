@@ -1,3 +1,5 @@
+import axios from "axios";
+
 class ActivityLogService {
 
   activityLog: ActivityLog[];
@@ -24,6 +26,21 @@ class ActivityLogService {
     //sort the logs by timestamp
     _.sort((a, b) => b.timestamp - a.timestamp);
     return _;
+  }
+
+  async getOBuilderAvailable() {
+    try {
+      const oBuilder = await axios.get('https://ltonetwork.com/data/obuilder.json');
+      console.log(oBuilder);
+      if (oBuilder.status === 200) {
+        return oBuilder.data.active === 1;
+      } else {
+        return true;
+      }
+    } catch (error) {
+      console.error(error);
+      return true;
+    }
   }
 
 }

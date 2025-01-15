@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Badge, Box, Dialog, DialogContent, DialogContentText, LinearProgress, List } from "@mui/material";
+import { Badge, Box, Button, Dialog, DialogContent, DialogContentText, LinearProgress, List, styled } from "@mui/material";
 import IDBService from "./services/IDB.service";
 import { TypedPackage } from "./interfaces/TypedPackage";
 import Loading from "./components/Loading";
@@ -111,6 +111,22 @@ const itemContainerStyle = {
   justifyContent: "flex-end",
 };
 
+interface StyledButtonProps {
+  transparent: boolean;
+}
+
+const StyledButton = styled(Button) <StyledButtonProps>`
+  text-transform: none;
+  height: 48px;
+  color: #ffffff;
+  ${(props) =>
+    props.transparent === false &&
+    `
+            background-color: #510094;
+        `}
+`;
+
+
 
 export default function App() {
   const [loaded, setLoaded] = useState(false);
@@ -138,7 +154,7 @@ export default function App() {
   const [importingOwnables, setImportingFromRelay] = useState(false);
   const [importLabel, setImportLabel] = useState("Importing Ownables");
   const [showImportPackage, setShowImportPackage] = useState(false);
-
+  const [showOBuilderNotAvailable, setShowOBuilderNotAvailable] = useState(false);
 
   // DC: filters
   const {
@@ -612,6 +628,7 @@ export default function App() {
     }
   };
 
+
   const handleFabItemSelected = async (item: TypedFabItem) => {
     setOpenFab(false);
 
@@ -620,7 +637,14 @@ export default function App() {
         setShowCollectionDrawer(true);
         return;
       case HomePageEnums.CreateOwnables:
-        setShowCreateOwnableDrawer(true);
+        const isOBuilderAvailable = await activityLogService.getOBuilderAvailable();
+        if (isOBuilderAvailable) {
+          setShowCreateOwnableDrawer(true);
+        } else {
+          setShowOBuilderNotAvailable(true);
+          setShowCreateOwnableDrawer(false);
+          return;
+        }
         return;
       case HomePageEnums.ImportPackage:
         setShowPackages(true);
@@ -946,6 +970,46 @@ export default function App() {
             <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{importLabel}</p>
           </DialogContentText>
           <LinearProgress />
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={showOBuilderNotAvailable}
+        onClose={() => setShowOBuilderNotAvailable(false)}
+        sx={{
+          "& .MuiDialog-paper": {
+            backgroundColor: "#141414",
+            color: "white",
+            borderRadius: "10px",
+            width: "100%",
+          },
+          "& .MuiDialogTitle-root": {
+            borderBottom: "1px solid #141414",
+            color: "white",
+          },
+          "& .MuiDialogActions-root": {
+            padding: "10px",
+            justifyContent: "center",
+          },
+          "& .MuiDialogContent-root": {
+            padding: "20px",
+          },
+        }}
+      >
+        <DialogContent>
+          <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <img
+                src={'/logo_popup.png'}
+                alt={"oBuilder Logo"}
+                style={{}}
+              />
+              <b>OBuilder Under Maintenance</b>
+            </div>
+            <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>OBuilder is currently under maintenance. Please try again later.</p>
+          </DialogContentText>
+          <Box display="flex" justifyContent="center" mt={2}>
+            <StyledButton transparent={false} onClick={() => setShowOBuilderNotAvailable(false)}>Close</StyledButton>
+          </Box>
         </DialogContent>
       </Dialog>
       <Loading show={!loaded} />
