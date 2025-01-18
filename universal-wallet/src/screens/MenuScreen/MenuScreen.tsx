@@ -24,6 +24,7 @@ import { AirdropResponse } from '../../services/LTO.service';
 import { Card } from '../../components/Card';
 import { StyledLabel } from '../../components/styles/InputField.styles';
 import { BottomModal } from '../../components/BottomModal';
+
 export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
   const [installationId, setInstallationId] = useState('');
@@ -34,23 +35,18 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   const isEmulator = DeviceInfo.isEmulatorSync();
   const [validatInstallId, setValidatInstallId] = useState(false);
   const [hasNotClaimed, setHasNotClaimed] = useState(false);
+  const [isLoadingClaimStatus, setIsLoadingClaimStatus] = useState(true); // New loading state
   const [airdropModalVisible, setAirdropModalVisible] = useState(false);
   const [airdropModalMessage, setAirdropModalMessage] = useState('');
   const [airdropModalCode, setAirdropModalCode] = useState('');
 
-
   useEffect(() => {
     const getInitialData = async () => {
-      // get the device id
-      const id = (await DeviceInfo.getUniqueId()) + "-652"
-      // hash the id to make it more secure
+      const id = (await DeviceInfo.getUniqueId()) + "-652";
       const encryptedId = encryptData(id);
-      // const decryptedId = decryptData(encryptedId);
-      // console.log(encryptedId);
-      // console.log(decryptedId);
       setInstallationId(encryptedId.toString());
       setValidatInstallId(valid_decoded_values.includes(id));
-    }
+    };
     getInitialData().catch(error => {
       console.log(error);
     });
@@ -63,8 +59,6 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
       });
       return () => backHandler.remove();
     }
-
-
   }, []);
 
   useEffect(() => {
@@ -95,7 +89,6 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
         _installationId,
         accountAddress
       ) as AirdropResponse;
-      // snackbar
       if (response.success) {
         if (response.code) {
           setAirdropModalCode(response.code);
@@ -107,19 +100,19 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
         setAirdropModalMessage('Something went wrong, please try again later');
         setAirdropModalVisible(true);
       }
-
-
     } catch (error) {
       console.log(error);
       setShowMessage(true);
       setMessageInfo('Airdrop claim failed');
       setHasNotClaimed(false);
     }
-  }
+  };
 
   const checkClaimStatus = async () => {
+    setIsLoadingClaimStatus(true); // Set loading state to true
     const status = await LTOService.checkIfAlreadyClaimed(accountAddress);
     setHasNotClaimed(status);
+    setIsLoadingClaimStatus(false); // Set loading state to false
   };
 
   useEffect(() => {
@@ -130,7 +123,6 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
 
   const logOut = () => {
     LTOService.lock();
-
     navigation.reset({
       index: 0,
       routes: [{ name: 'SignIn' }],
@@ -206,12 +198,14 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
           />
         </View>
         {
-          !isEmulator && validatInstallId && !hasNotClaimed && (
-            <><StyledButton
-              text={'Validate Airdrop'}
-              onPress={validateAirdrop}
-              type="secondary"
-              textStyle={{ fontWeight: '600' }} />
+          !isEmulator && validatInstallId && !isLoadingClaimStatus && !hasNotClaimed && (
+            <>
+              <StyledButton
+                text={'Validate Airdrop'}
+                onPress={validateAirdrop}
+                type="secondary"
+                textStyle={{ fontWeight: '600' }}
+              />
               <BottomModal
                 title={airdropModalMessage}
                 body={[{ text: airdropModalCode ? `Thank you ! Your Airdrop claim has been validated, your code is: ` : '' }]}
@@ -227,6 +221,12 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
                 copyText={airdropModalCode}
               />
             </>
+          )      
+        }
+        {
+          isEmulator && (
+            <View style={{ width: '95%', marginBottom: 10 ,height:20 ,backgroundColor: '#656565', borderRadius: 10, paddingLeft: 10, justifyContent: 'center', alignItems: 'center' }}>
+            </View>
           )
         }
         <MainScreenMinorContainer>

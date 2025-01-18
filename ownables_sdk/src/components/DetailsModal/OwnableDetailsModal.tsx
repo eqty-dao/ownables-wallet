@@ -705,7 +705,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                 this.redeem();
               }
             }}
-            isRedeemable={this.state.isRedeemable}
+            isRedeemable={this.state.isRedeemable && !this.isRedeemed}
           />
           <OwnableInfoDrawer
             open={this.state.showInfo}
@@ -733,7 +733,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             nftNetwork={this.nftNetwork}
           />
           <AddToCollectionDrawer
-            title="Add to Cotegory"
+            title="Add to Category"
             open={this.state.showAddToCollection}
             onClose={this.closeAddToCollection}
             pkgId={this.props.chain.id}
