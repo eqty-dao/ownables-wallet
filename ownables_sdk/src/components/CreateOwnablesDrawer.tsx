@@ -145,7 +145,7 @@ const CreateOwnablesDrawer = (props: Props) => {
     try {
       const response =
         await axios.get(
-          `${AppConfig.OBUILDER()}/api/v1/availableChains`,
+          `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/availableChains`,
         );
       let _ = new Object();
       Object.keys(response.data).forEach((key) => {
@@ -170,9 +170,9 @@ const CreateOwnablesDrawer = (props: Props) => {
       setAvailableChains(availableChains);
       setAllBuildCosts(allBuildCosts);
       setBuildCost(value);
-      console.log("OBUILDER", AppConfig.OBUILDER());
+      console.log("OBUILDER", AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder()));
       const address = await axios.get(
-        `${AppConfig.OBUILDER()}/api/v1/GetServerInfo`,
+        `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/GetServerInfo`,
       );
       let serverAddress;
       if (network === Network.MAINNET) {
@@ -548,7 +548,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       const account = await LTOService.getAccount();
       const transaction = await LTOService.broadcast(tx!.signWith(account));
       setCreateOwnableMessage("Contacting oBuilder...");
-      const url = `${AppConfig.OBUILDER()}/api/v1/upload`;
+      const url = `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/upload`;
       const request = {
         headers: {},
         method: "POST",
@@ -601,8 +601,8 @@ const CreateOwnablesDrawer = (props: Props) => {
             const thumbnailBlob = getThumbnailBlob(thumbnail, blurThumbnail);
             zip.file(`thumbnail.webp`, thumbnailBlob);
           }
-          zip.generateAsync({ type: "blob" }).then((zipFile: Blob) => {
-            const url = `${AppConfig.OBUILDER()}/api/v1/upload?ltoNetworkId=${getNetwork(account.address)}`;
+          zip.generateAsync({ type: "blob" }).then(async (zipFile: Blob) => {
+            const url = `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/upload?ltoNetworkId=${getNetwork(account.address)}`;
             const formData = new FormData();
             formData.append("file", zipFile, formattedName + ".zip");
 
