@@ -89,7 +89,7 @@ const CreateCollectionDrawer = (props: Props) => {
       <Box p={2}>
         <LtoInput
           ref={nameCollectionRef}
-          label="Name Collection"
+          label="Name Category"
           maxLength={20}
         />
         <Box height={40} />

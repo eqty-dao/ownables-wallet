@@ -1,4 +1,5 @@
 import React, { useContext, useState } from 'react';
+import { Text } from 'react-native';
 import { RootStackScreenProps } from '../../../types';
 import { IMPORT_WITHSEEDS } from '../../constants/Text';
 import { MessageContext } from '../../context/UserMessage.context';
@@ -6,43 +7,63 @@ import LTOService from '../../services/LTO.service';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Title } from '../../components/Title';
 import { BackButton } from '../../components/BackButton';
-import { InputField } from '../../components/InputField';
 import { StyledButton } from '../../components/StyledButton';
-import { Text } from 'react-native';
+import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
+import { useClipboard } from '@react-native-clipboard/clipboard';
 
 export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
-  const [seedPhrase, setSeedPhrase] = useState<string>('');
+  const [words, setWords] = useState<string[]>(Array(15).fill(''));
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
+  const [data, setString] = useClipboard();
+
   const showMessage = (message: string) => {
     setShowMessage(true);
     setMessageInfo(message);
   };
+
   const validateSeedPhrase = (seed: string): boolean => {
     const regExp = /^[a-zA-Z]+( [a-zA-Z]+)*$/;
     return regExp.test(seed);
   };
 
+  const handleWordChange = (text: string, index: number) => {
+    const newWords = [...words];
+    newWords[index] = text.toLowerCase().trim();
+    setWords(newWords);
+  };
+
+  const handlePaste = (pasted: string) => {
+    const seedPhrase = pasted.trim().toLowerCase().split(' ');
+    if (seedPhrase.length < 12) {
+      setWords(Array(15).fill(''));
+      setShowMessage(true);
+      setMessageInfo('Seed phrase space reset.');
+      return;
+    }
+    setWords(seedPhrase);
+  };
+
   const handleImportFromSeed = async () => {
-    if (!seedPhrase) {
-      showMessage('Please enter a seed phrase to import.');
+    const seedPhrase = words.join(' ').trim();
+
+    if (!seedPhrase || words.some(word => !word)) {
+      showMessage('Please fill in all seed phrase words.');
       return;
     }
 
-    const trimmedSeed = seedPhrase.trim().toLowerCase();
-
-    if (!validateSeedPhrase(trimmedSeed)) {
-      showMessage('Invalid seed phrase, seed phase contains invalid characters.');
+    if (!validateSeedPhrase(seedPhrase)) {
+      showMessage('Invalid seed phrase, seed phrase contains invalid characters.');
       return;
     }
 
     try {
-      await LTOService.importAccount(trimmedSeed);
+      await LTOService.importAccount(seedPhrase);
       navigation.navigate('RegisterAccount', { data: 'seed' });
     } catch (error) {
       console.error('Error importing account:', error);
       showMessage('Failed to import account. Please try again.');
     } finally {
-      setSeedPhrase(''); // Clear the seed phrase from memory
+      setWords(Array(15).fill('')); // Clear the seed phrase from memory
     }
   };
 
@@ -50,20 +71,20 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
     <ScreenContainer>
       <BackButton onPress={navigation.goBack} />
       <Title title={IMPORT_WITHSEEDS.IMPORT_TITLE} />
-      <InputField
-        label={IMPORT_WITHSEEDS.INPUT_SEEDPHRASE.LABEL}
-        onChangeText={setSeedPhrase}
-        value={seedPhrase}
-        placeholder={IMPORT_WITHSEEDS.INPUT_SEEDPHRASE.PLACEHOLDER}
-        autoCapitalize="none"
+
+      <SeedPhraseInput
+        words={words}
+        onWordChange={handleWordChange}
+        showCopyButton={false}
+        onPaste={(pasted) => handlePaste(pasted)}
+        showPasteButton={true}
       />
+
       <StyledButton
         text={IMPORT_WITHSEEDS.BUTTON_IMPORT}
-        onPress={() => {
-          setSeedPhrase('');
-          handleImportFromSeed();
-        }}
+        onPress={handleImportFromSeed}
       />
+
       <Text
         style={{
           color: '#ffffff',
@@ -71,7 +92,9 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
           borderRadius: 5,
           marginTop: 20,
         }}
-      >Note:  You can only use one wallet address at a time. To use another wallet address, you can remove the current account at anytime and add a different one.</Text>
+      >
+        Note: You can only use one wallet address at a time. To use another wallet address, you can remove the current account at anytime and add a different one.
+      </Text>
     </ScreenContainer>
   );
 }
