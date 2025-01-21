@@ -28,21 +28,35 @@ class ActivityLogService {
     return _;
   }
 
-  async getOBuilderAvailable() {
+  async getOBuilderAvailable() : Promise<OBuilderResponse> {
     try {
       const oBuilder = await axios.get('https://ltonetwork.com/data/obuilder.json');
       if (oBuilder.status === 200) {
-        return oBuilder.data.active === 1;
+        return {
+          active: oBuilder?.data.active,
+          useBackup: oBuilder?.data.useBackup,
+          message: oBuilder?.data.message || ''
+        }
       } else {
-        return true;
+        return {
+          active: 1,
+          useBackup: 0,
+          message: ''
+        }
       }
     } catch (error) {
       console.error(error);
-      return true;
+      return {
+        active: 1,
+        useBackup: 0,
+        message: ''
+      }
     }
   }
 
-  async checkToUseBackupOBuilder() {
+
+
+  async checkToUseBackupOBuilder(): Promise<boolean | OBuilderResponse> {
     if(process.env.REACT_APP_USE_BACKUP_OBUILDER === 'false') {
       return false;
     }
@@ -66,4 +80,10 @@ export const activityLogService = new ActivityLogService();
 export interface ActivityLog {
   activity: string;
   timestamp: number;
+}
+
+export interface OBuilderResponse {
+  active: number;
+  useBackup: number;
+  message: string;
 }
