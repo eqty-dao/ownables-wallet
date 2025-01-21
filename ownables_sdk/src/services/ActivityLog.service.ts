@@ -28,7 +28,7 @@ class ActivityLogService {
     return _;
   }
 
-  async getOBuilderAvailable() : Promise<OBuilderResponse> {
+  async getOBuilderAvailable(): Promise<OBuilderResponse> {
     try {
       const oBuilder = await axios.get('https://ltonetwork.com/data/obuilder.json');
       if (oBuilder.status === 200) {
@@ -56,8 +56,8 @@ class ActivityLogService {
 
 
 
-  async checkToUseBackupOBuilder(): Promise<boolean | OBuilderResponse> {
-    if(process.env.REACT_APP_USE_BACKUP_OBUILDER === 'false') {
+  async checkToUseBackupOBuilder(): Promise<boolean> {
+    if (process.env.REACT_APP_USE_BACKUP_OBUILDER === 'false') {
       return false;
     }
     try {
