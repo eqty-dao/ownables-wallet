@@ -39,6 +39,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   const [airdropModalVisible, setAirdropModalVisible] = useState(false);
   const [airdropModalMessage, setAirdropModalMessage] = useState('');
   const [airdropModalCode, setAirdropModalCode] = useState('');
+  const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
     const getInitialData = async () => {
@@ -64,6 +65,11 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   useEffect(() => {
     getAccountAddress();
     getNickname();
+  }, []);
+
+  useEffect(() => {
+    const version = DeviceInfo.getVersion();
+    setAppVersion(`v${version}`);
   }, []);
 
   const getNickname = () => {
@@ -262,6 +268,20 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
           />
         </MainScreenMinorContainer>
         <SocialsCard />
+        <View style={{
+          position: 'absolute',
+          bottom: 10,
+          alignSelf: 'center',
+          opacity: 0.6
+        }}>
+          <StyledLabel style={{
+            fontSize: 12,
+            textAlign: 'center',
+            color: '#909092'
+          }}>
+            {appVersion ? `${appVersion}` : ''}
+          </StyledLabel>
+        </View>
       </MainScreenSubContainer>
     </MainScreenContainer>
   );
