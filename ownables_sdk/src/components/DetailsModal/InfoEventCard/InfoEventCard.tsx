@@ -9,6 +9,7 @@ import { themeColors } from "../../../theme/themeColors";
 import { themeStyles } from "../../../theme/themeStyles";
 import { TitleBodyText } from "./TitleBodyText";
 import { SmallSwitch } from "./SmallSwitch";
+import { sendRNPostMessage } from "../../../utils/postMessage";
 
 interface InfoEventCardProps {
   event: Event;
@@ -87,10 +88,11 @@ export default function InfoEventCard(props: InfoEventCardProps) {
           bodyText={
             <>
               <Link
-                href={
-                  process.env.REACT_APP_LTO_EXPLORER_URL +
-                  "/transaction/" +
-                  anchorTx
+                onClick={() =>
+                  sendRNPostMessage(JSON.stringify({
+                    type:"openExplorer",
+                    data: `${process.env.REACT_APP_LTO_EXPLORER_URL}/transaction/${anchorTx}`
+                  }))
                 }
               >
                 {anchorTx}
