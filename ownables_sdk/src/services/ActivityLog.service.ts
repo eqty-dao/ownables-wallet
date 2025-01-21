@@ -31,7 +31,6 @@ class ActivityLogService {
   async getOBuilderAvailable() {
     try {
       const oBuilder = await axios.get('https://ltonetwork.com/data/obuilder.json');
-      console.log(oBuilder);
       if (oBuilder.status === 200) {
         return oBuilder.data.active === 1;
       } else {
@@ -40,6 +39,23 @@ class ActivityLogService {
     } catch (error) {
       console.error(error);
       return true;
+    }
+  }
+
+  async checkToUseBackupOBuilder() {
+    if(process.env.REACT_APP_USE_BACKUP_OBUILDER === 'false') {
+      return false;
+    }
+    try {
+      const oBuilder = await axios.get('https://ltonetwork.com/data/obuilder.json');
+      if (oBuilder.status === 200) {
+        return oBuilder.data.useBackup === 1;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error(error);
+      return false;
     }
   }
 

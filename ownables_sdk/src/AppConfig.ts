@@ -38,11 +38,11 @@ const network = getNetworkFromQuery() as Network;
 const env = getEnvFromQuery() as Env;
 export var AppConfig = {
 
-  OBUILDER: () => {
+  OBUILDER: (useBackup: boolean) => {
     if (env === Env.STAGING) {
       return process.env.REACT_APP_OBUILDER_STAGING;
     } else {
-      return process.env.REACT_APP_OBUILDER_PROD;
+      return useBackup ? process.env.REACT_APP_OBUILDER_PROD_BACKUP : process.env.REACT_APP_OBUILDER_PROD;
     }
   },
   OBRIDGE: () => {
