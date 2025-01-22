@@ -6,6 +6,7 @@ import {View} from 'react-native';
 import Icon from './Icon';
 import IconButton from './IconButton';
 import Spacer from './Spacer';
+import { useNavigation } from '@react-navigation/native';
 
 export default function OverviewHeader(props: {
   onPress?: () => void;
@@ -16,13 +17,16 @@ export default function OverviewHeader(props: {
   hideQR?: boolean;
 }): JSX.Element {
   const colorScheme = useColorScheme();
+  const navigation = useNavigation();
 
   return (
     <HeaderContainer {...props}>
       <>{props.input}</>
       <View style={{flexDirection: 'row'}}>
-        {!props.hideQR && (
-          <IconButton onPress={props.onQrPress}>
+        {props.hideQR && (
+          <IconButton onPress={() => {
+            navigation.navigate('QrReader');
+          }}>
             <Icon icon="qr" size={25} color={Colors[colorScheme].white[100]} />
           </IconButton>
         )}

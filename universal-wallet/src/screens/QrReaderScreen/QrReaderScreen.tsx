@@ -1,0 +1,260 @@
+import React, { useEffect, useState, useContext } from 'react';
+import { Dimensions, StyleSheet, View, Share, TouchableOpacity } from 'react-native';
+import { RootStackScreenProps } from '../../../types';
+import { Container } from '../LockedScreen/LockedScreen.styles';
+import { QRCodeScanner } from '../../components/QRCodeScanner';
+import { Button, Text } from 'react-native-paper';
+import QRCode from 'react-native-qrcode-svg';
+import OverviewHeader from '../../components/OverviewHeader';
+import { StyledImage } from '../../components/styles/OverviewHeader.styles';
+import { logoTitle } from '../../utils/images';
+import Spinner from '../../components/Spinner';
+import LTOService from '../../services/LTO.service';
+import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
+import { Input } from 'react-native-elements';
+import { MessageContext } from '../../context/UserMessage.context';
+import { LTO_REPRESENTATION } from '../../constants/Quantities';
+import { TypedDetails } from '../../interfaces/TypedDetails';
+import { Transfer as TransferTx } from '@ltonetwork/lto';
+import { formatNumber } from '../../utils/formatNumber';
+import ConfirmationDialog from '../../components/ConfirmationDialog';
+import { confirmationMessage } from '../../utils/confirmationMessage';
+import { TypedTransaction } from '../../interfaces/TypedTransaction';
+import { TransferModal } from '../../components/TransferModal';
+
+const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>) => {
+    const [showCamera, setShowCamera] = useState(false);
+    const [address, setAddress] = useState('');
+    const { width } = Dimensions.get('window');
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [recipientAddress, setRecipientAddress] = useState('');
+    const [amountText, setAmountText] = useState('');
+    const [amount, setAmount] = useState<number | null>(null);
+    const [attachment, setAttachment] = useState('');
+    const [details, setDetails] = useState<TypedDetails>({} as TypedDetails);
+    const [tx, setTx] = useState<TransferTx | undefined>();
+    const [dialogVisible, setDialogVisible] = useState(false);
+    const { setShowMessage, setMessageInfo } = useContext(MessageContext);
+
+    const handleCodeScanned = async (value: string) => {
+        console.log('value', value);
+        setShowCamera(false);
+        const isValid = await LTOService.isValidAddress(value);
+        if (isValid) {
+            setRecipientAddress(value);
+            setShowTransferModal(true);
+        } else {
+            setMessageInfo('Invalid wallet address scanned');
+            setShowMessage(true);
+        }
+    };
+
+    useEffect(() => {
+        if (amountText === '') {
+            setAmount(0);
+        } else if (!amountText.match(/^\d+(\.\d+)?$/)) {
+            setAmount(null);
+        } else {
+            setAmount(Math.floor(parseFloat(amountText) * LTO_REPRESENTATION));
+        }
+    }, [amountText]);
+
+    const getAccountAddress = async () => {
+        try {
+            const account = await LTOService.getAccount();
+            setAddress(account.address);
+            const accountDetails = await LTOService.getBalance(account.address);
+            setDetails(accountDetails);
+        } catch (error) {
+            setMessageInfo('Error retrieving account data');
+            setShowMessage(true);
+        }
+    };
+
+    useEffect(() => {
+        getAccountAddress();
+    }, []);
+
+    const handleShare = async () => {
+        try {
+            const result = await Share.share({
+                message: address,
+                title: 'Share LTO Wallet Address',
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleSend = () => {
+        if (amount === null || amount <= 0) {
+            setMessageInfo('Amount must be a valid value');
+            setShowMessage(true);
+            return;
+        }
+        if (amount > details.available) {
+            setMessageInfo('Insufficient balance');
+            setShowMessage(true);
+            return;
+        }
+        setTx(new TransferTx(recipientAddress, amount, attachment));
+        setDialogVisible(true);
+        setShowTransferModal(false);
+    };
+
+    const sendTx = async () => {
+        try {
+            if (!tx) throw new Error('Transaction is not defined');
+            const account = await LTOService.getAccount();
+            const signedTx = tx.signWith(account);
+            await LTOService.broadcast(signedTx);
+            setMessageInfo('Transaction sent successfully!');
+            setShowMessage(true);
+            navigation.goBack();
+        } catch (error) {
+            setShowMessage(true);
+            setMessageInfo('Failed to send transaction. Please try again later');
+        }
+    };
+
+    const handleCancel = () => {
+        setTx(undefined);
+        setDialogVisible(false);
+    };
+
+    const availableLTOText = formatNumber(Math.max(details.available - LTO_REPRESENTATION, 0));
+    const sendButtonDisabled = amount === null || amount <= 0 || amount > details.available;
+    const getErrorMessage = () => {
+        if (amount === null || amount < 0) return 'Invalid amount';
+        if (amount > details.available) return 'Insufficient balance';
+        return '';
+    };
+
+    return (
+        <Container style={styles.container}>
+            <View style={{
+                backgroundColor: 'transparent',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                width: '100%',
+                height: 50,
+            }}>
+                <FontAwesome6 name="xmark" size={24} color="#FFFFFF" onPress={() => navigation.goBack()} style={{paddingRight: 10}} />
+            </View>
+            {showCamera ? (
+                <View style={styles.cameraContainer}>
+                    <QRCodeScanner onCodeScanned={handleCodeScanned} onBack={() => setShowCamera(false)} />
+
+                </View>
+            ) : (
+                <View style={styles.qrContainer}>
+                    <Text style={styles.title}>Your Wallet Address</Text>
+                    {address ? (
+                        <>
+                            <QRCode value={address} size={200} />
+                            <View style={styles.addressContainer}>
+                                <Input
+                                    placeholder="Address"
+                                    value={address}
+                                    editable={false}
+                                    inputContainerStyle={{ borderBottomWidth: 0 }}
+                                    inputStyle={styles.addressInput}
+                                    style={styles.addressInputContainer}
+                                    label=""
+                                />
+                                <FontAwesome6
+                                    name="share-square"
+                                    onPress={handleShare}
+                                    size={18}
+                                    color="#909092"
+                                    style={styles.shareIcon}
+                                />
+                            </View>
+                        </>
+                    ) : (
+                        <Spinner />
+                    )}
+                    <Button mode="contained" onPress={() => setShowCamera(true)} style={styles.button}>
+                        Scan QR Code
+                    </Button>
+                </View>
+            )}
+
+            <TransferModal
+                visible={showTransferModal}
+                onClose={() => setShowTransferModal(false)}
+                onSubmit={handleSend}
+                amount={amountText}
+                onAmountChange={setAmountText}
+                note={attachment}
+                onNoteChange={setAttachment}
+                balance={availableLTOText}
+                isValid={!sendButtonDisabled}
+                errorMessage={getErrorMessage()}
+                recipientAddress={recipientAddress}
+            />
+
+            <ConfirmationDialog
+                visible={dialogVisible}
+                message={tx ? confirmationMessage(tx.toJSON() as TypedTransaction) : ''}
+                onPress={sendTx}
+                onCancel={handleCancel}
+            />
+        </Container>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#0D0D0D',
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cameraContainer: {
+        flex: 1,
+        position: 'relative',
+    },
+    qrContainer: {
+        flex: 1,
+        alignItems: 'center',
+        padding: 20,
+        marginTop: 20,
+        justifyContent: 'space-evenly',
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        color: '#FFFFFF',
+    },
+    addressContainer: {
+        flexDirection: 'row',
+        width: '95%',
+        marginTop: 30,
+        alignItems: 'center',
+    },
+    addressInput: {
+        color: '#FFFFFF',
+        fontSize: Dimensions.get('window').width * 0.035,
+    },
+    addressInputContainer: {
+        width: '110%',
+        backgroundColor: '#656565',
+        borderRadius: 10,
+        paddingLeft: 10,
+        marginBottom: 10,
+    },
+    shareIcon: {
+        position: 'absolute',
+        right: -15,
+        top: 10,
+    },
+    button: {
+        width: '80%',
+        marginTop: 20,
+    },
+});
+
+export default QrReaderScreen;
