@@ -1,13 +1,10 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { Dimensions, StyleSheet, View, Share, TouchableOpacity } from 'react-native';
+import React, { useContext, useEffect, useState } from 'react';
+import { Dimensions, StyleSheet, View, Share, Alert } from 'react-native';
 import { RootStackScreenProps } from '../../../types';
 import { Container } from '../LockedScreen/LockedScreen.styles';
 import { QRCodeScanner } from '../../components/QRCodeScanner';
 import { Button, Text } from 'react-native-paper';
 import QRCode from 'react-native-qrcode-svg';
-import OverviewHeader from '../../components/OverviewHeader';
-import { StyledImage } from '../../components/styles/OverviewHeader.styles';
-import { logoTitle } from '../../utils/images';
 import Spinner from '../../components/Spinner';
 import LTOService from '../../services/LTO.service';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
@@ -21,9 +18,13 @@ import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { confirmationMessage } from '../../utils/confirmationMessage';
 import { TypedTransaction } from '../../interfaces/TypedTransaction';
 import { TransferModal } from '../../components/TransferModal';
+import { BottomModal } from '../../components/BottomModal';
+import DeviceInfo from 'react-native-device-info';
 
 const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>) => {
     const [showCamera, setShowCamera] = useState(false);
+    const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+    const [promotionCode, setPromotionCode] = useState('');
     const [address, setAddress] = useState('');
     const { width } = Dimensions.get('window');
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -35,10 +36,46 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     const [tx, setTx] = useState<TransferTx | undefined>();
     const [dialogVisible, setDialogVisible] = useState(false);
     const { setShowMessage, setMessageInfo } = useContext(MessageContext);
+    const isEmulator = DeviceInfo.isEmulatorSync();
 
     const handleCodeScanned = async (value: string) => {
         console.log('value', value);
         setShowCamera(false);
+
+        // Check if it's a promotional URL
+        if (value.startsWith('https://lto.network/?code=') && !isEmulator) {
+            let code = value.split('code=')[1];
+            try {
+                const response = await fetch('https://ownables-swap.lto.network/code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        address: address,
+                        code: code
+                    })
+                });
+                console.log('response', response);
+                if (response.ok) {
+                    setPromotionCode(code);
+                    setShowCelebrationModal(true);
+                } else {
+                    console.log('response.ok', response.ok);
+                    setMessageInfo('Invalid or expired QR code');
+                    setShowMessage(true);
+                    return;
+                }
+            } catch (error) {
+                console.error(error);
+                setMessageInfo('Failed to process QR code');
+                setShowMessage(true);
+                return;
+            }
+            return;
+        }
+
+        // Handle regular wallet address scanning
         const isValid = await LTOService.isValidAddress(value);
         if (isValid) {
             setRecipientAddress(value);
@@ -46,6 +83,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         } else {
             setMessageInfo('Invalid wallet address scanned');
             setShowMessage(true);
+            return;
         }
     };
 
@@ -66,8 +104,10 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
             const accountDetails = await LTOService.getBalance(account.address);
             setDetails(accountDetails);
         } catch (error) {
+            console.error(error);
             setMessageInfo('Error retrieving account data');
             setShowMessage(true);
+            return;
         }
     };
 
@@ -87,6 +127,12 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     };
 
     const handleSend = () => {
+        const errorMessage = getErrorMessage();
+        if (errorMessage !== '') {
+            setMessageInfo(errorMessage);
+            setShowMessage(true);
+            return;
+        }
         if (amount === null || amount <= 0) {
             setMessageInfo('Amount must be a valid value');
             setShowMessage(true);
@@ -97,6 +143,12 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
             setShowMessage(true);
             return;
         }
+        if (!LTOService.isValidAddress(recipientAddress)) {
+            setMessageInfo('Invalid recipient address');
+            setShowMessage(true);
+            return;
+        }
+        console.log('amount', amount);
         setTx(new TransferTx(recipientAddress, amount, attachment));
         setDialogVisible(true);
         setShowTransferModal(false);
@@ -112,18 +164,19 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
             setShowMessage(true);
             navigation.goBack();
         } catch (error) {
-            setShowMessage(true);
+            console.error(error);
             setMessageInfo('Failed to send transaction. Please try again later');
+            setShowMessage(true);
         }
     };
 
     const handleCancel = () => {
         setTx(undefined);
         setDialogVisible(false);
+        navigation.goBack();
     };
 
     const availableLTOText = formatNumber(Math.max(details.available - LTO_REPRESENTATION, 0));
-    const sendButtonDisabled = amount === null || amount <= 0 || amount > details.available;
     const getErrorMessage = () => {
         if (amount === null || amount < 0) return 'Invalid amount';
         if (amount > details.available) return 'Insufficient balance';
@@ -139,7 +192,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                 width: '100%',
                 height: 50,
             }}>
-                <FontAwesome6 name="xmark" size={24} color="#FFFFFF" onPress={() => navigation.goBack()} style={{paddingRight: 10}} />
+                <FontAwesome6 name="xmark" size={24} color="#FFFFFF" onPress={() => navigation.goBack()} style={{ paddingRight: 10 }} />
             </View>
             {showCamera ? (
                 <View style={styles.cameraContainer}>
@@ -180,6 +233,26 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                 </View>
             )}
 
+            <BottomModal
+                visible={showCelebrationModal}
+                onCancel={() => {
+                    setShowCelebrationModal(false);
+                    navigation.goBack();
+                }}
+                title="🎉 Congratulations!"
+                body={[
+                    { text: "You've successfully claimed your promotion!", heading: true },
+                    { text: `Promotion code: ${promotionCode}` }
+                ]}
+                submitText="Done"
+                submitButtonType="primary"
+                onSubmit={() => {
+                    setShowCelebrationModal(false);
+                    navigation.goBack();
+                }}
+                copyText={promotionCode}
+            />
+
             <TransferModal
                 visible={showTransferModal}
                 onClose={() => setShowTransferModal(false)}
@@ -189,7 +262,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                 note={attachment}
                 onNoteChange={setAttachment}
                 balance={availableLTOText}
-                isValid={!sendButtonDisabled}
+                isValid={getErrorMessage() === ''}
                 errorMessage={getErrorMessage()}
                 recipientAddress={recipientAddress}
             />

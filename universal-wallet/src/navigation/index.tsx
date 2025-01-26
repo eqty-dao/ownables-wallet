@@ -152,7 +152,7 @@ function RootNavigator(): any {
         <Stack.Screen name="CreateLease" component={CreateLeaseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Lease" component={LeaseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="QrReader" component={QrReaderScreen} options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="QrReader" component={QrReaderScreen} options={{ headerShown: false, presentation: 'containedModal' }} />
       </Stack.Navigator>
     )
   );

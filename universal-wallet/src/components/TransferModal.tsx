@@ -1,9 +1,8 @@
 import React from 'react';
-import { Modal, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { Modal, StyleSheet, View, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { Input } from 'react-native-elements';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
-import styled from 'styled-components/native';
 
 interface TransferModalProps {
     visible: boolean;
@@ -18,21 +17,6 @@ interface TransferModalProps {
     errorMessage?: string;
     recipientAddress: string;
 }
-interface StyledButtonProps {
-    transparent: boolean;
-  }
-  
-  const StyledButton = styled(Button) <StyledButtonProps>`
-    text-transform: none;
-    height: 48px;
-    color: #ffffff;
-    paddingBottom: 50px;
-    ${(props) =>
-      props.transparent === false &&
-      `
-          background-color: #510094;
-      `}
-  `;
 export const TransferModal: React.FC<TransferModalProps> = ({
     visible,
     onClose,
@@ -53,7 +37,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             visible={visible}
             onRequestClose={onClose}
         >
-            <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView style={styles.modalOverlay} behavior="padding">
                 <View style={styles.modalContent}>
                     <View style={styles.header}>
                         <Text style={styles.title}>Send LTO</Text>
@@ -94,16 +78,20 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                         <Text style={styles.feeAmount}>0.08 LTO</Text>
                     </View>
 
-                    <StyledButton
+                    <Button
                         onPress={onSubmit}
                         disabled={!isValid}
                         style={[styles.button, !isValid && styles.buttonDisabled]}
-                        transparent={false}
+                        mode="contained"
+                        contentStyle={{
+                            height: 50,
+                            justifyContent: 'center',
+                        }}
                     >
-                        Send LTO
-                    </StyledButton>
+                        <Text style={styles.buttonText}>Send LTO</Text>
+                    </Button>
                 </View>
-            </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };
@@ -173,5 +161,10 @@ const styles = StyleSheet.create({
     },
     buttonDisabled: {
         opacity: 0.5,
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 }); 
