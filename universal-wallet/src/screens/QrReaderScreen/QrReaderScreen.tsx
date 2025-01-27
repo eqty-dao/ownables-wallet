@@ -43,9 +43,10 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         setShowCamera(false);
 
         // Check if it's a promotional URL
-        if (value.startsWith('https://lto.network/?code=') && !isEmulator) {
+        if (value.startsWith('https://blog.ltonetwork.com/rwa-ownables?code=') && !isEmulator) {
             let code = value.split('code=')[1];
             try {
+                const deviceId = await DeviceInfo.getUniqueId();
                 const response = await fetch('https://ownables-swap.lto.network/code', {
                     method: 'POST',
                     headers: {
@@ -53,13 +54,33 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                     },
                     body: JSON.stringify({
                         address: address,
-                        code: code
+                        code: code,
+                        deviceId: deviceId
                     })
                 });
                 console.log('response', response);
                 if (response.ok) {
-                    setPromotionCode(code);
-                    setShowCelebrationModal(true);
+                    const _response = await response.json();
+                    if (_response?.message) {
+                        const status = _response.message;
+                        if (status === '200') {
+                            setPromotionCode(code);
+                            setShowCelebrationModal(true);
+                        } else if (status === '401') {
+                            // Thank you , your enntry has been received already
+                            setMessageInfo("Thank you, your entry has been received already");
+                            setShowMessage(true);
+                            return;
+                        } else {
+                            setMessageInfo('Invalid or expired QR code');
+                            setShowMessage(true);
+                            return;
+                        }
+                    } else {
+                        setMessageInfo('Invalid or expired QR code');
+                        setShowMessage(true);
+                        return;
+                    }
                 } else {
                     console.log('response.ok', response.ok);
                     setMessageInfo('Invalid or expired QR code');
