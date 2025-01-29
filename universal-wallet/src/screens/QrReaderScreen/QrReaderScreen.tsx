@@ -43,39 +43,38 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         setShowCamera(false);
 
         // Check if it's a promotional URL
-        if (value.startsWith('https://blog.ltonetwork.com/rwa-ownables?code=') && !isEmulator) {
+        if (value.startsWith('https://blog.ltonetwork.com/rwa-ownable/?code=') && !isEmulator) {
             let code = value.split('code=')[1];
             try {
                 const deviceId = await DeviceInfo.getUniqueId();
+                const body = {
+                    body: {
+                        wallet: address,
+                        code: code,
+                        installationId: deviceId
+                    }
+                }
                 const response = await fetch('https://ownables-swap.lto.network/code', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        address: address,
-                        code: code,
-                        deviceId: deviceId
-                    })
+                    body: JSON.stringify(body)
                 });
                 console.log('response', response);
-                if (response.ok) {
-                    const _response = await response.json();
-                    if (_response?.message) {
-                        const status = _response.message;
-                        if (status === '200') {
-                            setPromotionCode(code);
-                            setShowCelebrationModal(true);
-                        } else if (status === '401') {
-                            // Thank you , your enntry has been received already
-                            setMessageInfo("Thank you, your entry has been received already");
-                            setShowMessage(true);
-                            return;
-                        } else {
-                            setMessageInfo('Invalid or expired QR code');
-                            setShowMessage(true);
-                            return;
-                        }
+                const _response = await response.json();
+                console.log('_response', _response);
+                if (_response?.statusCode) {
+                    const status = _response.statusCode;
+                    console.log('status', status);
+                    if (status === 200 || status === 201) {
+                        setPromotionCode(code);
+                        setShowCelebrationModal(true);
+                    } else if (status === 401 || status === 400) {
+                        // Thank you , your enntry has been received already
+                        setMessageInfo("Thank you, your entry has been received already");
+                        setShowMessage(true);
+                        return;
                     } else {
                         setMessageInfo('Invalid or expired QR code');
                         setShowMessage(true);
