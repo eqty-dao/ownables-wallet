@@ -24,6 +24,7 @@ import DeviceInfo from 'react-native-device-info';
 const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>) => {
     const [showCamera, setShowCamera] = useState(false);
     const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+    const [showConfirmationModal, setShowConfirmationModal] = useState(false);
     const [promotionCode, setPromotionCode] = useState('');
     const [address, setAddress] = useState('');
     const { width } = Dimensions.get('window');
@@ -37,6 +38,8 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     const [dialogVisible, setDialogVisible] = useState(false);
     const { setShowMessage, setMessageInfo } = useContext(MessageContext);
     const isEmulator = DeviceInfo.isEmulatorSync();
+    const [pendingPromoCode, setPendingPromoCode] = useState('');
+    const [pendingApiBody, setPendingApiBody] = useState<any>(null);
 
     const handleCodeScanned = async (value: string) => {
         console.log('value', value);
@@ -54,51 +57,16 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                         installationId: deviceId
                     }
                 }
-                const response = await fetch('https://ownables-swap.lto.network/code', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(body)
-                });
-                console.log('response', response);
-                const _response = await response.json();
-                console.log('_response', _response);
-                if (_response?.statusCode) {
-                    const status = _response.statusCode;
-                    console.log('status', status);
-                    if (status === 200 || status === 201) {
-                        setPromotionCode(code);
-                        setShowCelebrationModal(true);
-                    } else if (status === 401 || status === 400) {
-                        const message = _response.message;
-                        if(message==='Invalid Code'){
-                            setMessageInfo("Invalid code");
-                            setShowMessage(true);
-                            return;
-                        }
-                        // Thank you , your enntry has been received already
-                        setMessageInfo("Thank you, your entry has been received already");
-                        setShowMessage(true);
-                        return;
-                    } else {
-                        setMessageInfo('Invalid or expired QR code');
-                        setShowMessage(true);
-                        return;
-                    }
-                } else {
-                    console.log('response.ok', response.ok);
-                    setMessageInfo('Invalid or expired QR code');
-                    setShowMessage(true);
-                    return;
-                }
+                setPendingPromoCode(code);
+                setPendingApiBody(body);
+                setShowConfirmationModal(true);
+                return;
             } catch (error) {
                 console.error(error);
                 setMessageInfo('Failed to process QR code');
                 setShowMessage(true);
                 return;
             }
-            return;
         }
 
         // Handle regular wallet address scanning
@@ -209,6 +177,53 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         return '';
     };
 
+    const handleConfirmPromotion = async () => {
+        setShowConfirmationModal(false);
+        try {
+            const response = await fetch('https://ownables-swap.lto.network/code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(pendingApiBody)
+            });
+            console.log('response', response);
+            const _response = await response.json();
+            console.log('_response', _response);
+            if (_response?.statusCode) {
+                const status = _response.statusCode;
+                console.log('status', status);
+                if (status === 200 || status === 201) {
+                    setPromotionCode(pendingPromoCode);
+                    setShowCelebrationModal(true);
+                } else if (status === 401 || status === 400) {
+                    const message = _response.message;
+                    if(message==='Invalid Code'){
+                        setMessageInfo("Invalid code");
+                        setShowMessage(true);
+                        return;
+                    }
+                    setMessageInfo("Thank you, your entry has been received already");
+                    setShowMessage(true);
+                    return;
+                } else {
+                    setMessageInfo('Invalid or expired QR code');
+                    setShowMessage(true);
+                    return;
+                }
+            } else {
+                console.log('response.ok', response.ok);
+                setMessageInfo('Invalid or expired QR code');
+                setShowMessage(true);
+                return;
+            }
+        } catch (error) {
+            console.error(error);
+            setMessageInfo('Failed to process QR code');
+            setShowMessage(true);
+        }
+    };
+
     return (
         <Container style={styles.container}>
             <View style={{
@@ -298,6 +313,23 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                 message={tx ? confirmationMessage(tx.toJSON() as TypedTransaction) : ''}
                 onPress={sendTx}
                 onCancel={handleCancel}
+            />
+
+            <BottomModal
+                visible={showConfirmationModal}
+                onCancel={() => {
+                    setShowConfirmationModal(false);
+                    navigation.goBack();
+                }}
+                title="🎟️ Claim QR Code"
+                body={[
+                    { text: "Would you like to claim this QR code?", heading: true },
+                    { text: "This will redeem your QR code and an ownable will be sent to your wallet." }
+                ]}
+                submitText="Yes, Claim It"
+                cancelText="No, Cancel"
+                submitButtonType="primary"
+                onSubmit={handleConfirmPromotion}
             />
         </Container>
     );
