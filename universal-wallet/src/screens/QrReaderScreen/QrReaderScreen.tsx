@@ -43,7 +43,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         setShowCamera(false);
 
         // Check if it's a promotional URL
-        if (value.startsWith('https://blog.ltonetwork.com/rwa-ownable/?code=') && !isEmulator) {
+        if (value.startsWith('https://blog.ltonetwork.com/rwa-ownables?code=') && !isEmulator) {
             let code = value.split('code=')[1];
             try {
                 const deviceId = await DeviceInfo.getUniqueId();
@@ -71,6 +71,12 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                         setPromotionCode(code);
                         setShowCelebrationModal(true);
                     } else if (status === 401 || status === 400) {
+                        const message = _response.message;
+                        if(message==='Invalid Code'){
+                            setMessageInfo("Invalid code");
+                            setShowMessage(true);
+                            return;
+                        }
                         // Thank you , your enntry has been received already
                         setMessageInfo("Thank you, your entry has been received already");
                         setShowMessage(true);
