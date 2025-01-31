@@ -459,4 +459,31 @@ export default class OwnableService {
 
     return zip;
   }
+
+  static async toDataURL(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  static async getImageAndType(chain: EventChain): Promise<{ image: string, type: string }> {
+    try {
+      const packageCid: string = chain.events[0].parsedData.package;
+      const image = (await IDBService.getAll(`package:${packageCid}`))?.find((i: any) => {
+        const extension = i.name?.split(".").pop();
+        return extension === "webp" || extension === "png" || extension === "jpg" || extension === "jpeg" || extension === "gif";
+      });
+      if (!image) return { image: '', type: '' };
+      const imageData = await PackageService.getAsset(packageCid, image.name, (fr, file) => fr.readAsArrayBuffer(file));
+      const imageBlob = new Blob([imageData], { type: image.name?.split(".").pop() });
+      const imagebase64 = await this.toDataURL(imageBlob);
+      return { image: imagebase64, type: image.name?.split(".").pop() };
+    } catch (error) {
+      console.error(error);
+      return { image: '', type: '' };
+    }
+  }
 }

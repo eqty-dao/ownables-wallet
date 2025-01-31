@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, Button, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Button, Platform, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useStaticServer } from '../../hooks/useStaticServer';
 import { MainScreenContainer } from '../../components/MainScreenContainer';
@@ -54,6 +54,54 @@ const NewOwnablesTabScreen = () => {
         return data.replace(/\\/g, '');
     }
 
+    const openFileLocation = (path: string) => {
+        Linking.openURL(`file://${path}`)
+            .then(() => console.log('File opened successfully'))
+            .catch((error: any) => console.error('Error opening file:', error));
+    }
+
+    const downloadOwnable = async (data: any) => {
+        const { base64Data, filename } = data;
+        const path = `${RNFS.DocumentDirectoryPath}/${filename}`;
+        setDownloadModalMessage(`Downloading ${filename}...`);
+        try {
+            await RNFS.writeFile(path, base64Data, 'base64');
+            console.log('File written to', path);
+            setDownloadModalMessage(`Downloaded ${filename} successfully!`);
+            setMessageInfo(`Downloaded Ownable to ${Platform.OS === 'android' ? 'Downloads' : 'Files'}`);
+            setShowMessage(true);
+            openFileLocation(path);
+        } catch (error: any) {
+            console.error('Error writing file:', error);
+            setDownloadModalMessage(`Error downloading ${filename}. Please try again.`);
+        } finally {
+            setTimeout(() => {
+                setShowDownloadModal(false);
+            }, 3000);
+        }
+    }
+
+    const downloadImage = async (data: any) => {
+        const { image, filename } = data;
+        const path = `${RNFS.DocumentDirectoryPath}/${filename}`;
+        setDownloadModalMessage(`Downloading ${filename}...`);
+        try {
+            await RNFS.writeFile(path, image, 'base64');
+            console.log('File written to', path);
+            setDownloadModalMessage(`Downloaded ${filename} successfully!`);
+            setMessageInfo(`Downloaded Image to ${Platform.OS === 'android' ? 'Downloads' : 'Files'}`);
+            setShowMessage(true);
+            openFileLocation(path);
+        } catch (error: any) {
+            console.error('Error writing file:', error);
+            setDownloadModalMessage(`Error downloading ${filename}. Please try again.`);
+        } finally {
+            setTimeout(() => {
+                setShowDownloadModal(false);
+            }, 3000);
+        }
+    }
+
     const handleMessageFromWeb = (event: any) => {
         try {
             // console.log('url:', url);
@@ -78,23 +126,6 @@ const NewOwnablesTabScreen = () => {
             }
 
             if (data.type === 'downloadOwnable') {
-                const downloadOwnable = async (data: any) => {
-                    const { base64Data, filename } = data;
-                    const path = `${RNFS.DocumentDirectoryPath}/${filename}`;
-                    RNFS.writeFile(path, base64Data, 'base64').then(() => {
-                        console.log('File written to', path);
-                        setDownloadModalMessage(`Downloaded ${filename}`);
-                    }).catch((error) => {
-                        console.error('Error writing file:', error);
-                        setDownloadModalMessage(`Error downloading ${filename}`);
-                    }).finally(() => {
-                        setTimeout(() => {
-                            setShowDownloadModal(false);
-                            setMessageInfo(`Downloaded Ownable to ${Platform.OS === 'android' ? 'Downloads' : 'Files'}`);
-                            setShowMessage(true);
-                        }, 2000);
-                    });
-                }
                 if (Platform.OS === 'android') {
                     //check for permissions 
                     check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE)
@@ -133,6 +164,10 @@ const NewOwnablesTabScreen = () => {
                 }
                 setShowDownloadModal(true);
 
+            }
+
+            if(data.type === 'downloadImage'){
+                downloadImage(data);
             }
 
             if (data.type === 'address') {

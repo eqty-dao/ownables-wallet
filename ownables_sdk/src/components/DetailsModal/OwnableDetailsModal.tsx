@@ -482,6 +482,25 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     }
   }
 
+  downloadImage = async () => {
+    try {
+      const { image, type } = await OwnableService.getImageAndType(this.chain);
+      if (!image) {
+        console.error("No image found");
+        enqueueSnackbar("Requested data is not available", { variant: "error" });
+        return;
+      }
+      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+        this.chain.state?.base58,
+        8,
+        ""
+      )}.${type}`;
+      sendRNPostMessage(JSON.stringify({ type: "downloadImage", image: image, filename: filename }));
+    } catch (e) {
+      console.error("OwnableThumb -> getImage -> e", e);
+    }
+  }
+
   private async redeem(): Promise<void> {
     try {
       const redeemAddress = await RedeemService.redeemAddress();
@@ -699,6 +718,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             onAddToCollection={this.toggleAddToCollection}
             showBridge={() => this.setState({ showBridgeDialog: true })}
             downloadOwnable={this.downloadOwnable}
+            downloadImage={this.downloadImage}
             title={this.pkg.name}
             onRedeem={(value: number | null) => {
               if (value !== null) {
