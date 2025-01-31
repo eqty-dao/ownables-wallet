@@ -1,5 +1,5 @@
 import { Component, ReactNode, RefObject, createRef } from "react";
-import { Modal, Box, Paper, Tooltip } from "@mui/material";
+import { Modal, Box, Paper, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, Typography, DialogContentText } from "@mui/material";
 import OwnableActionsFab from "./OwnableActionsFab";
 import { themeColors } from "../../theme/themeColors";
 import { themeStyles } from "../../theme/themeStyles";
@@ -38,6 +38,7 @@ import { sendRNPostMessage } from "../../utils/postMessage";
 import SessionStorageService from "../../services/SessionStorage.service";
 import LocalStorageService from "../../services/LocalStorage.service";
 import { RedeemService } from "../../services/Redeem.service";
+import { activityLogService } from "../../services/ActivityLog.service";
 
 interface OwnableProps {
   chain: EventChain;
@@ -84,6 +85,8 @@ interface OwnableDetailsModalState {
   showBridgeDialog: boolean;
   isRedeemable: boolean;
   redeemAddress?: string;
+  redeemLoading: boolean;
+  redeemStatus: string;
 }
 
 const backButtonStyle = {
@@ -161,6 +164,8 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       },
       showBridgeDialog: false,
       isRedeemable: false,
+      redeemLoading: false,
+      redeemStatus: '',
     };
   }
 
@@ -483,39 +488,94 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   private async redeem(): Promise<void> {
+    this.setState({
+      redeemLoading: true,
+      redeemStatus: 'Initializing redeem process...'
+    });
+
     try {
+      // Get redeem address
+      this.setState({ redeemStatus: 'Fetching redeem address...' });
       const redeemAddress = await RedeemService.redeemAddress();
+
+      // Get genesis address
+      this.setState({ redeemStatus: 'Verifying ownable creator...' });
       const genesisAddress = await RedeemService.getOwnableCreator(
         this.chain.events
       );
+
+      // Log start of redemption
+      activityLogService.logActivity({
+        activity: `Started Redeeming Ownable ${this.pkg.name} - for ${redeemAddress}`,
+        timestamp: new Date().getTime(),
+      });
+
+      // Check if redeemable
+      this.setState({ redeemStatus: 'Checking validity of ownable...' });
       const response = await RedeemService.isRedeemable(
         genesisAddress,
         this.pkg.name
       );
 
+      if (!response.isRedeemable) {
+        throw new Error('This ownable is not redeemable at this time.');
+      }
+
+      // Execute transfer
+      this.setState({ redeemStatus: 'Transferring ownable...' });
       await this.execute({ transfer: { to: redeemAddress } });
 
+      // Prepare and send ownable
+      this.setState({ redeemStatus: 'Preparing ownable for transfer...' });
       const zip = await OwnableService.zip(this.chain);
       const content = await zip.generateAsync({
         type: "uint8array",
       });
 
+      this.setState({ redeemStatus: 'Almost done...' });
       await RelayService.sendOwnable(redeemAddress, content);
-      enqueueSnackbar("Successfully redeemed!", { variant: "success" });
 
+      // Store redemption details
+      this.setState({ redeemStatus: 'Storing redemption details...' });
       const account = LTOService.getAccount();
       const address = (await account).address;
-      console.log(address);
-
       await RedeemService.storeDetail(address, response.value, this.chain.id);
 
+      // Clean up if necessary
       if (this.pkg.uniqueMessageHash) {
-        console.log(this.pkg.uniqueMessageHash);
+        this.setState({ redeemStatus: 'Cleaning up...' });
         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
       }
-    } catch (error) {
+
+      // Log successful redemption
+      activityLogService.logActivity({
+        activity: `Successfully Redeemed Ownable ${this.pkg.name} - for ${redeemAddress}`,
+        timestamp: new Date().getTime(),
+      });
+
+      enqueueSnackbar("Successfully redeemed!", {
+        variant: "success",
+        autoHideDuration: 5000
+      });
+
+    } catch (error: any) {
       console.error("Error during redeem:", error);
-      enqueueSnackbar("Failed to redeem. Try again.", { variant: "error" });
+
+      // Log failed redemption
+      activityLogService.logActivity({
+        activity: `Failed to Redeem Ownable ${this.pkg.name} - Error: ${error.message}`,
+        timestamp: new Date().getTime(),
+      });
+
+      enqueueSnackbar(error.message || "Failed to redeem. Please try again.", {
+        variant: "error",
+        autoHideDuration: 5000
+      });
+    } finally {
+      this.setState({
+        redeemLoading: false,
+        redeemStatus: ''
+      });
     }
   }
 
@@ -702,7 +762,12 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             title={this.pkg.name}
             onRedeem={(value: number | null) => {
               if (value !== null) {
-                this.redeem();
+                try {
+                  this.redeem();
+                } catch (error) {
+                  console.error("Error during redeem:", error);
+                  this.setState({ redeemStatus: "Failed to redeem. Please try again." });
+                }
               }
             }}
             isRedeemable={this.state.isRedeemable && !this.isRedeemed}
@@ -738,6 +803,55 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
             onClose={this.closeAddToCollection}
             pkgId={this.props.chain.id}
           />
+          {this.state.redeemLoading && (
+            <Dialog open={this.state.redeemLoading}
+              onClose={() => { }}
+              sx={{
+                "& .MuiDialog-paper": {
+                  backgroundColor: "#141414",
+                  color: "white",
+                  borderRadius: "10px",
+                  width: "100%",
+                },
+                "& .MuiDialogTitle-root": {
+                  borderBottom: "1px solid #141414",
+                  color: "white",
+                },
+                "& .MuiDialogActions-root": {
+                  padding: "10px",
+                  justifyContent: "center",
+                },
+                "& .MuiDialogContent-root": {
+                  padding: "20px",
+                },
+              }}
+            >
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"Redeeming Ownable"}
+                    style={{}}
+                  />
+                  <b>Redeeming Ownable</b>
+                </div>
+                <DialogContent>
+                  <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: 2,
+                    gap: 2
+                  }}>
+                    <CircularProgress />
+                    <Typography>
+                      {this.state.redeemStatus}
+                    </Typography>
+                  </Box>
+                </DialogContent>
+              </DialogContentText>
+            </Dialog>
+          )}
         </Box>
       </Modal>
     );
