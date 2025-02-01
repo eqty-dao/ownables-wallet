@@ -505,6 +505,11 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     });
 
     try {
+      // check the wallet balance
+      const balance = await LTOService.getBalance();
+      if (balance < 0.000000000000000001) {
+        throw new Error('Insufficient balance to redeem ownable');
+      }
       // Get redeem address
       this.setState({ redeemStatus: 'Fetching redeem address...' });
       const redeemAddress = await RedeemService.redeemAddress();
