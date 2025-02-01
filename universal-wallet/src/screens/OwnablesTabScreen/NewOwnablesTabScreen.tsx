@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, Button, Platform, Linking } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Button, Platform, Linking, Share } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useStaticServer } from '../../hooks/useStaticServer';
 import { MainScreenContainer } from '../../components/MainScreenContainer';
@@ -11,7 +11,6 @@ import { Icon as RneIcons } from 'react-native-elements'
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import RNFS from 'react-native-fs';
 import { Modal } from 'react-native';
-import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
 
@@ -54,10 +53,23 @@ const NewOwnablesTabScreen = () => {
         return data.replace(/\\/g, '');
     }
 
-    const openFileLocation = (path: string) => {
-        Linking.openURL(`file://${path}`)
-            .then(() => console.log('File opened successfully'))
-            .catch((error: any) => console.error('Error opening file:', error));
+    const openFileLocation = async (path: string) => {
+        if (Platform.OS === 'ios') {
+            try {
+                // Use Share API instead of direct file opening on iOS
+                await Share.share({
+                    url: path,
+                    message: 'Your ownable has been downloaded'
+                });
+            } catch (error) {
+                console.error('Error sharing file:', error);
+            }
+        } else {
+            // Keep existing behavior for Android
+            Linking.openURL(`file://${path}`)
+                .then(() => console.log('File opened successfully'))
+                .catch((error: any) => console.error('Error opening file:', error));
+        }
     }
 
     const downloadOwnable = async (data: any) => {
@@ -126,47 +138,12 @@ const NewOwnablesTabScreen = () => {
             }
 
             if (data.type === 'downloadOwnable') {
-                if (Platform.OS === 'android') {
-                    //check for permissions 
-                    check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE)
-                        .then((result) => {
-                            switch (result) {
-                                case RESULTS.UNAVAILABLE:
-                                    console.log(
-                                        'This feature is not available (on this device / in this context)',
-                                    );
-                                    break;
-                                case RESULTS.DENIED:
-                                    console.log('The permission has not been requested / is denied but requestable');
-                                    request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE).then((result) => {
-                                        if (result === RESULTS.GRANTED) {
-                                            console.log('Permission granted');
-                                            downloadOwnable(data);
-                                        }
-                                    });
-                                    break;
-                                case RESULTS.GRANTED:
-                                    console.log('The permission is granted');
-                                    downloadOwnable(data);
-                                    break;
-                                case RESULTS.BLOCKED:
-                                    console.log('The permission is denied and not requestable anymore');
-                                    setErrorMessage('Permission denied unable to download ownable');
-                                    break;
-                            }
-                        })
-                        .catch((error) => {
-                            console.log('Error checking permissions:', error);
-                            setErrorMessage('Error checking permissions,please try again');
-                        });
-                } else {
-                    downloadOwnable(data);
-                }
-                setShowDownloadModal(true);
+                downloadOwnable(data);
+                return;
 
             }
 
-            if(data.type === 'downloadImage'){
+            if (data.type === 'downloadImage') {
                 downloadImage(data);
             }
 
@@ -180,7 +157,7 @@ const NewOwnablesTabScreen = () => {
                 console.log('Open Info:', data.data);
                 InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
             }
-            if(data.type === 'openExplorer'){
+            if (data.type === 'openExplorer') {
                 InAppBrowser.open(data.data);
             }
         } catch (error) {

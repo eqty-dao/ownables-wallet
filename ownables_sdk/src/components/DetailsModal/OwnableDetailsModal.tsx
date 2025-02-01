@@ -464,11 +464,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       const content = await zip.generateAsync({
         type: "uint8array",
       });
-      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
-        this.chain.state?.base58,
-        8,
-        ""
-      )}.zip`;
+      const filename = `${this.state.metadata?.name || 'ownable'}.zip`;
       const base64Data = btoa(
         new Uint8Array(content).reduce(
           (data, byte) => data + String.fromCharCode(byte),
@@ -490,11 +486,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         enqueueSnackbar("Requested data is not available", { variant: "error" });
         return;
       }
-      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
-        this.chain.state?.base58,
-        8,
-        ""
-      )}.${type}`;
+      const filename = `${this.state.metadata?.name || 'ownable'}.${type}`;
       sendRNPostMessage(JSON.stringify({ type: "downloadImage", image: image, filename: filename }));
     } catch (e) {
       console.error("OwnableThumb -> getImage -> e", e);
