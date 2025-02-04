@@ -41,6 +41,8 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     const [pendingPromoCode, setPendingPromoCode] = useState('');
     const [pendingApiBody, setPendingApiBody] = useState<any>(null);
 
+    // $LARRY
+    const larryRegex = /\$LARRY$/;
     const handleCodeScanned = async (value: string) => {
         console.log('value', value);
         setShowCamera(false);
@@ -54,7 +56,8 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                     body: {
                         wallet: address,
                         code: code,
-                        installationId: deviceId
+                        installationId: deviceId,
+                        secret: 'OnlyWeKnow21fhj&&'
                     }
                 }
                 setPendingPromoCode(code);
@@ -184,6 +187,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'x-api-key': 'OnlyWeKnow21fhj&&'
                 },
                 body: JSON.stringify(pendingApiBody)
             });
@@ -198,7 +202,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                     setShowCelebrationModal(true);
                 } else if (status === 401 || status === 400) {
                     const message = _response.message;
-                    if(message==='Invalid Code'){
+                    if (message === 'Invalid Code') {
                         setMessageInfo("Invalid code");
                         setShowMessage(true);
                         return;
