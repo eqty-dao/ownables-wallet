@@ -30,6 +30,7 @@ import { CurrentState, useAppContext } from '../../providers/AppContext';
 import NewOwnablesTabScreen from '../screens/OwnablesTabScreen/NewOwnablesTabScreen';
 import { useUserSettings } from '../context/User.context';
 import TestNetBanner from '../components/TestNetBanner';
+import QrReaderScreen from '../screens/QrReaderScreen/QrReaderScreen';
 
 const navTheme = {
   ...DefaultTheme,
@@ -151,6 +152,7 @@ function RootNavigator(): any {
         <Stack.Screen name="CreateLease" component={CreateLeaseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Lease" component={LeaseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="QrReader" component={QrReaderScreen} options={{ headerShown: false, presentation: 'containedModal' }} />
       </Stack.Navigator>
     )
   );
