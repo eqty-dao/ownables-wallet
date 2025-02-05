@@ -1,5 +1,5 @@
 import { Component, ReactNode, RefObject, createRef } from "react";
-import { Modal, Box, Paper, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, Typography, DialogContentText } from "@mui/material";
+import { Modal, Box, Paper, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, Typography, DialogContentText, IconButton } from "@mui/material";
 import OwnableActionsFab from "./OwnableActionsFab";
 import { themeColors } from "../../theme/themeColors";
 import { themeStyles } from "../../theme/themeStyles";
@@ -39,6 +39,8 @@ import SessionStorageService from "../../services/SessionStorage.service";
 import LocalStorageService from "../../services/LocalStorage.service";
 import { RedeemService } from "../../services/Redeem.service";
 import { activityLogService } from "../../services/ActivityLog.service";
+import CloseIcon from '@mui/icons-material/Close';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 interface OwnableProps {
   chain: EventChain;
@@ -58,6 +60,8 @@ interface OwnableState {
   stateDump: StateDump;
   info?: TypedOwnableInfo;
   metadata: TypedMetadata;
+  showRWAModal: boolean;
+  rwaHtmlContent: string;
 }
 interface OwnableDetailsModalProps {
   chain: EventChain;
@@ -87,6 +91,11 @@ interface OwnableDetailsModalState {
   redeemAddress?: string;
   redeemLoading: boolean;
   redeemStatus: string;
+  hasRWA: boolean;
+  showRWAModal: boolean;
+  rwaHtmlContent: string;
+  mnemonic: string | null;
+  publicKey: string | null;
 }
 
 const backButtonStyle = {
@@ -166,6 +175,11 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       isRedeemable: false,
       redeemLoading: false,
       redeemStatus: '',
+      hasRWA: false,
+      showRWAModal: false,
+      rwaHtmlContent: '',
+      mnemonic: null,
+      publicKey: null,
     };
   }
 
@@ -605,6 +619,14 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     } catch (error) {
       console.error("Error checking redeemable status:", error);
     }
+
+    try {
+      const exists = await PackageService.exists(this.pkg.cid, "rwa.html");
+      this.setState({ hasRWA: exists });
+    } catch (error) {
+      this.setState({ hasRWA: false });
+      console.error("Error checking RWA status:", error);
+    }
   }
 
   shouldComponentUpdate(
@@ -676,6 +698,43 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
   closeAddToCollection = () =>
     this.setState({ showAddToCollection: false, pkgId: "" });
+
+  showRWAContent = async () => {
+    try {
+      const html = await PackageService.getAssetAsText(this.pkg.cid, "rwa.html");
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const bodyText = doc.body.textContent || '';
+
+      // Extract mnemonic and public key with more precise patterns
+      const mnemonicMatch = bodyText.match(/Mnemonic:\s*((?:\w+\s+){11}\w+)/);
+      const publicKeyMatch = bodyText.match(/Public Key:\s*([A-Za-z0-9]+)$/);
+
+      const mnemonic = mnemonicMatch ? mnemonicMatch[1].trim() : null;
+      const publicKey = publicKeyMatch ? publicKeyMatch[1].trim() : null;
+
+      this.setState({
+        rwaHtmlContent: doc.body.innerHTML,
+        showRWAModal: true,
+        mnemonic,
+        publicKey
+      });
+    } catch (error) {
+      console.error("Error loading RWA content:", error);
+      enqueueSnackbar("Failed to load RWA content", { variant: "error" });
+    }
+  }
+
+  private copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      enqueueSnackbar(`${label} copied to clipboard!`, {
+        variant: "success",
+        autoHideDuration: 2000
+      });
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      enqueueSnackbar("Failed to copy to clipboard", { variant: "error" });
+    });
+  }
 
   render() {
     return (
@@ -776,6 +835,8 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
               }
             }}
             isRedeemable={this.state.isRedeemable && !this.isRedeemed}
+            hasRWA={this.state.hasRWA}
+            onShowRWA={this.showRWAContent}
           />
           <OwnableInfoDrawer
             open={this.state.showInfo}
@@ -855,6 +916,179 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                   </Box>
                 </DialogContent>
               </DialogContentText>
+            </Dialog>
+          )}
+          {this.state.showRWAModal && (
+            <Dialog
+              open={this.state.showRWAModal}
+              onClose={() => this.setState({ showRWAModal: false })}
+              maxWidth="sm"
+              fullWidth
+              sx={{
+                "& .MuiDialog-paper": {
+                  backgroundColor: "#141414",
+                  color: "white",
+                  borderRadius: "10px",
+                  width: "100%",
+                  margin: "16px",
+                  maxHeight: "calc(100% - 32px)"
+                },
+                "& .MuiDialogTitle-root": {
+                  padding: "16px",
+                  borderBottom: "1px solid #2d2d2d",
+                  color: "white",
+                  fontSize: "18px"
+                },
+                "& .MuiDialogContent-root": {
+                  padding: "16px",
+                }
+              }}
+            >
+              <DialogTitle>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <b>RWA Details</b>
+                </div>
+                <IconButton
+                  onClick={() => this.setState({ showRWAModal: false })}
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: 8,
+                    color: 'white'
+                  }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent>
+                <Box sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2
+                }}>
+                  {(this.state.mnemonic || this.state.publicKey) ? (
+                    <>
+                      {this.state.mnemonic && (
+                        <Box sx={{
+                          backgroundColor: '#2d2d2d',
+                          borderRadius: 1,
+                          overflow: 'hidden'
+                        }}>
+                          <Typography
+                            color="grey.500"
+                            variant="caption"
+                            sx={{
+                              display: 'block',
+                              padding: '8px 16px',
+                              borderBottom: '1px solid #3d3d3d'
+                            }}
+                          >
+                            Mnemonic
+                          </Typography>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            gap: 2
+                          }}>
+                            <Typography
+                              color="white"
+                              sx={{
+                                fontFamily: 'monospace',
+                                fontSize: '14px',
+                                lineHeight: 1.5,
+                                wordBreak: 'break-word',
+                                flex: 1
+                              }}
+                            >
+                              {this.state.mnemonic}
+                            </Typography>
+                            <IconButton
+                              onClick={() => this.copyToClipboard(this.state.mnemonic!, 'Mnemonic')}
+                              sx={{
+                                color: 'white',
+                                padding: '8px',
+                                marginLeft: '8px'
+                              }}
+                            >
+                              <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                      )}
+                      {this.state.publicKey && (
+                        <Box sx={{
+                          backgroundColor: '#2d2d2d',
+                          borderRadius: 1,
+                          overflow: 'hidden'
+                        }}>
+                          <Typography
+                            color="grey.500"
+                            variant="caption"
+                            sx={{
+                              display: 'block',
+                              padding: '8px 16px',
+                              borderBottom: '1px solid #3d3d3d'
+                            }}
+                          >
+                            Public Key
+                          </Typography>
+                          <Box sx={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            gap: 2
+                          }}>
+                            <Typography
+                              color="white"
+                              sx={{
+                                fontFamily: 'monospace',
+                                fontSize: '14px',
+                                lineHeight: 1.5,
+                                wordBreak: 'break-word',
+                                flex: 1
+                              }}
+                            >
+                              {this.state.publicKey}
+                            </Typography>
+                            <IconButton
+                              onClick={() => this.copyToClipboard(this.state.publicKey!, 'Public Key')}
+                              sx={{
+                                color: 'white',
+                                padding: '8px',
+                                marginLeft: '8px'
+                              }}
+                            >
+                              <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                      )}
+                    </>
+                  ) : (
+                    <Box sx={{
+                      backgroundColor: '#2d2d2d',
+                      borderRadius: 1,
+                      padding: '16px',
+                      color: 'white',
+                      fontFamily: 'monospace',
+                      fontSize: '14px',
+                      lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word'
+                    }}>
+                      <div dangerouslySetInnerHTML={{ __html: this.state.rwaHtmlContent }} />
+                    </Box>
+                  )}
+                </Box>
+              </DialogContent>
             </Dialog>
           )}
         </Box>
