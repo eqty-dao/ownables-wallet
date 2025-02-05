@@ -17,9 +17,11 @@ OWNABLES_DIR="/Volumes/workspace/repository/ownables_sdk/"
 DESTINATION_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env"
 SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.stg"
 
+# Get the current branch name using git command as fallback
+BRANCH_NAME=${CI_COMMIT_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}
 
 #copy the appropriate environment file to the root directory based on the branch
-if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
+if [[ "$BRANCH_NAME" == "main" ]]; then
     SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.prod"
 fi
 
