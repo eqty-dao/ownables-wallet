@@ -8,7 +8,7 @@ import { ReactComponent as TransferIcon } from "../../assets/transfer_icon.svg";
 import { ReactComponent as InfoIcon } from "../../assets/info_icon.svg";
 import { ReactComponent as PlusIcon } from "../../assets/plus_icon.svg";
 import { ReactComponent as SwapIcon } from "../../assets/redeem.svg";
-import { ReactComponent as DownloadIcon } from "../../assets/download_icon.svg";
+import { ReactComponent as DownloadIcon } from "../../assets/consume_icon.svg";
 import { Download, SwapHoriz } from "@mui/icons-material"
 import { EventChain } from "@ltonetwork/lto";
 import { TypedMetadata } from "../../interfaces/TypedOwnableInfo";
@@ -35,7 +35,8 @@ enum OwnableActionType {
   AddToCollection = "AddToCollection",
   Bridge = "Bridge",
   Download = "Download",
-  Redeem = "Redeem"
+  Redeem = "Redeem",
+  RWA = "RWA"
 }
 
 interface OwnableActionsFabProps {
@@ -60,6 +61,8 @@ interface OwnableActionsFabProps {
   downloadOwnable: () => void;
   downloadImage: () => void;
   title: string;
+  hasRWA: boolean;
+  onShowRWA: () => void;
 }
 
 const wasConsumed = (chain: EventChain): boolean => {
@@ -170,6 +173,10 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         setShowRedeemDialog(true);
         fetchRedeemValue();
         break;
+      case OwnableActionType.RWA:
+        props.onClose();
+        props.onShowRWA();
+        break;
       default:
         console.error("Unknown action:", action);
     }
@@ -246,6 +253,13 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         id: OwnableActionType.Redeem,
         title: "Redeem",
         icon: () => <SwapIcon />,
+      });
+    }
+    if (props.hasRWA) {
+      actions.push({
+        id: OwnableActionType.RWA,
+        title: "RWA",
+        icon: () => <DownloadIcon />,
       });
     }
 
