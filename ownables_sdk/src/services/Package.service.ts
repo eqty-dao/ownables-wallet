@@ -634,4 +634,14 @@ export default class PackageService {
     }
     return zip;
   }
+
+  static async exists(cid: string, name: string): Promise<boolean> {
+    try {
+      const files = await IDBService.getAll(`package:${cid}`);
+      return files.some((file) => file.name === name);
+    } catch (error) {
+      console.error("Error checking if asset exists:", error);
+      return false;
+    }
+  }
 }
