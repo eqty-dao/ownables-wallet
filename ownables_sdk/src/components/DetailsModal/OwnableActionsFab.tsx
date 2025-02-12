@@ -194,8 +194,8 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
     }
   };
 
-  const makeActionsList = (): any => {
-    const actions = [
+  const makeActionsList = (): TypedFabItem[] => {
+    const actions: TypedFabItem[] = [
       {
         id: OwnableActionType.AddToCollection,
         title: "Add to Category",
@@ -248,6 +248,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         id: OwnableActionType.Redeem,
         title: "Redeem",
         icon: () => <SwapIcon />,
+        backgroundColor: themeColors.primary,
       });
     }
     if (props.hasRWA) {
@@ -255,6 +256,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         id: OwnableActionType.RWA,
         title: "RWA",
         icon: () => <DownloadIcon />,
+        backgroundColor: 'rgb(66, 136, 70)',
       });
     }
 

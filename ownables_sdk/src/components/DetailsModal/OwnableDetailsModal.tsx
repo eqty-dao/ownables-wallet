@@ -502,6 +502,11 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   private async redeem(): Promise<void> {
+    activityLogService.logActivity({
+      activity: `Started Redeeming Ownable ${this.pkg.name}`,
+      timestamp: new Date().getTime(),
+    });
+
     this.setState({
       redeemLoading: true,
       redeemStatus: 'Initializing redeem process...'
@@ -892,15 +897,28 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                 },
               }}
             >
-              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+              <DialogTitle>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                   <img
                     src={'/logo_popup.png'}
-                    alt={"Redeeming Ownable"}
+                    alt={"oBuilder Logo"}
                     style={{}}
                   />
                   <b>Redeeming Ownable</b>
                 </div>
+                <IconButton
+                  onClick={() => this.setState({ redeemLoading: false })}
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: 8,
+                    color: 'white'
+                  }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
                 <DialogContent>
                   <Box sx={{
                     display: 'flex',

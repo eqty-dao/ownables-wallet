@@ -149,8 +149,14 @@ const ActionsDialog = (props: ActionProps) => {
           onClick={() => onSelect(item)}
           style={listItemButtonStyle}
         >
-          <span style={itemContainerStyle}>
-            <span style={iconCircleStyle}><item.icon /></span>
+          <span style={{
+            ...itemContainerStyle,
+            backgroundColor: item.backgroundColor || themeColors.actionBtn,
+          }}>
+            <span style={{
+              ...iconCircleStyle,
+              backgroundColor: item.backgroundColor || themeColors.actionBtn,
+            }}><item.icon /></span>
             <ListItemText
               primary={
                 <span
