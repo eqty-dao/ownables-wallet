@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertColor, Button, CircularProgress, Dialog, DialogContent, DialogContentText } from "@mui/material";
+import { AlertColor, Button, CircularProgress, Dialog, DialogContent, DialogContentText, Icon } from "@mui/material";
 import { ReactComponent as MenuIcon } from "../../assets/actions_menu_icon.svg";
 import { ReactComponent as CloseIcon } from "../../assets/close_icon.svg";
 import { ReactComponent as DeleteIcon } from "../../assets/delete_icon.svg";
@@ -9,6 +9,7 @@ import { ReactComponent as InfoIcon } from "../../assets/info_icon.svg";
 import { ReactComponent as PlusIcon } from "../../assets/plus_icon.svg";
 import { ReactComponent as SwapIcon } from "../../assets/redeem.svg";
 import { ReactComponent as DownloadIcon } from "../../assets/consume_icon.svg";
+import { ReactComponent as RWAIcon } from "../../assets/EQTY_BADGE.svg";
 import { Download, SwapHoriz } from "@mui/icons-material"
 import { EventChain } from "@ltonetwork/lto";
 import { TypedMetadata } from "../../interfaces/TypedOwnableInfo";
@@ -255,8 +256,8 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
       actions.push({
         id: OwnableActionType.RWA,
         title: "RWA",
-        icon: () => <DownloadIcon />,
-        backgroundColor: 'rgb(66, 136, 70)',
+        icon: () => <img src={require("../../assets/EQTY_BADGE.png")} style={{ width: "35px", height: "35px" }} />,
+        backgroundColor: 'rgb(110, 176, 77)',
       });
     }
 

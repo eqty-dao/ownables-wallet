@@ -614,7 +614,7 @@
 
 
 import { Component, createRef, ReactNode, RefObject, useEffect, useState } from "react";
-import { Card, CircularProgress, Paper, Tooltip } from "@mui/material";
+import { Card, CircularProgress, Paper, styled, Tooltip } from "@mui/material";
 import OwnableFrame from "../OwnableFrame";
 import PackageService from "../../services/Package.service";
 import { Binary, EventChain } from "@ltonetwork/lto";
@@ -699,6 +699,19 @@ const ownableDescStyle = {
   marginTop: "4px",
   marginBottom: "0px",
 };
+const BadgeContainer = styled("div")`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 35px;
+  height: 35px;
+  z-index: 10;
+  
+  img {
+    width: 100%;
+    height: 100%;
+  }
+`;
 
 const checkIcon = <CircleCheckIcon style={{ width: "20px", height: "20px" }} />;
 
@@ -713,6 +726,7 @@ export default function OwnableThumb(props: OwnableThumbProps) {
   const [transferred, setTransferred] = useState<boolean>(false)
   const [isTransferred, setIsTransferred] = useState<boolean>(false)
   const [isBridged, setIsBridged] = useState<boolean>(false)
+  const[hasRWA, setHasRWA] = useState<boolean>(false)
   const [lastEvent, setLastEvent] = useState<any>(null)
 
   const getImage = async () => {
@@ -783,11 +797,17 @@ export default function OwnableThumb(props: OwnableThumbProps) {
     }
   }
 
+  const checkIfRWA = async () => {
+    const exists = await PackageService.exists(props.packageCid, "rwa.html");
+    setHasRWA(exists);
+  }
+
   useEffect(() => {
     if (owner && lastEvent) {
       checkIfRedeemed()
       checkIfTransferred()
       checkIfBridged()
+      checkIfRWA()
     }
   }, [owner, lastEvent])
 
@@ -827,6 +847,11 @@ export default function OwnableThumb(props: OwnableThumbProps) {
       {image ?
         <div>
           <img src={image} alt="Ownable" style={{ width: "100%", height: "100%" }} />
+          {hasRWA && (
+            <BadgeContainer>
+              <img src={require("../../assets/EQTY_BADGE.png")} alt="EQTY Badge" />
+            </BadgeContainer>
+          )}
           <If condition={props.selected}>
             <LtoOverlay isForDetailsScreen={false}>
               <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>

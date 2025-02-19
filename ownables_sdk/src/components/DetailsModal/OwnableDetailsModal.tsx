@@ -1,5 +1,5 @@
 import { Component, ReactNode, RefObject, createRef } from "react";
-import { Modal, Box, Paper, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, Typography, DialogContentText, IconButton } from "@mui/material";
+import { Modal, Box, Paper, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, Typography, DialogContentText, IconButton, styled } from "@mui/material";
 import OwnableActionsFab from "./OwnableActionsFab";
 import { themeColors } from "../../theme/themeColors";
 import { themeStyles } from "../../theme/themeStyles";
@@ -148,6 +148,19 @@ const paperStyle = {
 };
 
 const checkIcon = <CircleCheckIcon style={{ width: "40px", height: "40px" }} />;
+
+const BadgeContainer = styled("div")`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 35px;
+  height: 35px;
+  z-index: 10;
+  img {
+    width: 100%;
+    height: 100%;
+  }
+`;
 
 export default class OwnableDetailsModal extends Component<OwnableDetailsModalProps, OwnableDetailsModalState> {
   private readonly pkg: TypedPackage;
@@ -772,6 +785,11 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
               iframeRef={this.iframeRef}
               onLoad={() => this.onLoad()}
             />
+            {this.state.hasRWA && (
+              <BadgeContainer>
+                <img src={require("../../assets/EQTY_BADGE.png")} alt="EQTY Badge" />
+              </BadgeContainer>
+            )}
 
             <If condition={this.isTransferred && !this.isBridged}>
               <Tooltip

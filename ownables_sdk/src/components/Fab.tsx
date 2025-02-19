@@ -139,7 +139,7 @@ const ActionsDialog = (props: ActionProps) => {
     width: "30px",
     height: "30px",
     marginRight: "16px",
-    padding: "5px",
+    padding: "1px",
   };
 
   const renderActionItems = () => {
