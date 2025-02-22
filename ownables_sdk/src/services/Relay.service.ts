@@ -360,4 +360,31 @@ export class RelayService {
       messageHash,
     }));
   }
+
+
+  static async listRelayMetaData(): Promise<any[] | null> {
+    const sender = await LTOService.getAccount();
+    if (!sender) {
+      console.error("Account not initialized");
+      return null;
+    }
+
+    const address = sender.address;
+    const isRelayAvailable = await this.isRelayUp();
+    if (!isRelayAvailable) return null;
+
+    const url = `${this.relayURL}/inboxes/${address}/list`;
+
+    try {
+      const response = await this.handleSignedRequest("GET", url);
+      if(response?.data?.metadata) {
+        return response?.data?.metadata;
+      }
+      return [];
+    } catch (error) {
+      console.error("Failed to read relay metadata:", error);
+      return [];
+    }
+  }
+  
 }
