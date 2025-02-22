@@ -108,18 +108,18 @@ const ImportOwnablesDrawer = (props: Props) => {
   
 
 
-  useEffect(() => {
-    if (!open) return;
-    const fetchData = async () => {
-      try {
-        await fetchOwnables();
-      }
-      catch (e) {
-        console.error(e);
-      }
-    };
-    fetchData();
-  }, [open]);
+  // useEffect(() => {
+  //   if (!open) return;
+  //   const fetchData = async () => {
+  //     try {
+  //       await fetchOwnables();
+  //     }
+  //     catch (e) {
+  //       console.error(e);
+  //     }
+  //   };
+  //   fetchData();
+  // }, [open]);
 
   const fetchOwnables = async () => {
     if (isFetching) return;
@@ -330,7 +330,7 @@ const ImportOwnablesDrawer = (props: Props) => {
                     </Typography>
                     <DownloadButton
                       onClick={() => handleImportMessage(message.hash)}
-                      disabled={importedHashes.has(message.hash)}
+                      // disabled={importedHashes.has(message.hash)}
                     >
                       <DownloadIcon />
                     </DownloadButton>
