@@ -12,7 +12,7 @@ export const ASSETS_FOLDER_NAME: string = 'build';
 export const DOCUMENT_FOLDER_PATH: string = `${RNFS.DocumentDirectoryPath}/${ASSETS_FOLDER_NAME}`;
 
 
-const debugUrl = Platform.OS == "ios" ? 'http://localhost:3001/' : 'http://10.0.0.53:3001';
+const debugUrl = null;// Platform.OS == "ios" ? 'http://localhost:3001/' : 'http://10.0.0.53:3001';
 const SECURE_KEY = 'asdsadsada324e23jen32jkbr2kbr2k4';
 
 export const encryptData = (data: string): string => {
