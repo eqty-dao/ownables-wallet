@@ -36,7 +36,7 @@ interface StyledButtonProps {
   transparent: boolean;
 }
 
-const StyledButton = styled(Button)<StyledButtonProps>`
+const StyledButton = styled(Button) <StyledButtonProps>`
   text-transform: none;
   height: 36px;
   color: #ffffff;
@@ -54,8 +54,80 @@ const closeModalBtnStyle = {
   color: themeColors.error,
 };
 
+const MessageListItem = styled(ListItem)`
+  background: rgba(81, 0, 148, 0.15);
+  border: 1px solid rgba(81, 0, 148, 0.2);
+  border-radius: 16px;
+  margin-bottom: 12px;
+  padding: 20px;
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background: rgba(81, 0, 148, 0.25);
+    border-color: rgba(81, 0, 148, 0.3);
+    transform: translateY(-2px);
+  }
+`;
+
+const MessageTitle = styled(Typography)`
+  color: ${themeColors.titleText};
+  font-family: 'Satoshi', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @media (max-width: 600px) {
+    font-size: 18px;
+  }
+`;
+
+const MessageHash = styled(Typography)`
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'monospace';
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  word-break: break-all;
+`;
+
+const MessageTimestamp = styled(Typography)`
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+`;
+
+const DownloadButton = styled(IconButton)`
+  background: #510094;
+  border-radius: 50%;
+  padding: 12px;
+  transition: all 0.2s ease-in-out;
+  width: 48px;
+  height: 48px;
+
+  &:hover {
+    background: #610094;
+  }
+
+  &:active {
+    background: #3b006d;
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    background: rgba(81, 0, 148, 0.3);
+  }
+
+  svg {
+    width: 24px;
+    height: 24px;
+    color: ${themeColors.titleText};
+  }
+`;
+
 const ImportOwnablesDrawer = (props: Props) => {
-  const { open, onClose ,setOwnables} = props;
+  const { open, onClose, setOwnables } = props;
   const isMobile = useMediaQuery('(max-width:600px)');
   // const [ownables, setOwnables] = useState<OwnablePreview[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,7 +135,7 @@ const ImportOwnablesDrawer = (props: Props) => {
   const [isFetching, setIsFetching] = useState(false);
   const [builderAddress, setBuilderAddress] = useState<string>("");
   const [importedHashes, setImportedHashes] = useState<Set<string>>(new Set());
-  const [relayData,setRelaydata] = useState<RelayData[]>([]);
+  const [relayData, setRelaydata] = useState<RelayData[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,7 +152,7 @@ const ImportOwnablesDrawer = (props: Props) => {
 
 
 
-  const fetchOwnableByHash = async (hash: string) : Promise<any | null> => {
+  const fetchOwnableByHash = async (hash: string): Promise<any | null> => {
     const ownable = await PackageService.importFromRelayByMessageHash(hash);
     if (ownable) {
       return ownable as unknown as Ownable;
@@ -92,12 +164,21 @@ const ImportOwnablesDrawer = (props: Props) => {
     setLoading(true);
     const ownable = await fetchOwnableByHash(hash);
     if (ownable) {
-      props.setOwnables((prev: Ownable[]) => [...prev, ownable]);
+      const existing = props.existingOwnables.find((o) => o.package === ownable.package);
+      if (existing) {
+        enqueueSnackbar(`${getPackageDisplayName(ownable.name)} already exists`, { variant: "error" });
+        setLoading(false);
+        return;
+      }
+
+      props.setOwnables((prev: Ownable[]) => [...prev, { chain: ownable.chain, package: ownable.cid }]);
       setLoading(false);
+      setIsFetching(false);
+      setTotalOwnables(totalOwnables > 0 ? totalOwnables - 1 : 0);
       enqueueSnackbar(`Imported ${getPackageDisplayName(ownable.name)}`, { variant: "success" });
       onClose();
-    }else{
-      enqueueSnackbar(`Failed to import ${hash}`, { variant: "error" });  
+    } else {
+      enqueueSnackbar(`Failed to import ${hash}`, { variant: "error" });
     }
     setLoading(false);
   }
@@ -121,14 +202,14 @@ const ImportOwnablesDrawer = (props: Props) => {
 
     setRelaydata(metadata);
     setTotalOwnables(metadata?.length || 0);
-    
+
     // for (const hash of metadata) {
     //   const ownable = await PackageService.importFromRelayByMessageHash(hash.hash);
     //   if (ownable) {
     //     setOwnables((prev) => [...prev, ownable as unknown as OwnablePreview]);
     //   }
     // }
-    
+
     setLoading(false);
     setIsFetching(false);
   }
@@ -164,8 +245,8 @@ const ImportOwnablesDrawer = (props: Props) => {
       isPersistent={true}
       height="100%"
     >
-      <Box sx={{ 
-        width: '100%', 
+      <Box sx={{
+        width: '100%',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -173,8 +254,8 @@ const ImportOwnablesDrawer = (props: Props) => {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             p: 2,
             background: 'linear-gradient(180deg, rgba(81, 0, 148, 0.4) 0%, rgba(81, 0, 148, 0) 100%)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
@@ -185,7 +266,7 @@ const ImportOwnablesDrawer = (props: Props) => {
           }}
         >
           <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Typography sx={{ 
+            <Typography sx={{
               ...titleStyle,
               fontSize: isMobile ? '1.5rem' : '2rem',
               textAlign: 'left'
@@ -205,15 +286,16 @@ const ImportOwnablesDrawer = (props: Props) => {
             </IconButton>
           </Box>
 
-          <Box sx={{ 
+          <Box sx={{
             mt: 2,
             background: 'rgba(81, 0, 148, 0.2)',
-            padding: '12px',
-            borderRadius: '8px',
+            padding: '16px',
+            borderRadius: '12px',
           }}>
-            <Typography variant="body1" sx={{ 
+            <Typography variant="body1" sx={{
               color: themeColors.titleText,
-              fontSize: isMobile ? '0.9rem' : '1rem'
+              fontSize: isMobile ? '0.9rem' : '1rem',
+              fontWeight: 500
             }}>
               {totalOwnables > 0
                 ? `You have ${totalOwnables} ownables available.`
@@ -222,132 +304,78 @@ const ImportOwnablesDrawer = (props: Props) => {
           </Box>
         </Box>
 
-        {loading ? (
-          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Loading show={loading} />
-          </Box>
-        ) : (
-          <List sx={{ 
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            px: 2,
-            py: 1,
-            '&::-webkit-scrollbar': {
-              width: '4px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: 'rgba(255, 255, 255, 0.05)',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#510094',
-              borderRadius: '4px',
-            }
-          }}>
+        <Box sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 2,
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'rgba(255, 255, 255, 0.05)',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#510094',
+            borderRadius: '4px',
+          },
+        }}>
+          <List>
             {relayData.map((ownable, index) => (
-              <ListItem
-                key={index}
-                disablePadding
-                sx={{
-                  mb: 2,
-                  background: 'rgba(81, 0, 148, 0.2)',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  transition: 'transform 0.2s ease',
-                  touchAction: 'pan-y', // Only allow vertical scrolling on mobile
-                  '&:active': {
-                    transform: 'scale(0.98)' // Subtle feedback on mobile touch
-                  }
-                }}
-              >
-                <Box sx={{ 
-                  width: '100%',
-                  p: 2,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: 2
-                }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{ 
-                        fontSize: isMobile ? '1.1rem' : '1.2rem',
-                        fontWeight: 'bold',
-                        color: '#fff',
-                        mb: 1,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {getPackageDisplayName(ownable.hash)}
-                    </Typography>
-                    <Typography
-                      sx={{ 
-                        fontSize: '0.75rem',
-                        color: 'rgba(255, 255, 255, 0.6)',
-                        mb: 1,
-                        fontFamily: 'monospace',
-                        wordBreak: 'break-all'
-                      }}
-                    >
-                      {ownable.hash}
-                    </Typography>
-                    <Typography
-                      sx={{ 
-                        fontSize: '0.75rem',
-                        color: 'rgba(255, 255, 255, 0.5)'
-                      }}
-                    >
-                      {new Date(ownable.timestamp).toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ 
-                    display: 'flex', 
+              <MessageListItem key={index}>
+                <Box sx={{ width: '100%' }}>
+                  <MessageTitle>
+                    {ownable.hash}
+                  </MessageTitle>
+                  <MessageHash>
+                    {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
+                  </MessageHash>
+                  <Box sx={{
+                    display: 'flex',
                     alignItems: 'center',
-                    position: 'relative'
+                    justifyContent: 'space-between',
+                    mt: 1
                   }}>
-                    <IconButton
-                      onClick={() => handldleImportOwnable(ownable.hash)}
-                      sx={{ 
-                        color: '#ffffff',
-                        background: '#510094',
-                        width: '48px',
-                        height: '48px',
-                        '&:active': {
-                          background: '#3b006d',
-                          transform: 'scale(0.95)'
-                        },
-                        '&:hover': {
-                          background: '#610094'
-                        }
-                      }}
-                    >
-                      <DownloadIcon style={{ width: '24px', height: '24px' }} />
-                    </IconButton>
-                    {!props.existingOwnables.find((o) => o.package === ownable.hash) && (
-                      <Badge 
-                        color="success" 
-                        variant="dot" 
-                        sx={{ 
-                          position: 'absolute',
-                          top: 0,
-                          right: 0,
-                          '& .MuiBadge-dot': {
-                            backgroundColor: '#4caf50',
-                            boxShadow: '0 0 8px #4caf50'
-                          }
-                        }} 
-                      />
-                    )}
+                    <MessageTimestamp>
+                      {new Date(ownable.timestamp).toLocaleString()}
+                    </MessageTimestamp>
+                    <Box sx={{ position: 'relative' }}>
+                      <DownloadButton
+                        onClick={() => handldleImportOwnable(ownable.hash)}
+                        disabled={!!props.existingOwnables.find((o) => o.package === ownable.hash)}
+                      >
+                        <DownloadIcon />
+                      </DownloadButton>
+                      {!props.existingOwnables.find((o) => o.package === ownable.hash) && (
+                        <Badge
+                          color="success"
+                          variant="dot"
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            right: 0,
+                            '& .MuiBadge-dot': {
+                              backgroundColor: '#4caf50',
+                              boxShadow: '0 0 8px #4caf50'
+                            }
+                          }}
+                        />
+                      )}
+                    </Box>
                   </Box>
                 </Box>
-              </ListItem>
+              </MessageListItem>
             ))}
           </List>
-        )}
+          {loading && (
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              mt: 2
+            }}>
+              <Loading show={true} />
+            </Box>
+          )}
+        </Box>
       </Box>
     </LtoDrawer>
   );
@@ -481,18 +509,7 @@ export interface Version {
 }
 
 
-// {
-//   type: "basic",
-//   sender: "3JspbVJUYARdp1NryxNfNxXzU4RbZHuRbJm",
-//   recipient: "3JmLEA9NRihPnwQ5Je4KNNuqPa2W7AvjkvH",
-//   timestamp: "2025-01-31T04:32:17.300Z",
-//   signature: "4vj3jRdzrH9JVFSRQj12TMPQFSiZXpYNB85XdkTZczZ3jeNXm147KvRyUj5yZAGCWUJrsDx3wJP15i9wXsq32BNM",
-//   hash: "B2SdmcJMp1hPW89HwGTk6UikUGjoyCguqVT2B1qQvxqE",
-//   mediaType: "application/octet-stream",
-//   size: 13711836,
-//   senderKeyType: "ed25519",
-//   senderPublicKey: "GwHVCWSMsJEmWCuteHycJNeRF4W3GnZ3o9Qu7zcpM87u",
-// }
+
 
 export interface RelayData {
   type: string;
