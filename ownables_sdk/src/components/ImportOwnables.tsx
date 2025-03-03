@@ -29,7 +29,6 @@ interface Props {
   isPersistent?: boolean;
   setOwnables: React.Dispatch<React.SetStateAction<Ownable[]>>;
   existingOwnables: Ownable[];
-  messageCount: number;
 }
 
 interface StyledButtonProps {
@@ -175,7 +174,7 @@ const ImportOwnablesDrawer = (props: Props) => {
       setLoading(false);
       setIsFetching(false);
       setTotalOwnables(totalOwnables > 0 ? totalOwnables - 1 : 0);
-      enqueueSnackbar(`Imported ${getPackageDisplayName(ownable.name)}`, { variant: "success" });
+      // enqueueSnackbar(`Imported ${getPackageDisplayName(ownable.name)}`, { variant: "success" });
       onClose();
     } else {
       enqueueSnackbar(`Failed to import ${hash}`, { variant: "error" });
@@ -286,7 +285,7 @@ const ImportOwnablesDrawer = (props: Props) => {
             </IconButton>
           </Box>
 
-          <Box sx={{
+          {/* <Box sx={{
             mt: 2,
             background: 'rgba(81, 0, 148, 0.2)',
             padding: '16px',
@@ -301,7 +300,7 @@ const ImportOwnablesDrawer = (props: Props) => {
                 ? `You have ${totalOwnables} ownables available.`
                 : "No ownables available"}
             </Typography>
-          </Box>
+          </Box> */}
         </Box>
 
         <Box sx={{

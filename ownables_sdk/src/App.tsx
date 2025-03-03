@@ -935,7 +935,6 @@ export default function App() {
         title="Receive Ownables"
         setOwnables={setOwnables}
         existingOwnables={ownables}
-        messageCount={message}
       />
       <Dialog
         open={importingOwnables}
