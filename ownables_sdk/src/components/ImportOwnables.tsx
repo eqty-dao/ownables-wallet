@@ -14,6 +14,7 @@ import { sendRNPostMessage } from "../utils/postMessage";
 import { ReactComponent as DownloadIcon } from "../assets/receive_icon.svg";
 import LocalStorageService from "../services/LocalStorage.service";
 import { enqueueSnackbar } from "notistack";
+import { ReactComponent as DownloadAllIcon } from "../assets/download_all_icon.svg";
 
 export interface Ownable {
   chain: EventChain;
@@ -135,6 +136,8 @@ const ImportOwnablesDrawer = (props: Props) => {
   const [builderAddress, setBuilderAddress] = useState<string>("");
   const [importedHashes, setImportedHashes] = useState<Set<string>>(new Set());
   const [relayData, setRelaydata] = useState<RelayData[]>([]);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -236,6 +239,46 @@ const ImportOwnablesDrawer = (props: Props) => {
     }
   };
 
+  const handleDownloadAll = async () => {
+    setIsDownloadingAll(true);
+    const totalItems = relayData.length;
+    let successCount = 0;
+
+    enqueueSnackbar("Starting background download of all ownables...", { 
+      variant: "info",
+      autoHideDuration: 3000,
+    });
+
+    // Move download process to background
+    setTimeout(async () => {
+      for (const ownable of relayData) {
+        try {
+          const existing = props.existingOwnables.find((o) => o.package === ownable.hash);
+          if (!existing) {
+            const downloadedOwnable = await fetchOwnableByHash(ownable.hash);
+            if (downloadedOwnable) {
+              props.setOwnables((prev: Ownable[]) => [...prev, { chain: downloadedOwnable.chain, package: downloadedOwnable.cid }]);
+              successCount++;
+              setDownloadProgress(Math.round((successCount / totalItems) * 100));
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to download ownable ${ownable.hash}:`, error);
+        }
+      }
+      
+      setIsDownloadingAll(false);
+      setDownloadProgress(0);
+      enqueueSnackbar(`Downloaded ${successCount} out of ${totalItems} ownables`, { 
+        variant: "success",
+        autoHideDuration: 5000,
+      });
+    }, 100);
+
+    // Close the modal
+    onClose();
+  };
+
   return (
     <LtoDrawer
       open={open}
@@ -265,13 +308,35 @@ const ImportOwnablesDrawer = (props: Props) => {
           }}
         >
           <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Typography sx={{
-              ...titleStyle,
-              fontSize: isMobile ? '1.5rem' : '2rem',
-              textAlign: 'left'
-            }}>
-              {props.title}
-            </Typography>
+            <Box display="flex" alignItems="center" gap={2}>
+              <Typography sx={{
+                ...titleStyle,
+                fontSize: isMobile ? '1.5rem' : '2rem',
+                textAlign: 'left'
+              }}>
+                {props.title}
+              </Typography>
+              {relayData.length > 0 && (
+                <Button
+                  onClick={handleDownloadAll}
+                  disabled={isDownloadingAll || loading}
+                  startIcon={<DownloadAllIcon />}
+                  sx={{
+                    background: '#510094',
+                    color: '#ffffff',
+                    '&:hover': {
+                      background: '#610094',
+                    },
+                    '&:disabled': {
+                      background: 'rgba(81, 0, 148, 0.3)',
+                      color: 'rgba(255, 255, 255, 0.5)',
+                    },
+                  }}
+                >
+                  Download All
+                </Button>
+              )}
+            </Box>
             <IconButton
               aria-label="close"
               onClick={props.onClose}
