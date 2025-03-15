@@ -15,6 +15,7 @@ import { ReactComponent as DownloadIcon } from "../assets/receive_icon.svg";
 import LocalStorageService from "../services/LocalStorage.service";
 import { enqueueSnackbar } from "notistack";
 import { ReactComponent as DownloadAllIcon } from "../assets/download_all_icon.svg";
+import DownloadProgressModal from "./DownloadProgressModal";
 
 export interface Ownable {
   chain: EventChain;
@@ -138,6 +139,8 @@ const ImportOwnablesDrawer = (props: Props) => {
   const [relayData, setRelaydata] = useState<RelayData[]>([]);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadItems, setDownloadItems] = useState<any[]>([]);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -162,28 +165,229 @@ const ImportOwnablesDrawer = (props: Props) => {
     return null;
   }
 
-  const handldleImportOwnable = async (hash: string) => {
-    setLoading(true);
-    const ownable = await fetchOwnableByHash(hash);
-    if (ownable) {
-      const existing = props.existingOwnables.find((o) => o.package === ownable.package);
-      if (existing) {
-        enqueueSnackbar(`${getPackageDisplayName(ownable.name)} already exists`, { variant: "error" });
-        setLoading(false);
-        return;
+  const handleDownloadAll = async () => {
+    const items = relayData.map(ownable => ({
+      id: ownable.hash,
+      name: ownable.hash.substring(0, 15) + '...',
+      hash: ownable.hash,
+      progress: 0,
+      status: 'pending' as const,
+      size: ownable.size
+    }));
+    
+    setDownloadItems(items);
+    setShowDownloadModal(true);
+    setIsDownloadingAll(true);
+    
+    // Start download process
+    setTimeout(async () => {
+      for (let i = 0; i < items.length; i++) {
+        try {
+          const ownable = relayData[i];
+          const existing = props.existingOwnables.find((o) => o.package === ownable.hash);
+          
+          if (!existing) {
+            // Update status to downloading
+            setDownloadItems(prev => 
+              prev.map(item => 
+                item.id === ownable.hash 
+                  ? { ...item, status: 'downloading' as const } 
+                  : item
+              )
+            );
+            
+            // Simulate progress updates
+            const progressInterval = setInterval(() => {
+              setDownloadItems(prev => 
+                prev.map(item => 
+                  item.id === ownable.hash && item.status === 'downloading'
+                    ? { ...item, progress: Math.min(item.progress + Math.random() * 10, 95) } 
+                    : item
+                )
+              );
+            }, 300);
+            
+            // Perform actual download
+            const downloadedOwnable = await fetchOwnableByHash(ownable.hash);
+            
+            // Clear interval
+            clearInterval(progressInterval);
+            
+            if (downloadedOwnable) {
+              props.setOwnables((prev: Ownable[]) => [...prev, { chain: downloadedOwnable.chain, package: downloadedOwnable.cid }]);
+              
+              // Update status to completed
+              setDownloadItems(prev => 
+                prev.map(item => 
+                  item.id === ownable.hash 
+                    ? { ...item, progress: 100, status: 'completed' as const } 
+                    : item
+                )
+              );
+            } else {
+              // Update status to failed
+              setDownloadItems(prev => 
+                prev.map(item => 
+                  item.id === ownable.hash 
+                    ? { ...item, status: 'failed' as const } 
+                    : item
+                )
+              );
+            }
+          } else {
+            // Already exists, mark as completed
+            setDownloadItems(prev => 
+              prev.map(item => 
+                item.id === ownable.hash 
+                  ? { ...item, progress: 100, status: 'completed' as const } 
+                  : item
+              )
+            );
+          }
+        } catch (error) {
+          console.error(`Failed to download ownable ${relayData[i].hash}:`, error);
+          
+          // Update status to failed
+          setDownloadItems(prev => 
+            prev.map(item => 
+              item.id === relayData[i].hash 
+                ? { ...item, status: 'failed' as const } 
+                : item
+            )
+          );
+        }
       }
+      
+      setIsDownloadingAll(false);
+      
+      // Show final notification after 2 seconds to let user see the completed state
+      setTimeout(() => {
+        const successCount = downloadItems.filter(item => item.status === 'completed').length;
+        enqueueSnackbar(`Downloaded ${successCount} out of ${downloadItems.length} ownables`, { 
+          variant: "success",
+          autoHideDuration: 5000,
+        });
+      }, 2000);
+    }, 100);
+  };
 
-      props.setOwnables((prev: Ownable[]) => [...prev, { chain: ownable.chain, package: ownable.cid }]);
-      setLoading(false);
-      setIsFetching(false);
-      setTotalOwnables(totalOwnables > 0 ? totalOwnables - 1 : 0);
-      // enqueueSnackbar(`Imported ${getPackageDisplayName(ownable.name)}`, { variant: "success" });
-      onClose();
-    } else {
+  const handleCancelAllDownloads = () => {
+    setIsDownloadingAll(false);
+    setShowDownloadModal(false);
+    setDownloadItems([]);
+    enqueueSnackbar("All downloads cancelled", { variant: "info" });
+  };
+  
+  const handleCloseDownloadModal = () => {
+    // If downloads are still in progress, just minimize instead of close
+    if (isDownloadingAll) {
+      return;
+    }
+    
+    setShowDownloadModal(false);
+    window.location.reload();
+  };
+
+  const handldleImportOwnable = async (hash: string) => {
+    // Create a download item for the modal
+    const downloadItem = {
+      id: hash,
+      name: hash.substring(0, 15) + '...',
+      hash: hash,
+      progress: 0,
+      status: 'downloading' as const,
+      size: relayData.find(o => o.hash === hash)?.size
+    };
+    
+    setDownloadItems([downloadItem]);
+    setShowDownloadModal(true);
+    setLoading(true);
+    
+    const progressInterval = setInterval(() => {
+      setDownloadItems(prev => 
+        prev.map(item => 
+          item.id === hash && item.status === 'downloading'
+            ? { ...item, progress: Math.min(item.progress + Math.random() * 10, 95) } 
+            : item
+        )
+      );
+    }, 300);
+    
+    try {
+      const ownable = await fetchOwnableByHash(hash);
+      
+      // Clear interval
+      clearInterval(progressInterval);
+      
+      if (ownable) {
+        const existing = props.existingOwnables.find((o) => o.package === ownable.package);
+        if (existing) {
+          // Update status to failed
+          setDownloadItems(prev => 
+            prev.map(item => 
+              item.id === hash 
+                ? { ...item, status: 'failed' as const } 
+                : item
+            )
+          );
+          
+          enqueueSnackbar(`${getPackageDisplayName(ownable.name)} already exists`, { variant: "error" });
+          setLoading(false);
+          return;
+        }
+
+        props.setOwnables((prev: Ownable[]) => [...prev, { chain: ownable.chain, package: ownable.cid }]);
+        
+        // Update status to completed
+        setDownloadItems(prev => 
+          prev.map(item => 
+            item.id === hash 
+              ? { ...item, progress: 100, status: 'completed' as const } 
+              : item
+          )
+        );
+        
+        setLoading(false);
+        setIsFetching(false);
+        setTotalOwnables(totalOwnables > 0 ? totalOwnables - 1 : 0);
+        
+        // Close after a short delay to show the completed state
+        setTimeout(() => {
+          setShowDownloadModal(false);
+          onClose();
+          window.location.reload();
+        }, 1500);
+      } else {
+        // Update status to failed
+        setDownloadItems(prev => 
+          prev.map(item => 
+            item.id === hash 
+              ? { ...item, status: 'failed' as const } 
+              : item
+          )
+        );
+        
+        enqueueSnackbar(`Failed to import ${hash}`, { variant: "error" });
+      }
+    } catch (error) {
+      // Clear interval
+      clearInterval(progressInterval);
+      
+      // Update status to failed
+      setDownloadItems(prev => 
+        prev.map(item => 
+          item.id === hash 
+            ? { ...item, status: 'failed' as const } 
+            : item
+        )
+      );
+      
+      console.error(`Failed to download ownable ${hash}:`, error);
       enqueueSnackbar(`Failed to import ${hash}`, { variant: "error" });
     }
+    
     setLoading(false);
-  }
+  };
 
   const fetchOwnables = async () => {
     if (isFetching) return;
@@ -239,209 +443,179 @@ const ImportOwnablesDrawer = (props: Props) => {
     }
   };
 
-  const handleDownloadAll = async () => {
-    setIsDownloadingAll(true);
-    const totalItems = relayData.length;
-    let successCount = 0;
-
-    enqueueSnackbar("Starting background download of all ownables...", { 
-      variant: "info",
-      autoHideDuration: 3000,
-    });
-
-    // Move download process to background
-    setTimeout(async () => {
-      for (const ownable of relayData) {
-        try {
-          const existing = props.existingOwnables.find((o) => o.package === ownable.hash);
-          if (!existing) {
-            const downloadedOwnable = await fetchOwnableByHash(ownable.hash);
-            if (downloadedOwnable) {
-              props.setOwnables((prev: Ownable[]) => [...prev, { chain: downloadedOwnable.chain, package: downloadedOwnable.cid }]);
-              successCount++;
-              setDownloadProgress(Math.round((successCount / totalItems) * 100));
-            }
-          }
-        } catch (error) {
-          console.error(`Failed to download ownable ${ownable.hash}:`, error);
-        }
-      }
-      
-      setIsDownloadingAll(false);
-      setDownloadProgress(0);
-      enqueueSnackbar(`Downloaded ${successCount} out of ${totalItems} ownables`, { 
-        variant: "success",
-        autoHideDuration: 5000,
-      });
-    }, 100);
-
-    // Close the modal
-    onClose();
-  };
-
   return (
-    <LtoDrawer
-      open={open}
-      onClose={onClose}
-      shouldHideBackdrop={false}
-      isPersistent={true}
-      height="100%"
-    >
-      <Box sx={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#1a0033',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        <Box
-          sx={{
-            p: 2,
-            background: 'linear-gradient(180deg, rgba(81, 0, 148, 0.4) 0%, rgba(81, 0, 148, 0) 100%)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Box display="flex" alignItems="center" gap={2}>
-              <Typography sx={{
-                ...titleStyle,
-                fontSize: isMobile ? '1.5rem' : '2rem',
-                textAlign: 'left'
-              }}>
-                {props.title}
-              </Typography>
-              {relayData.length > 0 && (
-                <Button
-                  onClick={handleDownloadAll}
-                  disabled={isDownloadingAll || loading}
-                  startIcon={<DownloadAllIcon />}
-                  sx={{
-                    background: '#510094',
-                    color: '#ffffff',
-                    '&:hover': {
-                      background: '#610094',
-                    },
-                    '&:disabled': {
-                      background: 'rgba(81, 0, 148, 0.3)',
-                      color: 'rgba(255, 255, 255, 0.5)',
-                    },
-                  }}
-                >
-                  Download All
-                </Button>
-              )}
+    <>
+      <LtoDrawer
+        open={open}
+        onClose={onClose}
+        shouldHideBackdrop={false}
+        isPersistent={true}
+        height="100%"
+      >
+        <Box sx={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#1a0033',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <Box
+            sx={{
+              p: 2,
+              background: 'linear-gradient(180deg, rgba(81, 0, 148, 0.4) 0%, rgba(81, 0, 148, 0) 100%)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box display="flex" alignItems="center" gap={2}>
+                <Typography sx={{
+                  ...titleStyle,
+                  fontSize: isMobile ? '1.5rem' : '2rem',
+                  textAlign: 'left'
+                }}>
+                  {props.title}
+                </Typography>
+                {relayData.length > 0 && (
+                  <Button
+                    onClick={handleDownloadAll}
+                    disabled={isDownloadingAll || loading}
+                    startIcon={<DownloadAllIcon />}
+                    sx={{
+                      background: '#510094',
+                      color: '#ffffff',
+                      '&:hover': {
+                        background: '#610094',
+                      },
+                      '&:disabled': {
+                        background: 'rgba(81, 0, 148, 0.3)',
+                        color: 'rgba(255, 255, 255, 0.5)',
+                      },
+                    }}
+                  >
+                    Import All
+                  </Button>
+                )}
+              </Box>
+              <IconButton
+                aria-label="close"
+                onClick={props.onClose}
+                sx={{
+                  ...closeModalBtnStyle,
+                  width: '40px',
+                  height: '40px'
+                }}
+              >
+                <CloseDrawerIcon />
+              </IconButton>
             </Box>
-            <IconButton
-              aria-label="close"
-              onClick={props.onClose}
-              sx={{
-                ...closeModalBtnStyle,
-                width: '40px',
-                height: '40px'
-              }}
-            >
-              <CloseDrawerIcon />
-            </IconButton>
+
+            {/* <Box sx={{
+              mt: 2,
+              background: 'rgba(81, 0, 148, 0.2)',
+              padding: '16px',
+              borderRadius: '12px',
+            }}>
+              <Typography variant="body1" sx={{
+                color: themeColors.titleText,
+                fontSize: isMobile ? '0.9rem' : '1rem',
+                fontWeight: 500
+              }}>
+                {totalOwnables > 0
+                  ? `You have ${totalOwnables} ownables available.`
+                  : "No ownables available"}
+              </Typography>
+            </Box> */}
           </Box>
 
-          {/* <Box sx={{
-            mt: 2,
-            background: 'rgba(81, 0, 148, 0.2)',
-            padding: '16px',
-            borderRadius: '12px',
+          <Box sx={{
+            flex: 1,
+            overflow: 'auto',
+            p: 2,
+            '&::-webkit-scrollbar': {
+              width: '4px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'rgba(255, 255, 255, 0.05)',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: '#510094',
+              borderRadius: '4px',
+            },
           }}>
-            <Typography variant="body1" sx={{
-              color: themeColors.titleText,
-              fontSize: isMobile ? '0.9rem' : '1rem',
-              fontWeight: 500
-            }}>
-              {totalOwnables > 0
-                ? `You have ${totalOwnables} ownables available.`
-                : "No ownables available"}
-            </Typography>
-          </Box> */}
-        </Box>
-
-        <Box sx={{
-          flex: 1,
-          overflow: 'auto',
-          p: 2,
-          '&::-webkit-scrollbar': {
-            width: '4px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: 'rgba(255, 255, 255, 0.05)',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: '#510094',
-            borderRadius: '4px',
-          },
-        }}>
-          <List>
-            {relayData.map((ownable, index) => (
-              <MessageListItem key={index}>
-                <Box sx={{ width: '100%' }}>
-                  <MessageTitle>
-                    {ownable.hash}
-                  </MessageTitle>
-                  <MessageHash>
-                    {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
-                  </MessageHash>
-                  <Box sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    mt: 1
-                  }}>
-                    <MessageTimestamp>
-                      {new Date(ownable.timestamp).toLocaleString()}
-                    </MessageTimestamp>
-                    <Box sx={{ position: 'relative' }}>
-                      <DownloadButton
-                        onClick={() => handldleImportOwnable(ownable.hash)}
-                        disabled={!!props.existingOwnables.find((o) => o.package === ownable.hash)}
-                      >
-                        <DownloadIcon />
-                      </DownloadButton>
-                      {!props.existingOwnables.find((o) => o.package === ownable.hash) && (
-                        <Badge
-                          color="success"
-                          variant="dot"
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            right: 0,
-                            '& .MuiBadge-dot': {
-                              backgroundColor: '#4caf50',
-                              boxShadow: '0 0 8px #4caf50'
-                            }
-                          }}
-                        />
-                      )}
+            <List>
+              {relayData.map((ownable, index) => (
+                <MessageListItem key={index}>
+                  <Box sx={{ width: '100%' }}>
+                    <MessageTitle>
+                      {ownable.hash}
+                    </MessageTitle>
+                    <MessageHash>
+                      {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
+                    </MessageHash>
+                    <Box sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mt: 1
+                    }}>
+                      <MessageTimestamp>
+                        {new Date(ownable.timestamp).toLocaleString()}
+                      </MessageTimestamp>
+                      <Box sx={{ position: 'relative' }}>
+                        <DownloadButton
+                          onClick={() => handldleImportOwnable(ownable.hash)}
+                          disabled={!!props.existingOwnables.find((o) => o.package === ownable.hash)}
+                        >
+                          <DownloadIcon />
+                        </DownloadButton>
+                        {!props.existingOwnables.find((o) => o.package === ownable.hash) && (
+                          <Badge
+                            color="success"
+                            variant="dot"
+                            sx={{
+                              position: 'absolute',
+                              top: 0,
+                              right: 0,
+                              '& .MuiBadge-dot': {
+                                backgroundColor: '#4caf50',
+                                boxShadow: '0 0 8px #4caf50'
+                              }
+                            }}
+                          />
+                        )}
+                      </Box>
                     </Box>
                   </Box>
-                </Box>
-              </MessageListItem>
-            ))}
-          </List>
-          {loading && (
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              mt: 2
-            }}>
-              <Loading show={true} />
-            </Box>
-          )}
+                </MessageListItem>
+              ))}
+            </List>
+            {loading && (
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                mt: 2
+              }}>
+                <Loading show={true} />
+              </Box>
+            )}
+          </Box>
         </Box>
-      </Box>
-    </LtoDrawer>
+      </LtoDrawer>
+      
+      <DownloadProgressModal
+        open={showDownloadModal}
+        onClose={handleCloseDownloadModal}
+        downloadItems={downloadItems}
+        onCancelAll={handleCancelAllDownloads}
+        title="Import Ownables"
+      />
+    </>
   );
 };
 
