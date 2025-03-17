@@ -263,7 +263,7 @@ const ImportOwnablesDrawer = (props: Props) => {
       // Show final notification after 2 seconds to let user see the completed state
       setTimeout(() => {
         const successCount = downloadItems.filter(item => item.status === 'completed').length;
-        enqueueSnackbar(`Downloaded ${successCount} out of ${downloadItems.length} ownables`, { 
+        enqueueSnackbar(`Import All ownables completed`, { 
           variant: "success",
           autoHideDuration: 5000,
         });
