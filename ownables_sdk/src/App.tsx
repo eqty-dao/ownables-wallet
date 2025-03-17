@@ -813,11 +813,11 @@ export default function App() {
             title: "Create Category",
             icon: CollectionIcon,
           },
-          // {
-          //   id: HomePageEnums.ImportPackage,
-          //   title: "Import Package",
-          //   icon: CreateIcon,
-          // },
+          {
+            id: HomePageEnums.ImportPackage,
+            title: "Import Package",
+            icon: PlusIcon,
+          },
           {
             id: HomePageEnums.CreateOwnables,
             title: "Create Ownables",

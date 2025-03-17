@@ -1,7 +1,7 @@
 import TypedDict from "../interfaces/TypedDict";
 import { sendRNPostMessage } from "../utils/postMessage";
 
-const DB_NAME = "ownables";
+export const DB_NAME = "ownables";
 
 export default class IDBService {
   private static db: Promise<IDBDatabase>;
