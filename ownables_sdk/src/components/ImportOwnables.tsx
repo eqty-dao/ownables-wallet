@@ -12,14 +12,17 @@ import PackageService from "../services/Package.service";
 import IDBService from "../services/IDB.service";
 import { sendRNPostMessage } from "../utils/postMessage";
 import { ReactComponent as DownloadIcon } from "../assets/receive_icon.svg";
+import { ReactComponent as CheckmarkIcon } from "../assets/checkmark_icon.svg";
 import LocalStorageService from "../services/LocalStorage.service";
 import { enqueueSnackbar } from "notistack";
 import { ReactComponent as DownloadAllIcon } from "../assets/download_all_icon.svg";
 import DownloadProgressModal from "./DownloadProgressModal";
+import { useCollections } from "../context/CollectionsContext";
 
 export interface Ownable {
   chain: EventChain;
   package: string;
+  uniqueMessageHash?: string;
 }
 
 interface Props {
@@ -141,6 +144,7 @@ const ImportOwnablesDrawer = (props: Props) => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [downloadItems, setDownloadItems] = useState<any[]>([]);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const { isDownloading, setIsDownloading } = useCollections();
 
   useEffect(() => {
     if (!open) return;
@@ -166,6 +170,7 @@ const ImportOwnablesDrawer = (props: Props) => {
   }
 
   const handleDownloadAll = async () => {
+    setIsDownloading(true);
     const items = relayData.map(ownable => ({
       id: ownable.hash,
       name: ownable.hash.substring(0, 15) + '...',
@@ -214,7 +219,7 @@ const ImportOwnablesDrawer = (props: Props) => {
             clearInterval(progressInterval);
             
             if (downloadedOwnable) {
-              props.setOwnables((prev: Ownable[]) => [...prev, { chain: downloadedOwnable.chain, package: downloadedOwnable.cid }]);
+              props.setOwnables((prev: Ownable[]) => [...prev, { chain: downloadedOwnable.chain, package: downloadedOwnable.cid, uniqueMessageHash: ownable.hash }]);
               
               // Update status to completed
               setDownloadItems(prev => 
@@ -262,13 +267,17 @@ const ImportOwnablesDrawer = (props: Props) => {
       
       // Show final notification after 2 seconds to let user see the completed state
       setTimeout(() => {
+        setIsDownloading(false);
         const successCount = downloadItems.filter(item => item.status === 'completed').length;
         enqueueSnackbar(`Import All ownables completed`, { 
           variant: "success",
           autoHideDuration: 5000,
         });
+        window.location.reload();
+        onClose();
       }, 2000);
     }, 100);
+    setIsDownloading(false);
   };
 
   const handleCancelAllDownloads = () => {
@@ -279,6 +288,7 @@ const ImportOwnablesDrawer = (props: Props) => {
   };
   
   const handleCloseDownloadModal = () => {
+    setIsDownloading(false);
     // If downloads are still in progress, just minimize instead of close
     if (isDownloadingAll) {
       return;
@@ -289,6 +299,7 @@ const ImportOwnablesDrawer = (props: Props) => {
   };
 
   const handldleImportOwnable = async (hash: string) => {
+    setIsDownloading(true);
     // Create a download item for the modal
     const downloadItem = {
       id: hash,
@@ -336,7 +347,7 @@ const ImportOwnablesDrawer = (props: Props) => {
           return;
         }
 
-        props.setOwnables((prev: Ownable[]) => [...prev, { chain: ownable.chain, package: ownable.cid }]);
+        props.setOwnables((prev: Ownable[]) => [...prev, { chain: ownable.chain, package: ownable.cid, uniqueMessageHash: hash }]);
         
         // Update status to completed
         setDownloadItems(prev => 
@@ -387,14 +398,14 @@ const ImportOwnablesDrawer = (props: Props) => {
     }
     
     setLoading(false);
+    setIsDownloading(false);
   };
 
   const fetchOwnables = async () => {
+    setIsDownloading(true);
     if (isFetching) return;
     setIsFetching(true);
-    setLoading(true);
-    window.localStorage.removeItem("messageHashes");
-    setOwnables([]);
+
 
     sendRNPostMessage(JSON.stringify({ type: "clear_cache", data: "clear cache" }));
 
@@ -418,6 +429,7 @@ const ImportOwnablesDrawer = (props: Props) => {
 
     setLoading(false);
     setIsFetching(false);
+    setIsDownloading(false);
   }
 
   const getPackageDisplayName = (str: string) => {
@@ -570,25 +582,14 @@ const ImportOwnablesDrawer = (props: Props) => {
                       <Box sx={{ position: 'relative' }}>
                         <DownloadButton
                           onClick={() => handldleImportOwnable(ownable.hash)}
-                          disabled={!!props.existingOwnables.find((o) => o.package === ownable.hash)}
+                          disabled={!!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash)}
                         >
-                          <DownloadIcon />
+                          {props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash) ? (
+                            <CheckmarkIcon />
+                          ) : (
+                            <DownloadIcon />
+                          )}
                         </DownloadButton>
-                        {!props.existingOwnables.find((o) => o.package === ownable.hash) && (
-                          <Badge
-                            color="success"
-                            variant="dot"
-                            sx={{
-                              position: 'absolute',
-                              top: 0,
-                              right: 0,
-                              '& .MuiBadge-dot': {
-                                backgroundColor: '#4caf50',
-                                boxShadow: '0 0 8px #4caf50'
-                              }
-                            }}
-                          />
-                        )}
                       </Box>
                     </Box>
                   </Box>

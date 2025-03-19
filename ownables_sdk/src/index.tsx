@@ -16,6 +16,7 @@ import { FilterProvider } from "./context/FilterContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import * as Sentry from "@sentry/react";
 import { DB_NAME } from "./services/IDB.service";
+import { getSeedFromQuery } from "./services/LTO.service";
 
 Sentry.init({
   dsn: "https://685698fe0f712e487bdf1a2a29ff3ef6@o4508215075733504.ingest.us.sentry.io/4508236178653184",
@@ -290,7 +291,7 @@ const performInitialization = async (attempt = 0, maxAttempts = 3): Promise<bool
     }
 
     // 4. Initialize required storage data
-    const seed = window.localStorage.getItem('@seed');
+    const seed = getSeedFromQuery();
     if (!seed) {
       // Wait briefly for React Native to potentially set the seed
       await delay(1000);
@@ -303,10 +304,10 @@ const performInitialization = async (attempt = 0, maxAttempts = 3): Promise<bool
       throw new Error('Required seed data not found after retries');
     }
 
-    // 5. Verify React Native WebView bridge
-    if (!window.ReactNativeWebView) {
-      throw new Error('React Native WebView bridge not available');
-    }
+    // // 5. Verify React Native WebView bridge
+    // if (!window.ReactNativeWebView) {
+    //   throw new Error('React Native WebView bridge not available');
+    // }
 
     // 6. Clear any stale state
     rpcConnectionAttempts = 0;

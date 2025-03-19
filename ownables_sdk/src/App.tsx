@@ -133,19 +133,20 @@ export default function App() {
   const [showPackages, setShowPackages] = React.useState(false);
   const [openFab, setOpenFab] = React.useState(false);
   const [ownables, setOwnables] = useState<
-    Array<{ chain: EventChain; package: string }>
+    Array<{ chain: EventChain; package: string; uniqueMessageHash?: string }>
   >([]);
   const [filteredOwnables, setFilteredOwnables] = useState<
-    Array<{ chain: EventChain; package: string }>
+    Array<{ chain: EventChain; package: string; uniqueMessageHash?: string }>
   >([]);
   const [foundOwnables, setFoundOwnables] = useState<
-    Array<{ chain: EventChain; package: string }>
+    Array<{ chain: EventChain; package: string; uniqueMessageHash?: string }>
   >([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = React.useState(false);
 
   // DC: Collection drawer
   const [showCollectionDrawer, setShowCollectionDrawer] = useState(false);
+  const { isDownloading, setIsDownloading } = useCollections();
 
   // CST: Create ownable drawer
   const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false);
@@ -278,14 +279,22 @@ export default function App() {
 
   useEffect(() => {
     if (LTOService.address.length > 1) {
-      const stopPolling = PollingService.startPolling(
-        LTOService.address,
-        (newCount: any) => {
-          setMessages(newCount);
-        },
-        5000
-      );
-      return () => stopPolling();
+      console.log("isDownloading", isDownloading);
+      if (!isDownloading) {
+        const interval = setInterval(() => {
+          console.log("isDownloading", isDownloading);
+        }, 5000);
+        return () => clearInterval(interval);
+      }
+      // const stopPolling = PollingService.startPolling(
+      //   LTOService.address,
+      //   (newCount: any) => {
+      //     setMessages(newCount);
+      //   },
+      //   5000,
+      //   isDownloading
+      // );
+      // return () => stopPolling();
     }
   }, [LTOService.address]);
 

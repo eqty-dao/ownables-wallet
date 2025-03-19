@@ -66,11 +66,13 @@ export class PollingService {
   static startPolling(
     address: string,
     onUpdate: (count: number) => void,
-    interval = 15000
+    interval = 15000,
+    isDownloading: boolean
   ): () => void {
     this.checkForNewHashes(address).then(onUpdate);
 
     const fetchHashes = async () => {
+      console.log("fetchHashes", isDownloading);
       try {
         const newCount = await this.checkForNewHashes(address);
         onUpdate(newCount);
