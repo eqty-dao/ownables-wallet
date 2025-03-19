@@ -165,7 +165,10 @@ export default class LTOService {
       return response.json();
     } catch (error) {
       console.error(error);
-      // throw new Error("Error fetching account details");
+      return {
+        regular: 0,
+        available: 0,
+      };
     }
   }
 
