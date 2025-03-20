@@ -19,6 +19,8 @@ interface CollectionContextType {
   updateOpenState: (collectionId: string, isOpen: boolean) => void;
   isUpdatingCollection: boolean;
   updatingCollectionId: string;
+  isDownloading: boolean;
+  setIsDownloading: (value: boolean) => void;
 }
 
 const CollectionContext = createContext<CollectionContextType>({
@@ -37,6 +39,8 @@ const CollectionContext = createContext<CollectionContextType>({
   updateOpenState: () => {},
   isUpdatingCollection: false,
   updatingCollectionId: "",
+  isDownloading: false,
+  setIsDownloading: () => {},
 });
 
 interface Props {
@@ -57,7 +61,7 @@ export const CollectionsProvider = (props: Props) => {
 
   const [isUpdatingCollection, setIsUpdating] = useState<boolean>(false);
   const [updatingCollectionId, setUpdatingCollectionId] = useState<string>("");
-
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const create = (collectionName: string): CollectionItemType => {
     const collectionId = createSlug(collectionName);
     const newCollection = {
@@ -139,6 +143,8 @@ export const CollectionsProvider = (props: Props) => {
     isUpdatingCollection,
     updatingCollectionId,
     updateOpenState,
+    isDownloading,
+    setIsDownloading,
   };
 
   return (

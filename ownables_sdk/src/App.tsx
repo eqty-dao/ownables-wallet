@@ -133,19 +133,20 @@ export default function App() {
   const [showPackages, setShowPackages] = React.useState(false);
   const [openFab, setOpenFab] = React.useState(false);
   const [ownables, setOwnables] = useState<
-    Array<{ chain: EventChain; package: string }>
+    Array<{ chain: EventChain; package: string; uniqueMessageHash?: string }>
   >([]);
   const [filteredOwnables, setFilteredOwnables] = useState<
-    Array<{ chain: EventChain; package: string }>
+    Array<{ chain: EventChain; package: string; uniqueMessageHash?: string }>
   >([]);
   const [foundOwnables, setFoundOwnables] = useState<
-    Array<{ chain: EventChain; package: string }>
+    Array<{ chain: EventChain; package: string; uniqueMessageHash?: string }>
   >([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = React.useState(false);
 
   // DC: Collection drawer
   const [showCollectionDrawer, setShowCollectionDrawer] = useState(false);
+  const { isDownloading, setIsDownloading } = useCollections();
 
   // CST: Create ownable drawer
   const [showCreateOwnableDrawer, setShowCreateOwnableDrawer] = useState(false);
@@ -276,18 +277,26 @@ export default function App() {
     // eslint-disable-next-line
   }, []);
 
-  // useEffect(() => {
-  //   if (LTOService.address.length > 1) {
-  //     const stopPolling = PollingService.startPolling(
-  //       LTOService.address,
-  //       (newCount: any) => {
-  //         setMessages(newCount);
-  //       },
-  //       5000
-  //     );
-  //     return () => stopPolling();
-  //   }
-  // }, [LTOService.address]);
+  useEffect(() => {
+    if (LTOService.address.length > 1) {
+      console.log("isDownloading", isDownloading);
+      if (!isDownloading) {
+        const interval = setInterval(() => {
+          console.log("isDownloading", isDownloading);
+        }, 5000);
+        return () => clearInterval(interval);
+      }
+      // const stopPolling = PollingService.startPolling(
+      //   LTOService.address,
+      //   (newCount: any) => {
+      //     setMessages(newCount);
+      //   },
+      //   5000,
+      //   isDownloading
+      // );
+      // return () => stopPolling();
+    }
+  }, [LTOService.address]);
 
   const deleteOwnable = async (id: string, packageCid: string) => {
     const pkg = PackageService.info(packageCid);
@@ -813,11 +822,11 @@ export default function App() {
             title: "Create Category",
             icon: CollectionIcon,
           },
-          // {
-          //   id: HomePageEnums.ImportPackage,
-          //   title: "Import Package",
-          //   icon: CreateIcon,
-          // },
+          {
+            id: HomePageEnums.ImportPackage,
+            title: "Import Package",
+            icon: PlusIcon,
+          },
           {
             id: HomePageEnums.CreateOwnables,
             title: "Create Ownables",
