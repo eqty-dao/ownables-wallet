@@ -244,7 +244,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         icon: Download,
       });
     }
-    if (props.isRedeemable) {
+    if (props.isRedeemable && props.isTransferable) {
       actions.push({
         id: OwnableActionType.Redeem,
         title: "Redeem",
@@ -252,7 +252,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         backgroundColor: themeColors.primary,
       });
     }
-    if (props.hasRWA) {
+    if (props.hasRWA && props.isTransferable) {
       actions.push({
         id: OwnableActionType.RWA,
         title: "RWA",
