@@ -211,11 +211,6 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         id: OwnableActionType.Info,
         title: "Info",
         icon: InfoIcon,
-      },
-      {
-        id: OwnableActionType.Download,
-        title: "Download",
-        icon: Download,
       }
     ];
 
@@ -242,6 +237,11 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         id: OwnableActionType.Transfer,
         title: "Transfer",
         icon: TransferIcon,
+      });
+      actions.push({
+        id: OwnableActionType.Download,
+        title: "Download",
+        icon: Download,
       });
     }
     if (props.isRedeemable) {

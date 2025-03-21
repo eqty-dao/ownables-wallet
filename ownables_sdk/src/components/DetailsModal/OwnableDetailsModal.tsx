@@ -193,6 +193,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       rwaHtmlContent: '',
       mnemonic: null,
       publicKey: null,
+      
     };
   }
 
@@ -201,7 +202,10 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   get isTransferred(): boolean {
-    return !!this.state.info && this.state.info.owner !== LTOService.address;
+    const thisOwner = LTOService.address;
+    const allEvents = this.chain.events;
+    const lastEvent = allEvents[allEvents.length - 1];
+    return !!lastEvent?.parsedData?.transfer?.to && lastEvent?.parsedData?.transfer?.to !== thisOwner;
   }
 
   get isBridged() {
