@@ -57,6 +57,8 @@
 	<string>Allow $(PRODUCT_NAME) to use Authentication with TouchID or FaceID</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your microphone</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to save ownable images to your photos</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>LTOIcons.ttf</string>

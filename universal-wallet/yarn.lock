@@ -2268,6 +2268,11 @@
   dependencies:
     merge-options "^3.0.4"
 
+"@react-native-camera-roll/camera-roll@^7.10.0":
+  version "7.10.0"
+  resolved "https://registry.npmjs.org/@react-native-camera-roll/camera-roll/-/camera-roll-7.10.0.tgz"
+  integrity sha512-Zm1yHxxTQS2APsnnxUFoLnK+DMMTPqmIQ2z2pGtNyHRXAG40Nt4MLVB3tDJTWnuJLAG87BpTCEvpz49+u0YkUw==
+
 "@react-native-clipboard/clipboard@^1.14.0":
   version "1.14.0"
   resolved "https://registry.npmjs.org/@react-native-clipboard/clipboard/-/clipboard-1.14.0.tgz"
@@ -3110,6 +3115,11 @@
   integrity sha512-WXCyOcRtH37HAUkpXhUduaxdm82b4GSlyTqajXviN4EfiuPgNYR109xMCKvpl6zPIpua0DGlMEDCq+g8EdoheQ==
   dependencies:
     "@babel/types" "^7.20.7"
+
+"@types/crypto-js@^4.2.2":
+  version "4.2.2"
+  resolved "https://registry.npmjs.org/@types/crypto-js/-/crypto-js-4.2.2.tgz"
+  integrity sha512-sDOLlVbHhXpAUAL0YHDUUwDZf3iN4Bwi4W6a0W0b+QcAezUbRtH4FVb+9J4h+XFPW7l/gQ9F8qC7P+Ec4k8QVQ==
 
 "@types/dompurify@^3.0.5":
   version "3.0.5"

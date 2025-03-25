@@ -14,6 +14,7 @@ import { Modal } from 'react-native';
 import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -56,9 +57,91 @@ const NewOwnablesTabScreen = () => {
 
     const handleMessageFromWeb = (event: any) => {
         try {
-            // console.log('url:', url);
-            // console.log('Message from WebView', event.nativeEvent.data);
             const data = JSON.parse(event.nativeEvent.data);
+            
+            if (data.type === 'downloadOwnable') {
+                const downloadOwnable = async (data: any) => {
+                    try {
+                        const { base64Data, filename } = data;
+                        setShowDownloadModal(true);
+                        setDownloadModalMessage('Requesting permissions...');
+                        
+                        // Check and request permissions first
+                        if (Platform.OS === 'ios') {
+                            const permission = await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
+                            if (permission !== RESULTS.GRANTED) {
+                                //try to request permission
+                                try {
+                                    const result = await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
+                                    if (result !== RESULTS.GRANTED) {
+                                        setDownloadModalMessage('Photo library permission denied');
+                                        setMessageInfo('Photo library permission denied');
+                                        setShowMessage(true);
+                                        return;
+                                    }
+                                } catch (error) {
+                                    console.error('Error requesting permission:', error);
+                                    setDownloadModalMessage('Error requesting permission');
+                                    setMessageInfo('Error requesting permission');
+                                    setShowMessage(true);
+                                    return;
+                                }
+                                setDownloadModalMessage('Please allow access to save photos');
+                                const result = await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
+                                if (result !== RESULTS.GRANTED) {
+                                    setDownloadModalMessage('Photo library permission denied');
+                                    setMessageInfo('Photo library permission denied');
+                                    setShowMessage(true);
+                                    return;
+                                }
+                            }
+                        } else if (Platform.OS === 'android') {
+                            const permission = await check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+                            if (permission !== RESULTS.GRANTED) {
+                                setDownloadModalMessage('Please allow access to storage');
+                                const result = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+                                if (result !== RESULTS.GRANTED) {
+                                    setDownloadModalMessage('Storage permission denied');
+                                    setMessageInfo('Storage permission denied');
+                                    setShowMessage(true);
+                                    return;
+                                }
+                            }
+                        }
+
+                        setDownloadModalMessage('Saving image...');
+
+                        // Ensure base64 data has the correct prefix
+                        let processedBase64 = base64Data;
+                        if (!base64Data.startsWith('data:image')) {
+                            processedBase64 = `data:image/jpeg;base64,${base64Data}`;
+                        }
+
+                        // Save to camera roll
+                        await CameraRoll.save(processedBase64, {
+                            type: 'photo',
+                            album: 'LTO Ownables'
+                        });
+                        
+                        setDownloadModalMessage(`Saved ${filename} to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
+                        setMessageInfo(`Saved Ownable to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
+                        setShowMessage(true);
+                    } catch (error) {
+                        console.error('Error saving image:', error);
+                        setDownloadModalMessage('Error saving image');
+                        setMessageInfo('Failed to save image');
+                        setShowMessage(true);
+                    } finally {
+                        setTimeout(() => {
+                            setShowDownloadModal(false);
+                        }, 2000);
+                    }
+                };
+
+                setShowDownloadModal(true);
+                downloadOwnable(data);
+            }
+
             if (data.type === 'sdkerror') {
                 console.log('SDK error:', data.data);
                 setSdkError(true);
@@ -77,64 +160,6 @@ const NewOwnablesTabScreen = () => {
                 }, 5000);
             }
 
-            if (data.type === 'downloadOwnable') {
-                const downloadOwnable = async (data: any) => {
-                    const { base64Data, filename } = data;
-                    const path = `${RNFS.DocumentDirectoryPath}/${filename}`;
-                    RNFS.writeFile(path, base64Data, 'base64').then(() => {
-                        console.log('File written to', path);
-                        setDownloadModalMessage(`Downloaded ${filename}`);
-                    }).catch((error) => {
-                        console.error('Error writing file:', error);
-                        setDownloadModalMessage(`Error downloading ${filename}`);
-                    }).finally(() => {
-                        setTimeout(() => {
-                            setShowDownloadModal(false);
-                            setMessageInfo(`Downloaded Ownable to ${Platform.OS === 'android' ? 'Downloads' : 'Files'}`);
-                            setShowMessage(true);
-                        }, 2000);
-                    });
-                }
-                if (Platform.OS === 'android') {
-                    //check for permissions 
-                    check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE)
-                        .then((result) => {
-                            switch (result) {
-                                case RESULTS.UNAVAILABLE:
-                                    console.log(
-                                        'This feature is not available (on this device / in this context)',
-                                    );
-                                    break;
-                                case RESULTS.DENIED:
-                                    console.log('The permission has not been requested / is denied but requestable');
-                                    request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE).then((result) => {
-                                        if (result === RESULTS.GRANTED) {
-                                            console.log('Permission granted');
-                                            downloadOwnable(data);
-                                        }
-                                    });
-                                    break;
-                                case RESULTS.GRANTED:
-                                    console.log('The permission is granted');
-                                    downloadOwnable(data);
-                                    break;
-                                case RESULTS.BLOCKED:
-                                    console.log('The permission is denied and not requestable anymore');
-                                    setErrorMessage('Permission denied unable to download ownable');
-                                    break;
-                            }
-                        })
-                        .catch((error) => {
-                            console.log('Error checking permissions:', error);
-                            setErrorMessage('Error checking permissions,please try again');
-                        });
-                } else {
-                    downloadOwnable(data);
-                }
-                setShowDownloadModal(true);
-
-            }
-
             if (data.type === 'address') {
                 console.log('Address:', data.data);
                 setWebviewUrl(url);
@@ -145,14 +170,14 @@ const NewOwnablesTabScreen = () => {
                 console.log('Open Info:', data.data);
                 InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
             }
-            if(data.type === 'openExplorer'){
+            
+            if (data.type === 'openExplorer') {
                 InAppBrowser.open(data.data);
             }
         } catch (error) {
-            console.error('Error parsing message from WebView:', error);
+            console.error('Error handling WebView message:', error);
         }
-
-    }
+    };
 
     const handleShouldStartLoadWithRequest = (request: any): boolean => {
         // console.log('handleShouldStartLoadWithRequest', request.url);
@@ -175,20 +200,19 @@ const NewOwnablesTabScreen = () => {
                             restartServer();
                         }}
                     />
-
                 </View>
             )}
             <MainScreenContainer disableScroll={true}>
                 <OverviewHeader
-                    icon={'menu'}
-                    onPress={() => navigation.navigate('Menu')}
+                    icon="menu"
+                    onPress={() => navigation.navigate('Menu' as never)}
                     hideQR={true}
                     input={<StyledImage testID="logo-title" source={logoTitle} />}
                 />
-                <>
-                    {!sdkError && <WebView
+                <View style={{ flex: 1, backgroundColor: '#0D0D0D' }}>
+                    <WebView
                         ref={webViewRef}
-                        backgroundColor="#0D0D0D"
+                        style={{ flex: 1 }}
                         source={{
                             uri: webviewUrl,
                             headers: {
@@ -196,13 +220,10 @@ const NewOwnablesTabScreen = () => {
                                 'Pragma': 'no-cache',
                                 'Expires': '0',
                             },
-
                         }}
-                        allowsUnsecureHttps={true}
                         originWhitelist={['*']}
                         allowUniversalAccessFromFileURLs={true}
                         allowFileAccessFromFileURLs={true}
-                        incognito={false}
                         onMessage={handleMessageFromWeb}
                         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
                         onLoadStart={() => {
@@ -212,7 +233,7 @@ const NewOwnablesTabScreen = () => {
                             setWebViewLoading(false);
                             const seed = LTOService.getSeed();
                             if (!seed) {
-                                navigation.navigate('Root');
+                                navigation.navigate('Root' as never);
                                 return;
                             }
                             if (webViewRef.current) {
@@ -226,49 +247,8 @@ const NewOwnablesTabScreen = () => {
                             setWebViewError(true);
                             restartServer();
                         }}
-                        style={{ flex: 1, backgroundColor: '#0D0D0D' }}
-                    />}
-                </>
-                {
-                    sdkError && (
-                        <View style={
-                            {
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: 10,
-                                borderRadius: 10,
-                                top: "50%",
-                            }
-                        }>
-                            <View style={{
-                                display: 'flex',
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                            }}>
-                                <RneIcons
-                                    name="warning"
-                                    type='font-awesome'
-                                    color={'white'}
-                                    size={15}
-                                    style={{ backgroundColor: '#35363b', borderRadius: 100, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}
-                                />
-                                <Text style={{ color: 'white', fontSize: 14 }}> Ownable Module Timeout</Text>
-                            </View>
-                            <Button
-                                title="Relaunch"
-                                onPress={() => {
-                                    setSdkError(false);
-                                    setWebViewError(false);
-                                    setWebViewLoading(true);
-                                    setWebviewUrl('');
-                                    restartServer();
-                                }}
-                            />
-                        </View>
-                    )
-                }
+                    />
+                </View>
             </MainScreenContainer>
             <Modal
                 animationType="slide"
@@ -307,7 +287,6 @@ const NewOwnablesTabScreen = () => {
             )} */}
 
         </View>
-
     );
 };
 
