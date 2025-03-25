@@ -30,6 +30,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to save ownable images to your photos</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to save ownable images to your photos</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSApplicationQueriesSchemes</key>
