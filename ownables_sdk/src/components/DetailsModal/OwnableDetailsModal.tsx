@@ -497,46 +497,54 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
   downloadOwnable = async () => {
     try { 
-      // find any image with webp,.png,.jpg,.jpeg,.gif
-      const imageFormatExtension = ["webp", "png", "jpg", "jpeg", "gif"]
-      const _package = await IDBService.getAll(`package:${this.pkg.cid}`)
-      const image = _package.find((i: any) => imageFormatExtension.includes(i.name?.split(".")[1]))
-      if (!image) {
-        throw new Error("No image found");
-      }
+        // find any image with webp,.png,.jpg,.jpeg,.gif
+        const imageFormatExtension = ["webp", "png", "jpg", "jpeg", "gif"]
+        const _package = await IDBService.getAll(`package:${this.pkg.cid}`)
+        const image = _package.find((i: any) => imageFormatExtension.includes(i.name?.split(".")[1]))
+        if (!image) {
+            throw new Error("No image found");
+        }
 
-      // Create a new blob with the correct type
-      const imageBlob = new Blob([image.data], { type: `image/${image.format}` });
-      
-      // Convert to base64
-      const reader = new FileReader();
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          const result = reader.result;
-          if (typeof result === 'string') {
-            // Remove the data URL prefix if it exists
-            const base64 = result.includes('base64,') ? 
-              result.split('base64,')[1] : 
-              result;
-            resolve(base64);
-          } else {
-            reject(new Error("Failed to convert image to base64"));
-          }
-        };
-        reader.onerror = () => reject(new Error("Failed to read image file"));
-        reader.readAsDataURL(imageBlob);
-      });
+        // Ensure we have a valid filename
+        const filename = this.pkg.name || 'ownable';
+        const extension = image.type || 'webp';
+        const safeFilename = `${filename}.webp`;
 
-      // Send the image data to the mobile app
-      sendRNPostMessage(JSON.stringify({ 
-        type: "downloadOwnable", 
-        base64Data: `data:image/png;base64,${base64Data}`,
-        filename: `${this.pkg.name}.png`
-      }));
+        // Create a new blob with the correct type
+        const imageBlob = new Blob([image], { type: `${image.type || 'image/webp'}` });
+        
+        // Convert to base64
+        const reader = new FileReader();
+        const base64Data = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => {
+                const result = reader.result;
+                if (typeof result === 'string') {
+                    // Remove the data URL prefix if it exists
+                    const base64 = result.includes('base64,') ? 
+                        result.split('base64,')[1] : 
+                        result;
+                    resolve(base64);
+                } else {
+                    reject(new Error("Failed to convert image to base64"));
+                }
+            };
+            reader.onerror = () => reject(new Error("Failed to read image file"));
+            reader.readAsDataURL(imageBlob);
+        });
 
-    } catch (e) {
-      console.error("Error downloading ownable image:", e);
-      enqueueSnackbar("Failed to download ownable image", { variant: "error" });
+        // Send the image data to the mobile app with guaranteed non-null values
+        sendRNPostMessage(JSON.stringify({ 
+            type: "downloadOwnable", 
+            base64Data: `data:image/${extension};base64,${base64Data}`,
+            filename: safeFilename
+        }));
+    } catch (error) {
+        console.error('Error in downloadOwnable:', error);
+        // Send error to React Native
+        sendRNPostMessage(JSON.stringify({
+            type: "error",
+            message: "Failed to prepare image for download"
+        }));
     }
   }
 

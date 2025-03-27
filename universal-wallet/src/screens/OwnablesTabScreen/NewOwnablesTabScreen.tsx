@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, Button, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Button, Platform, Linking, PermissionsAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useStaticServer } from '../../hooks/useStaticServer';
 import { MainScreenContainer } from '../../components/MainScreenContainer';
@@ -14,7 +14,7 @@ import { Modal } from 'react-native';
 import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
-import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+import RNPhotoManipulator from 'react-native-photo-manipulator';
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -55,28 +55,74 @@ const NewOwnablesTabScreen = () => {
         return data.replace(/\\/g, '');
     }
 
+    const hasAndroidPermission = async () => {
+        const getCheckPermissionPromise = () => {
+            if (Number(Platform.Version) >= 33) {
+                return Promise.all([
+                    PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES),
+                    PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO),
+                ]).then(
+                    ([hasReadMediaImagesPermission, hasReadMediaVideoPermission]) =>
+                        hasReadMediaImagesPermission && hasReadMediaVideoPermission,
+                );
+            } else {
+                return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+            }
+        };
+
+        const hasPermission = await getCheckPermissionPromise();
+        if (hasPermission) {
+            return true;
+        }
+
+        const getRequestPermissionPromise = () => {
+            if (Number(Platform.Version) >= 33) {
+                return PermissionsAndroid.requestMultiple([
+                    PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+                    PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+                ]).then(
+                    (statuses) =>
+                        statuses[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] ===
+                        PermissionsAndroid.RESULTS.GRANTED &&
+                        statuses[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO] ===
+                        PermissionsAndroid.RESULTS.GRANTED,
+                );
+            } else {
+                return PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE)
+                    .then((status) => status === PermissionsAndroid.RESULTS.GRANTED);
+            }
+        };
+
+        return await getRequestPermissionPromise();
+    };
+
     const handleMessageFromWeb = (event: any) => {
         try {
             const data = JSON.parse(event.nativeEvent.data);
-            
+
             if (data.type === 'downloadOwnable') {
                 const downloadOwnable = async (data: any) => {
                     try {
                         const { base64Data, filename } = data;
+                        console.log('filename:', filename);
                         setShowDownloadModal(true);
                         setDownloadModalMessage('Requesting permissions...');
                         
                         // Check and request permissions first
                         if (Platform.OS === 'ios') {
                             const permission = await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
-                            if (permission !== RESULTS.GRANTED) {
-                                //try to request permission
+                            console.log('permission:', permission);
+                            if (permission !== RESULTS.GRANTED && permission !== RESULTS.LIMITED) {
                                 try {
                                     const result = await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
-                                    if (result !== RESULTS.GRANTED) {
+                                    console.log('result:', result);
+                                    if (result !== RESULTS.GRANTED && result !== RESULTS.LIMITED) {
+                                        setShowDownloadModal(true);
                                         setDownloadModalMessage('Photo library permission denied');
-                                        setMessageInfo('Photo library permission denied');
-                                        setShowMessage(true);
+                                        setTimeout(() => {
+                                            setShowDownloadModal(false);
+                                            Linking.openSettings();
+                                        }, 2000);
                                         return;
                                     }
                                 } catch (error) {
@@ -86,48 +132,110 @@ const NewOwnablesTabScreen = () => {
                                     setShowMessage(true);
                                     return;
                                 }
-                                setDownloadModalMessage('Please allow access to save photos');
-                                const result = await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
-                                if (result !== RESULTS.GRANTED) {
-                                    setDownloadModalMessage('Photo library permission denied');
-                                    setMessageInfo('Photo library permission denied');
-                                    setShowMessage(true);
-                                    return;
-                                }
                             }
                         } else if (Platform.OS === 'android') {
-                            const permission = await check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
-                            if (permission !== RESULTS.GRANTED) {
-                                setDownloadModalMessage('Please allow access to storage');
-                                const result = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
-                                if (result !== RESULTS.GRANTED) {
-                                    setDownloadModalMessage('Storage permission denied');
-                                    setMessageInfo('Storage permission denied');
-                                    setShowMessage(true);
-                                    return;
-                                }
+                            const hasPermission = await hasAndroidPermission();
+                            if (!hasPermission) {
+                                setDownloadModalMessage('Storage permission denied');
+                                setMessageInfo('Storage permission denied');
+                                setShowMessage(true);
+                                return;
                             }
                         }
 
-                        setDownloadModalMessage('Saving image...');
+                        setDownloadModalMessage('Processing image...');
 
-                        // Ensure base64 data has the correct prefix
-                        let processedBase64 = base64Data;
-                        if (!base64Data.startsWith('data:image')) {
-                            processedBase64 = `data:image/jpeg;base64,${base64Data}`;
+                        try {
+                            // Validate and process base64 data
+                            if (!base64Data || typeof base64Data !== 'string') {
+                                throw new Error('Invalid image data');
+                            }
+
+                            // Clean and process the base64 string
+                            let processedBase64 = base64Data;
+                            if (!base64Data.startsWith('data:image')) {
+                                // Remove any potential prefixes
+                                processedBase64 = base64Data.replace(/^data:.*?;base64,/, '');
+                                // Keep the original format (WebP)
+                                processedBase64 = `data:image/webp;base64,${processedBase64}`;
+                            } else {
+                                // Fix any malformed data URI
+                                processedBase64 = processedBase64.replace(/^data:image\/image\//, 'data:image/');
+                            }
+
+                            // Clean the base64 string
+                            processedBase64 = processedBase64.trim();
+
+                            // For debugging
+                            console.log('Saving image with length:', processedBase64.length);
+                            console.log('Base64 string starts with:', processedBase64.substring(0, 50));
+
+                            setDownloadModalMessage('Saving image...');
+
+                            // Create a proper filename
+                            const cleanFilename = (filename || 'temp_image').replace(/\.[^/.]+$/, "");
+                            
+                            if (Platform.OS === 'ios') {
+                                const photoDir = `${RNFS.DocumentDirectoryPath}/Photos`;
+                                const finalPath = `${photoDir}/${cleanFilename}.jpg`;
+
+                                // Create Photos directory if it doesn't exist
+                                await RNFS.mkdir(photoDir).catch(() => {});
+                                
+                                try {
+                                    // Extract just the base64 data without the data URI prefix
+                                    const base64Data = processedBase64.replace(/^data:image\/\w+;base64,/, '');
+                                    
+                                    // Save as JPEG directly
+                                    await RNFS.writeFile(finalPath, base64Data, 'base64');
+                                    
+                                    // Verify file exists and has content
+                                    const fileExists = await RNFS.exists(finalPath);
+                                    if (!fileExists) {
+                                        throw new Error('File was not created successfully');
+                                    }
+
+                                    const fileStats = await RNFS.stat(finalPath);
+                                    console.log('File size:', fileStats.size);
+                                    
+                                    if (fileStats.size === 0) {
+                                        throw new Error('File is empty');
+                                    }
+
+                                    // Save to photo library
+                                    const { CameraRoll } = require("@react-native-camera-roll/camera-roll");
+                                    await CameraRoll.save(`file://${finalPath}`, {
+                                        type: 'photo',
+                                        album: 'LTO Wallet'
+                                    });
+
+                                    // Clean up temporary file
+                                    await RNFS.unlink(finalPath).catch(() => {});
+                                } catch (error) {
+                                    console.error('Photo saving error:', error);
+                                    // Try to clean up the file even if saving failed
+                                    await RNFS.unlink(finalPath).catch(() => {});
+                                    throw error;
+                                }
+                            } else {
+                                // Android path
+                                const finalPath = `${RNFS.PicturesDirectoryPath}/LTO Wallet/${cleanFilename}.webp`;
+                                await RNFS.mkdir(`${RNFS.PicturesDirectoryPath}/LTO Wallet`).catch(() => {});
+                                await RNFS.writeFile(finalPath, processedBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+                            }
+
+                            setDownloadModalMessage(`Saved to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
+                            setMessageInfo(`Saved Ownable to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
+                            setShowMessage(true);
+
+                        } catch (saveError) {
+                            console.error('Error saving to camera roll:', saveError);
+                            setDownloadModalMessage('Failed to save image');
+                            setMessageInfo('Failed to save image');
+                            setShowMessage(true);
                         }
-
-                        // Save to camera roll
-                        await CameraRoll.save(processedBase64, {
-                            type: 'photo',
-                            album: 'LTO Ownables'
-                        });
-                        
-                        setDownloadModalMessage(`Saved ${filename} to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
-                        setMessageInfo(`Saved Ownable to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
-                        setShowMessage(true);
                     } catch (error) {
-                        console.error('Error saving image:', error);
+                        console.error('Error in downloadOwnable:', error);
                         setDownloadModalMessage('Error saving image');
                         setMessageInfo('Failed to save image');
                         setShowMessage(true);
@@ -170,7 +278,7 @@ const NewOwnablesTabScreen = () => {
                 console.log('Open Info:', data.data);
                 InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
             }
-            
+
             if (data.type === 'openExplorer') {
                 InAppBrowser.open(data.data);
             }
@@ -271,20 +379,20 @@ const NewOwnablesTabScreen = () => {
             </Modal>
             {/* BT: Left it here for debugging purposes */}
             {/* {webViewError && (
-                <View style={styles.errorOverlay}>
-                    <Text style={styles.errorText}>Error from Ownable SDK</Text>
-                    <Button
-                        title="Retry"
-                        onPress={() => {
-                            setWebViewError(false);
-                            setWebViewLoading(true);
-                            setWebviewUrl('');
-                            restartServer();
-                        }}
-                    />
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                </View>
-            )} */}
+                    <View style={styles.errorOverlay}>
+                        <Text style={styles.errorText}>Error from Ownable SDK</Text>
+                        <Button
+                            title="Retry"
+                            onPress={() => {
+                                setWebViewError(false);
+                                setWebViewLoading(true);
+                                setWebviewUrl('');
+                                restartServer();
+                            }}
+                        />
+                        <Text style={styles.errorText}>{errorMessage}</Text>
+                    </View>
+                )} */}
 
         </View>
     );
