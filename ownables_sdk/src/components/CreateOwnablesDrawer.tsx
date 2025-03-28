@@ -759,7 +759,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                 <br></br>
                 {thumbnail && (
                   <>
-                    <Button onClick={() => setBlurThumbnail(!blurThumbnail)}>
+                    {/* <Button onClick={() => setBlurThumbnail(!blurThumbnail)}>
                       {blurThumbnail ? "Unblur Thumbnail" : "Blur Thumbnail"}
                     </Button>
                     <br></br>
@@ -767,7 +767,7 @@ const CreateOwnablesDrawer = (props: Props) => {
                       <label htmlFor="thumbUpload" className="custom-file-upload">
                         Change Thumbnail
                       </label>
-                    </Button>
+                    </Button> */}
                     <input
                       id="thumbUpload"
                       type="file"

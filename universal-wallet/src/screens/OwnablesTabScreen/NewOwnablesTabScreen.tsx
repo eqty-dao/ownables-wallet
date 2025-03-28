@@ -173,7 +173,11 @@ const NewOwnablesTabScreen = () => {
                             setDownloadModalMessage('Saving image...');
 
                             // Create a proper filename
-                            const cleanFilename = (filename || 'temp_image').replace(/\.[^/.]+$/, "");
+                            const cleanFilename = (filename || 'temp_image')
+                                .replace(/\.[^/.]+$/, "") // Remove extension
+                                .replace(/[^a-zA-Z0-9]/g, '_') // Replace any non-alphanumeric chars with underscore
+                                .replace(/_+/g, '_') // Replace multiple underscores with single
+                                .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
                             
                             if (Platform.OS === 'ios') {
                                 const photoDir = `${RNFS.DocumentDirectoryPath}/Photos`;
