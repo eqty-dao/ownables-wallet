@@ -38,8 +38,6 @@ enum OwnableActionType {
   Download = "Download",
   Redeem = "Redeem",
   RWA = "RWA"
-  Redeem = "Redeem",
-  RWA = "RWA"
 }
 
 interface OwnableActionsFabProps {
@@ -64,8 +62,6 @@ interface OwnableActionsFabProps {
   downloadOwnable: () => void;
   downloadImage: () => void;
   title: string;
-  hasRWA: boolean;
-  onShowRWA: () => void;
   hasRWA: boolean;
   onShowRWA: () => void;
 }
