@@ -35,7 +35,7 @@ export class BridgeService {
       SessionStorageService.set("bridgeWalletAddress", bridgeAddress);
       return bridgeAddress;
     } catch (error) {
-      console.error(`Error fetching bridge address: ${error}`);
+      console.log(`Error fetching bridge address: ${error}`);
       return null;
     }
   }
