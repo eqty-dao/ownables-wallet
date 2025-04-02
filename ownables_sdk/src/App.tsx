@@ -155,7 +155,7 @@ export default function App() {
   const [importLabel, setImportLabel] = useState("Importing Ownables");
   const [showImportPackage, setShowImportPackage] = useState(false);
   const [showOBuilderNotAvailable, setShowOBuilderNotAvailable] = useState(false);
-
+  const [showOBuilderNotAvailableMessage, setShowOBuilderNotAvailableMessage] = useState('');
   // DC: filters
   const {
     collection,
@@ -638,10 +638,12 @@ export default function App() {
         return;
       case HomePageEnums.CreateOwnables:
         const isOBuilderAvailable = await activityLogService.getOBuilderAvailable();
-        if (isOBuilderAvailable) {
+        if (isOBuilderAvailable.active === 1) {
           setShowCreateOwnableDrawer(true);
+
         } else {
           setShowOBuilderNotAvailable(true);
+          setShowOBuilderNotAvailableMessage(isOBuilderAvailable?.message || '');
           setShowCreateOwnableDrawer(false);
           return;
         }
@@ -1005,7 +1007,7 @@ export default function App() {
               />
               <b>OBuilder Under Maintenance</b>
             </div>
-            <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>OBuilder is currently under maintenance. Please try again later.</p>
+            <p style={{ color: 'white', fontSize: '0.8rem', marginLeft: 10 }}>{showOBuilderNotAvailableMessage || 'OBuilder is currently under maintenance. Please try again later.'}</p>
           </DialogContentText>
           <Box display="flex" justifyContent="center" mt={2}>
             <StyledButton transparent={false} onClick={() => setShowOBuilderNotAvailable(false)}>Close</StyledButton>

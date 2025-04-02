@@ -37,6 +37,8 @@ enum OwnableActionType {
   Download = "Download",
   Redeem = "Redeem",
   RWA = "RWA"
+  Redeem = "Redeem",
+  RWA = "RWA"
 }
 
 interface OwnableActionsFabProps {
@@ -60,6 +62,8 @@ interface OwnableActionsFabProps {
   showBridge: () => void;
   downloadOwnable: () => void;
   title: string;
+  hasRWA: boolean;
+  onShowRWA: () => void;
   hasRWA: boolean;
   onShowRWA: () => void;
 }
@@ -168,6 +172,10 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
       case OwnableActionType.Redeem:
         setShowRedeemDialog(true);
         fetchRedeemValue();
+        break;
+      case OwnableActionType.RWA:
+        props.onClose();
+        props.onShowRWA();
         break;
       case OwnableActionType.RWA:
         props.onClose();

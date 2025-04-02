@@ -60,6 +60,8 @@ interface OwnableState {
   stateDump: StateDump;
   info?: TypedOwnableInfo;
   metadata: TypedMetadata;
+  showRWAModal: boolean;
+  rwaHtmlContent: string;
 }
 
 interface OwnableDetailsModalProps {
@@ -88,6 +90,13 @@ interface OwnableDetailsModalState {
   showBridgeDialog: boolean;
   isRedeemable: boolean;
   redeemAddress?: string;
+  redeemLoading: boolean;
+  redeemStatus: string;
+  hasRWA: boolean;
+  showRWAModal: boolean;
+  rwaHtmlContent: string;
+  mnemonic: string | null;
+  publicKey: string | null;
 }
 
 const backButtonStyle = {
@@ -170,6 +179,13 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       },
       showBridgeDialog: false,
       isRedeemable: false,
+      redeemLoading: false,
+      redeemStatus: '',
+      hasRWA: false,
+      showRWAModal: false,
+      rwaHtmlContent: '',
+      mnemonic: null,
+      publicKey: null,
     };
   }
 
@@ -520,39 +536,99 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   private async redeem(): Promise<void> {
+    this.setState({
+      redeemLoading: true,
+      redeemStatus: 'Initializing redeem process...'
+    });
+
     try {
+      // check the wallet balance
+      const balance = await LTOService.getBalance();
+      if (balance < 0.000000000000000001) {
+        throw new Error('Insufficient balance to redeem ownable');
+      }
+      // Get redeem address
+      this.setState({ redeemStatus: 'Fetching redeem address...' });
       const redeemAddress = await RedeemService.redeemAddress();
+
+      // Get genesis address
+      this.setState({ redeemStatus: 'Verifying ownable creator...' });
       const genesisAddress = await RedeemService.getOwnableCreator(
         this.chain.events
       );
+
+      // Log start of redemption
+      activityLogService.logActivity({
+        activity: `Started Redeeming Ownable ${this.pkg.name} - for ${redeemAddress}`,
+        timestamp: new Date().getTime(),
+      });
+
+      // Check if redeemable
+      this.setState({ redeemStatus: 'Checking validity of ownable...' });
       const response = await RedeemService.isRedeemable(
         genesisAddress,
         this.pkg.name
       );
 
+      if (!response.isRedeemable) {
+        throw new Error('This ownable is not redeemable at this time.');
+      }
+
+      // Execute transfer
+      this.setState({ redeemStatus: 'Transferring ownable...' });
       await this.execute({ transfer: { to: redeemAddress } });
 
+      // Prepare and send ownable
+      this.setState({ redeemStatus: 'Preparing ownable for transfer...' });
       const zip = await OwnableService.zip(this.chain);
       const content = await zip.generateAsync({
         type: "uint8array",
       });
 
+      this.setState({ redeemStatus: 'Almost done...' });
       await RelayService.sendOwnable(redeemAddress, content);
-      enqueueSnackbar("Successfully redeemed!", { variant: "success" });
 
+      // Store redemption details
+      this.setState({ redeemStatus: 'Storing redemption details...' });
       const account = LTOService.getAccount();
       const address = (await account).address;
-      console.log(address);
-
       await RedeemService.storeDetail(address, response.value, this.chain.id);
 
+      // Clean up if necessary
       if (this.pkg.uniqueMessageHash) {
-        console.log(this.pkg.uniqueMessageHash);
+        this.setState({ redeemStatus: 'Cleaning up...' });
         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
       }
-    } catch (error) {
+
+      // Log successful redemption
+      activityLogService.logActivity({
+        activity: `Successfully Redeemed Ownable ${this.pkg.name} - for ${redeemAddress}`,
+        timestamp: new Date().getTime(),
+      });
+
+      enqueueSnackbar("Successfully redeemed!", {
+        variant: "success",
+        autoHideDuration: 5000
+      });
+
+    } catch (error: any) {
       console.error("Error during redeem:", error);
-      enqueueSnackbar("Failed to redeem. Try again.", { variant: "error" });
+
+      // Log failed redemption
+      activityLogService.logActivity({
+        activity: `Failed to Redeem Ownable ${this.pkg.name} - Error: ${error.message}`,
+        timestamp: new Date().getTime(),
+      });
+
+      enqueueSnackbar(error.message || "Failed to redeem. Please try again.", {
+        variant: "error",
+        autoHideDuration: 5000
+      });
+    } finally {
+      this.setState({
+        redeemLoading: false,
+        redeemStatus: ''
+      });
     }
   }
 
@@ -688,6 +764,43 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
   closeAddToCollection = () =>
     this.setState({ showAddToCollection: false, pkgId: "" });
+
+  showRWAContent = async () => {
+    try {
+      const html = await PackageService.getAssetAsText(this.pkg.cid, "rwa.html");
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const bodyText = doc.body.textContent || '';
+
+      // Extract mnemonic and public key with more precise patterns
+      const mnemonicMatch = bodyText.match(/Mnemonic:\s*((?:\w+\s+){11}\w+)/);
+      const publicKeyMatch = bodyText.match(/Public Key:\s*([A-Za-z0-9]+)$/);
+
+      const mnemonic = mnemonicMatch ? mnemonicMatch[1].trim() : null;
+      const publicKey = publicKeyMatch ? publicKeyMatch[1].trim() : null;
+
+      this.setState({
+        rwaHtmlContent: doc.body.innerHTML,
+        showRWAModal: true,
+        mnemonic,
+        publicKey
+      });
+    } catch (error) {
+      console.error("Error loading RWA content:", error);
+      enqueueSnackbar("Failed to load RWA content", { variant: "error" });
+    }
+  }
+
+  private copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      enqueueSnackbar(`${label} copied to clipboard!`, {
+        variant: "success",
+        autoHideDuration: 2000
+      });
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      enqueueSnackbar("Failed to copy to clipboard", { variant: "error" });
+    });
+  }
 
   render() {
     return (

@@ -60,15 +60,50 @@ class ActivityLogService {
     if (process.env.REACT_APP_USE_BACKUP_OBUILDER === 'false') {
       return false;
     }
+  async getOBuilderAvailable(): Promise<OBuilderResponse> {
+    try {
+      const oBuilder = await axios.get('https://ltonetwork.com/data/obuilder.json');
+      if (oBuilder.status === 200) {
+        return {
+          active: oBuilder?.data.active,
+          useBackup: oBuilder?.data.useBackup,
+          message: oBuilder?.data.message || ''
+        }
+      } else {
+        return {
+          active: 1,
+          useBackup: 0,
+          message: ''
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      return {
+        active: 1,
+        useBackup: 0,
+        message: ''
+      }
+    }
+  }
+
+
+
+  async checkToUseBackupOBuilder(): Promise<boolean> {
+    if (process.env.REACT_APP_USE_BACKUP_OBUILDER === 'false') {
+      return false;
+    }
     try {
       const oBuilder = await axios.get('https://ltonetwork.com/data/obuilder.json');
       if (oBuilder.status === 200) {
         return oBuilder.data.useBackup === 1;
+        return oBuilder.data.useBackup === 1;
       } else {
+        return false;
         return false;
       }
     } catch (error) {
       console.error(error);
+      return false;
       return false;
     }
   }

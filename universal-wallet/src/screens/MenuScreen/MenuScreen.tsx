@@ -12,18 +12,16 @@ import { MainScreenMinorContainer, MainScreenSubContainer } from '../../componen
 import { StyledButton } from '../../components/StyledButton';
 import { UserCard } from '../../components/UserCard';
 import { SocialsCard } from '../../components/SocialsCard';
-import { BackHandler, Modal, Platform, useWindowDimensions, View } from 'react-native';
+import { BackHandler, Platform, useWindowDimensions, View } from 'react-native';
 import { Input } from 'react-native-elements';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
-import PressToCopy from '../../components/PressToCopy';
 import { useClipboard } from '@react-native-clipboard/clipboard';
 import DeviceInfo from 'react-native-device-info';
-import { encryptData, decryptData } from '../../hooks/useStaticServer';
-import valid_decoded_values from '../AirdropTabScreen/valid_decoded_values.json';
+import { encryptData } from '../../hooks/useStaticServer';
 import { AirdropResponse } from '../../services/LTO.service';
-import { Card } from '../../components/Card';
 import { StyledLabel } from '../../components/styles/InputField.styles';
 import { BottomModal } from '../../components/BottomModal';
+import valid_decoded_values from './valid_decoded_values.json';
 
 export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
@@ -39,6 +37,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   const [airdropModalVisible, setAirdropModalVisible] = useState(false);
   const [airdropModalMessage, setAirdropModalMessage] = useState('');
   const [airdropModalCode, setAirdropModalCode] = useState('');
+  const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
     const getInitialData = async () => {
@@ -64,6 +63,11 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   useEffect(() => {
     getAccountAddress();
     getNickname();
+  }, []);
+
+  useEffect(() => {
+    const version = DeviceInfo.getVersion();
+    setAppVersion(`v${version}`);
   }, []);
 
   const getNickname = () => {
@@ -262,6 +266,20 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
           />
         </MainScreenMinorContainer>
         <SocialsCard />
+        <View style={{
+          position: 'absolute',
+          bottom: 10,
+          alignSelf: 'center',
+          opacity: 0.6
+        }}>
+          <StyledLabel style={{
+            fontSize: 12,
+            textAlign: 'center',
+            color: '#909092'
+          }}>
+            {appVersion ? `${appVersion}` : ''}
+          </StyledLabel>
+        </View>
       </MainScreenSubContainer>
     </MainScreenContainer>
   );

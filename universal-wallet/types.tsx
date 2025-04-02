@@ -15,7 +15,10 @@ export type RootStackParamList = {
   ImportSeed: undefined;
   RegisterAccount: { data: string };
   Root: NavigatorScreenParams<RootTabParamList> | undefined;
-  QrReader: undefined;
+  QrReader: {
+    onScan?: (value: string) => void;
+    address?: string;
+  };
   Menu: undefined;
   Profile: undefined;
   CreateTransfer: undefined;

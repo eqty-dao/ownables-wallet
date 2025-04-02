@@ -13,7 +13,9 @@ import { StyledButton } from '../../components/StyledButton';
 import { FormContainer } from '../../components/styles/FormContainer.styles';
 import { CheckBoxCard } from '../../components/CheckBoxCard';
 import { BottomModal } from '../../components/BottomModal';
-import DOMPurify from 'dompurify';
+import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
+import { List } from 'react-native-paper';
+
 
 export default function RegisterAccountScreen({ navigation, route }: RootStackScreenProps<'RegisterAccount'>) {
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -28,6 +30,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [accountAddress, setAccountAddress] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [seedPhrase, setSeedPhrase] = useState('');
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
   const rnBiometrics = new ReactNativeBiometrics();
 
@@ -39,6 +42,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
     LTOService.getAccount()
       .then(account => {
         setAccountAddress(account.address);
+        setSeedPhrase(account.seed || '');
       })
       .catch(() => {
         setShowMessage(true);
@@ -64,10 +68,6 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
     setloginForm({ ...loginForm, [name]: value });
   };
 
-  // const isStrongPassword = (password: string) => {
-  //   const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
-  //   return regex.test(password);
-  // };
   const isStrongPassword = (password: string): boolean => {
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
     return regex.test(password);
@@ -180,14 +180,37 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
     return signatureResult.signature;
   };
 
+  //"F-2024-4596 - Potential Biometric Authentication Bypass"
+  const [showPinFallback, setShowPinFallback] = useState(false);
+  const [pin, setPin] = useState('');
+  const handlePinAuthentication = () => {
+    const pinRegex = /^\d{8}$/;
+
+    if (!pinRegex.test(pin)) {
+      setMessageInfo('PIN must be exactly 8 numeric characters.');
+      setShowMessage(true);
+      return;
+    }
+
+    handleAccount();
+  };
+  const [expanded, setExpanded] = useState(false);
   return (
     <ScreenContainer>
       <BackButton onPress={() => navigation.goBack()} />
       {route.params.data === 'created' ? (
-        <Title title={REGISTER.CREATE_TITLE} subtitle={REGISTER.CREATE_SUBTITLE} />
+        <>
+          <Title title={REGISTER.CREATE_TITLE} subtitle={REGISTER.CREATE_SUBTITLE} />
+          {seedPhrase &&
+            <List.Accordion title="Seed Phrase" expanded={expanded} onPress={() => setExpanded(!expanded)} style={{ backgroundColor: '#1a1a1a' }} titleStyle={{ color: '#ffffff' }}>
+              <SeedPhraseInput words={seedPhrase.split(' ')} onWordChange={() => { }} showCopyButton={true} onPaste={() => { }} showPasteButton={false} />
+            </List.Accordion>
+          }
+        </>
       ) : (
         <Title title={REGISTER.IMPORT_TITLE} />
-      )}
+      )
+      }
       <FormContainer>
         <InputField label={REGISTER.INPUT_ADDRESS} value={accountAddress} disabled={true} />
         <InputField
@@ -213,6 +236,18 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
         />
       </FormContainer>
 
+      {showPinFallback ? (
+        <>
+          <InputField
+            label="Enter your PIN"
+            value={pin}
+            onChangeText={setPin}
+            placeholder="Enter a 8-digit PIN"
+            secureTextEntry={true}
+          />
+          <StyledButton text="Submit PIN" disabled={loading} onPress={handlePinAuthentication} />
+        </>
+      ) : null}
 
       <CheckBoxCard
         label={REGISTER.CHECKBOX}
@@ -221,19 +256,21 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
         onPressText={() => setModalVisible(true)}
       />
 
-      {route.params.data === 'created' ? (
-        <StyledButton
-          text={loading ? 'Please wait' : REGISTER.BUTTON_CREATE}
-          disabled={loading}
-          onPress={checkForBiometrics}
-        />
-      ) : (
-        <StyledButton
-          text={loading ? 'Please wait' : REGISTER.BUTTON_IMPORT}
-          disabled={loading}
-          onPress={checkForBiometrics}
-        />
-      )}
+      {
+        route.params.data === 'created' ? (
+          <StyledButton
+            text={loading ? 'Please wait' : REGISTER.BUTTON_CREATE}
+            disabled={loading}
+            onPress={checkForBiometrics}
+          />
+        ) : (
+          <StyledButton
+            text={loading ? 'Please wait' : REGISTER.BUTTON_IMPORT}
+            disabled={loading}
+            onPress={checkForBiometrics}
+          />
+        )
+      }
 
       <BottomModal
         title={REGISTER.MODAL_TITLE}
@@ -267,6 +304,6 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
         type="biometric"
         visible={dialogVisible}
       />
-    </ScreenContainer>
+    </ScreenContainer >
   );
 }
