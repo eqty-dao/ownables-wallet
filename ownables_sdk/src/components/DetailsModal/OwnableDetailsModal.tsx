@@ -535,6 +535,21 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     }
   }
 
+  downloadImage = async () => {
+    try {
+      const { image, type } = await OwnableService.getImageAndType(this.chain);
+      if (!image) {
+        console.error("No image found");
+        enqueueSnackbar("Requested data is not available", { variant: "error" });
+        return;
+      }
+      const filename = `${this.state.metadata?.name || 'ownable'}.${type}`;
+      sendRNPostMessage(JSON.stringify({ type: "downloadImage", image: image, filename: filename }));
+    } catch (e) {
+      console.error("OwnableThumb -> getImage -> e", e);
+    }
+  }
+
   private async redeem(): Promise<void> {
     this.setState({
       redeemLoading: true,

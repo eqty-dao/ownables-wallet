@@ -26,6 +26,7 @@ import { TabType } from "../OwnablesTabs";
 import { RedeemService } from "../../services/Redeem.service";
 import { themeColors } from "../../theme/themeColors";
 import styled from "@emotion/styled";
+import { useSnackbar } from "notistack";
 
 enum OwnableActionType {
   Consume = "Consume",
@@ -61,6 +62,7 @@ interface OwnableActionsFabProps {
   onAddToCollection: (pkg: string) => void;
   showBridge: () => void;
   downloadOwnable: () => void;
+  downloadImage: () => void;
   title: string;
   hasRWA: boolean;
   onShowRWA: () => void;
@@ -102,6 +104,9 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
   const { getAllIssuers } = useIssuers();
   const [showRedeemDialog, setShowRedeemDialog] = useState(false);
   const [redeemValue, setRedeemValue] = useState<number | null>(null);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+
+  const { enqueueSnackbar } = useSnackbar();
 
   const [confirmDel, setConfirmDel] = useState<{
     title: string;
@@ -167,7 +172,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         break
       case OwnableActionType.Download:
         props.onClose();
-        props.downloadOwnable();
+        setShowDownloadDialog(true);
         break
       case OwnableActionType.Redeem:
         setShowRedeemDialog(true);
@@ -344,6 +349,62 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
                   </Button>
                 </>
             }
+          </DialogContentText>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={showDownloadDialog}
+        onClose={() => setShowDownloadDialog(false)}
+        transitionDuration={0}
+        sx={{
+          "& .MuiDialog-paper": {
+            backgroundColor: "#141414",
+            color: "white",
+            borderRadius: "10px",
+            width: "100%",
+          },
+          "& .MuiDialogTitle-root": {
+            borderBottom: "1px solid #141414",
+            color: "white",
+          },
+          "& .MuiDialogActions-root": {
+            padding: "10px",
+            justifyContent: "center",
+          },
+          "& .MuiDialogContent-root": {
+            padding: "20px",
+          },
+        }}
+      >
+        <DialogContent>
+          <DialogContentText sx={{ color: "white", fontSize: "1rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <b>Download Options</b>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "20px" }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  setShowDownloadDialog(false);
+                  props.downloadOwnable();
+                }}
+                sx={{ backgroundColor: themeColors.primary, color: "white" }}
+              >
+                Download Entire Ownable
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => {
+                  setShowDownloadDialog(false);
+                  props.downloadImage();
+                }}
+                sx={{ backgroundColor: "#2d2c2e", color: "white" }}
+              >
+                Download Image Only
+              </Button>
+            </div>
           </DialogContentText>
         </DialogContent>
       </Dialog>

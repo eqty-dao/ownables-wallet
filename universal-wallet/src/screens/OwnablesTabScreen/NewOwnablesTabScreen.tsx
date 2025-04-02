@@ -11,7 +11,6 @@ import { Icon as RneIcons } from 'react-native-elements'
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import RNFS from 'react-native-fs';
 import { Modal } from 'react-native';
-import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
 import RNPhotoManipulator from 'react-native-photo-manipulator';
