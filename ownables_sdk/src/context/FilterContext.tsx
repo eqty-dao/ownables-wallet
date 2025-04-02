@@ -24,7 +24,7 @@ interface FilterContextType {
 const FilterContext = createContext<FilterContextType>({
   filteredPackages: [],
   collection: "",
-  selectedTab: TabType.COLLECTIONS,
+  selectedTab: TabType.ALL,
   issuer: "",
   type: "",
   isFiltering: false,

@@ -279,22 +279,14 @@ export default function App() {
 
   useEffect(() => {
     if (LTOService.address.length > 1) {
-      console.log("isDownloading", isDownloading);
-      if (!isDownloading) {
-        const interval = setInterval(() => {
-          console.log("isDownloading", isDownloading);
-        }, 5000);
-        return () => clearInterval(interval);
-      }
-      // const stopPolling = PollingService.startPolling(
-      //   LTOService.address,
-      //   (newCount: any) => {
-      //     setMessages(newCount);
-      //   },
-      //   5000,
-      //   isDownloading
-      // );
-      // return () => stopPolling();
+      const stopPolling = PollingService.startPolling(
+        LTOService.address,
+        (newCount: any) => {
+          setMessages(newCount);
+        },
+        5000
+      );
+      return () => stopPolling();
     }
   }, [LTOService.address]);
 

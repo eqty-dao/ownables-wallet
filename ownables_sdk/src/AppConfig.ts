@@ -62,4 +62,3 @@ export var AppConfig = {
   ENV: () => env,
   Network: () => network,
 }
-

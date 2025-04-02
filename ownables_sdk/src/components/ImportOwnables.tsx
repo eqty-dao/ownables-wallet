@@ -18,6 +18,8 @@ import { enqueueSnackbar } from "notistack";
 import { ReactComponent as DownloadAllIcon } from "../assets/download_all_icon.svg";
 import DownloadProgressModal from "./DownloadProgressModal";
 import { useCollections } from "../context/CollectionsContext";
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 export interface Ownable {
   chain: EventChain;
@@ -127,6 +129,18 @@ const DownloadButton = styled(IconButton)`
     width: 24px;
     height: 24px;
     color: ${themeColors.titleText};
+  }
+
+  &.completed {
+    background: rgba(76, 175, 80, 0.15);
+    
+    &:hover {
+      background: rgba(76, 175, 80, 0.25);
+    }
+
+    svg {
+      color: #4CAF50;
+    }
   }
 `;
 
@@ -485,66 +499,68 @@ const ImportOwnablesDrawer = (props: Props) => {
             }}
           >
             <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Box display="flex" alignItems="center" gap={2}>
-                <Typography sx={{
-                  ...titleStyle,
-                  fontSize: isMobile ? '1.5rem' : '2rem',
-                  textAlign: 'left'
-                }}>
-                  {props.title}
-                </Typography>
+              <Typography sx={{
+                ...titleStyle,
+                fontSize: isMobile ? '1.5rem' : '2rem',
+                textAlign: 'left'
+              }}>
+                {props.title}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {relayData.length > 0 && (
                   <Button
                     onClick={handleDownloadAll}
-                    disabled={isDownloadingAll || loading}
-                    startIcon={<DownloadAllIcon />}
+                    startIcon={<CloudDownloadIcon />}
+                    disabled={isDownloadingAll}
                     sx={{
                       background: '#510094',
-                      color: '#ffffff',
+                      color: themeColors.titleText,
+                      textTransform: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
                       '&:hover': {
                         background: '#610094',
                       },
                       '&:disabled': {
                         background: 'rgba(81, 0, 148, 0.3)',
                         color: 'rgba(255, 255, 255, 0.5)',
-                      },
+                      }
                     }}
                   >
-                    Import All
+                    Download All
                   </Button>
                 )}
+                <IconButton
+                  aria-label="close"
+                  onClick={props.onClose}
+                  sx={{
+                    ...closeModalBtnStyle,
+                    width: '40px',
+                    height: '40px'
+                  }}
+                >
+                  <CloseDrawerIcon />
+                </IconButton>
               </Box>
-              <IconButton
-                aria-label="close"
-                onClick={props.onClose}
-                sx={{
-                  ...closeModalBtnStyle,
-                  width: '40px',
-                  height: '40px'
-                }}
-              >
-                <CloseDrawerIcon />
-              </IconButton>
             </Box>
-
-            {/* <Box sx={{
-              mt: 2,
-              background: 'rgba(81, 0, 148, 0.2)',
-              padding: '16px',
-              borderRadius: '12px',
-            }}>
-              <Typography variant="body1" sx={{
-                color: themeColors.titleText,
-                fontSize: isMobile ? '0.9rem' : '1rem',
-                fontWeight: 500
-              }}>
-                {totalOwnables > 0
-                  ? `You have ${totalOwnables} ownables available.`
-                  : "No ownables available"}
-              </Typography>
-            </Box> */}
           </Box>
 
+          {/* <Box sx={{
+            mt: 2,
+            background: 'rgba(81, 0, 148, 0.2)',
+            padding: '16px',
+            borderRadius: '12px',
+          }}>
+            <Typography variant="body1" sx={{
+              color: themeColors.titleText,
+              fontSize: isMobile ? '0.9rem' : '1rem',
+              fontWeight: 500
+            }}>
+              {totalOwnables > 0
+                ? `You have ${totalOwnables} ownables available.`
+                : "No ownables available"}
+            </Typography>
+          </Box> */}
           <Box sx={{
             flex: 1,
             overflow: 'auto',
@@ -583,9 +599,10 @@ const ImportOwnablesDrawer = (props: Props) => {
                         <DownloadButton
                           onClick={() => handldleImportOwnable(ownable.hash)}
                           disabled={!!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash)}
+                          className={props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash) ? 'completed' : ''}
                         >
                           {props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash) ? (
-                            <CheckmarkIcon />
+                            <CheckCircleIcon />
                           ) : (
                             <DownloadIcon />
                           )}

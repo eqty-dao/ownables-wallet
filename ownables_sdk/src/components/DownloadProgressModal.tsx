@@ -12,7 +12,10 @@ import {
   useTheme
 } from '@mui/material';
 import { styled } from '@mui/system';
-import { ReactComponent as CloseIcon } from '../assets/close_drawer_icon.svg';
+import CloseIcon from '@mui/icons-material/Close';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 import { themeColors } from '../theme/themeColors';
 
 // File type icons
@@ -309,7 +312,7 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
           {downloadItems.map((item) => (
             <FileItem key={item.id}>
               <FileIcon>
-                <GenericFileIcon />
+                <InsertDriveFileIcon />
               </FileIcon>
               <FileDetails>
                 <FileName>{item.name || item.hash.substring(0, 15) + '...'}</FileName>
@@ -323,7 +326,10 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
                   }
                 />
               </FileDetails>
-              <StatusIndicator status={item.status} />
+              <StatusIndicator status={item.status}>
+                {item.status === 'completed' && <CheckCircleIcon />}
+                {item.status === 'failed' && <ErrorIcon />}
+              </StatusIndicator>
             </FileItem>
           ))}
         </Box>

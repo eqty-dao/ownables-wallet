@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useCollections } from "../context/CollectionsContext";
 import { useEffect, useState } from "react";
-import { Box, Grid } from "@mui/material";
+import { Box, Grid, IconButton, Tooltip, LinearProgress } from "@mui/material";
 import CollapsedItem from "./common/CollapsedItem";
 import EmptyCollection from "./common/EmptyCollection";
 import {
@@ -11,6 +11,7 @@ import {
 import { EventChain } from "@ltonetwork/lto";
 import React from "react";
 import { useFilters } from "../context/FilterContext";
+import DownloadIcon from '@mui/icons-material/Download';
 
 const gridStyle = {
   maxWidth: 1400,
@@ -22,26 +23,70 @@ interface TabProps {
   active: boolean;
 }
 
-const Tab = styled.span<TabProps>`
-  display: block;
-  cursor: pointer;
-  font-size: 20px;
-  color: #909092;
-  padding: 12px;
-  outline: none;
-  appearance: none;
-
-  ${({ active }) =>
-    active &&
-    `
-        color: #ffffff;
-    `}
+const TabsWrapper = styled.div`
+  background: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 4px;
+  margin: 0 16px 16px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 `;
 
 const TabsContainer = styled.div`
   display: flex;
   align-items: center;
   flex-direction: row;
+  gap: 8px;
+`;
+
+const Tab = styled.span<TabProps>`
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: ${({ active }) => (active ? '#ffffff' : '#909092')};
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  background: ${({ active }) => (active ? 'rgba(183, 112, 255, 0.15)' : 'transparent')};
+  border: 1px solid ${({ active }) => (active ? 'rgba(183, 112, 255, 0.3)' : 'transparent')};
+  
+  &:hover {
+    background: ${({ active }) => (!active ? 'rgba(255, 255, 255, 0.05)' : 'rgba(183, 112, 255, 0.15)')};
+  }
+`;
+
+const DownloadSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 8px;
+`;
+
+const ProgressWrapper = styled.div`
+  min-width: 200px;
+  padding: 0 16px;
+`;
+
+const ProgressText = styled.div`
+  color: #909092;
+  font-size: 12px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+`;
+
+const StyledLinearProgress = styled(LinearProgress)`
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  
+  .MuiLinearProgress-bar {
+    background: linear-gradient(90deg, #B770FF 0%, #8A4BE9 100%);
+  }
 `;
 
 const TabContent = styled(Box)``;
@@ -73,8 +118,12 @@ interface Props {
 
 const OwnablesTabs = (props: Props) => {
   const [tab, selectedTab] = useState<TabType>(
-    (props.tab as TabType) || TabType.COLLECTIONS
+    (props.tab as TabType) || TabType.ALL
   );
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [totalToDownload, setTotalToDownload] = useState(0);
+  const [downloadedCount, setDownloadedCount] = useState(0);
 
   const [deletableFromCollections, setDeletableFromCollections] = useState<
     Array<string>
@@ -85,7 +134,6 @@ const OwnablesTabs = (props: Props) => {
 
   useEffect(() => {
     handleTabChange(props.tab as TabType);
-    // eslint-disable-next-line
   }, [props.tab]);
 
   const handleTabChange = (type: TabType) => {
@@ -226,29 +274,31 @@ const OwnablesTabs = (props: Props) => {
 
   return (
     <Box>
-      <TabsContainer>
-        <Tab
-          key={TabType.COLLECTIONS}
-          active={tab === TabType.COLLECTIONS}
-          onClick={() => handleTabChange(TabType.COLLECTIONS)}
-        >
-          Categories
-        </Tab>
-        <Tab
-          key={TabType.ALL}
-          active={tab === TabType.ALL}
-          onClick={() => handleTabChange(TabType.ALL)}
-        >
-          All
-        </Tab>
-        <Tab
-          key={TabType.INTERSTITIAL}
-          active={tab === TabType.INTERSTITIAL}
-          onClick={() => handleTabChange(TabType.INTERSTITIAL)}
-        >
-          {""}
-        </Tab>
-      </TabsContainer>
+      <TabsWrapper>
+        <TabsContainer>
+          <Tab
+            key={TabType.ALL}
+            active={tab === TabType.ALL}
+            onClick={() => handleTabChange(TabType.ALL)}
+          >
+            All
+          </Tab>
+          <Tab
+            key={TabType.COLLECTIONS}
+            active={tab === TabType.COLLECTIONS}
+            onClick={() => handleTabChange(TabType.COLLECTIONS)}
+          >
+            Categories
+          </Tab>
+          <Tab
+            key={TabType.INTERSTITIAL}
+            active={tab === TabType.INTERSTITIAL}
+            onClick={() => handleTabChange(TabType.INTERSTITIAL)}
+          >
+            {""}
+          </Tab>
+        </TabsContainer>
+      </TabsWrapper>
       <TabContent>{renderContent()}</TabContent>
     </Box>
   );
