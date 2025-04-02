@@ -24,7 +24,7 @@ interface FilterContextType {
 const FilterContext = createContext<FilterContextType>({
   filteredPackages: [],
   collection: "",
-  selectedTab: TabType.COLLECTIONS,
+  selectedTab: TabType.ALL,
   issuer: "",
   type: "",
   isFiltering: false,
@@ -45,7 +45,7 @@ export const FilterProvider = (props: Props) => {
     FilterService.filterBy("", "", StaticCollections.ALL)
   );
 
-  const [selectedTab, setSelectedTab] = useState<TabType>(TabType.COLLECTIONS);
+  const [selectedTab, setSelectedTab] = useState<TabType>(TabType.ALL);
 
   const [collection, setCollection] = useState<string>(StaticCollections.ALL);
   const [issuer, setIssuer] = useState<string>("");

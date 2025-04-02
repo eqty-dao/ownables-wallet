@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, Button, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Button, Platform, Linking, PermissionsAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useStaticServer } from '../../hooks/useStaticServer';
 import { MainScreenContainer } from '../../components/MainScreenContainer';
@@ -14,6 +14,7 @@ import { Modal } from 'react-native';
 import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
+import RNPhotoManipulator from 'react-native-photo-manipulator';
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -54,11 +55,205 @@ const NewOwnablesTabScreen = () => {
         return data.replace(/\\/g, '');
     }
 
+    const hasAndroidPermission = async () => {
+        const getCheckPermissionPromise = () => {
+            if (Number(Platform.Version) >= 33) {
+                return Promise.all([
+                    PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES),
+                    PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO),
+                ]).then(
+                    ([hasReadMediaImagesPermission, hasReadMediaVideoPermission]) =>
+                        hasReadMediaImagesPermission && hasReadMediaVideoPermission,
+                );
+            } else {
+                return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+            }
+        };
+
+        const hasPermission = await getCheckPermissionPromise();
+        if (hasPermission) {
+            return true;
+        }
+
+        const getRequestPermissionPromise = () => {
+            if (Number(Platform.Version) >= 33) {
+                return PermissionsAndroid.requestMultiple([
+                    PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+                    PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+                ]).then(
+                    (statuses) =>
+                        statuses[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] ===
+                        PermissionsAndroid.RESULTS.GRANTED &&
+                        statuses[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO] ===
+                        PermissionsAndroid.RESULTS.GRANTED,
+                );
+            } else {
+                return PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE)
+                    .then((status) => status === PermissionsAndroid.RESULTS.GRANTED);
+            }
+        };
+
+        return await getRequestPermissionPromise();
+    };
+
     const handleMessageFromWeb = (event: any) => {
         try {
-            // console.log('url:', url);
-            // console.log('Message from WebView', event.nativeEvent.data);
             const data = JSON.parse(event.nativeEvent.data);
+
+            if (data.type === 'downloadOwnable') {
+                const downloadOwnable = async (data: any) => {
+                    try {
+                        const { base64Data, filename } = data;
+                        console.log('filename:', filename);
+                        setShowDownloadModal(true);
+                        setDownloadModalMessage('Requesting permissions...');
+                        
+                        // Check and request permissions first
+                        if (Platform.OS === 'ios') {
+                            const permission = await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
+                            console.log('permission:', permission);
+                            if (permission !== RESULTS.GRANTED && permission !== RESULTS.LIMITED) {
+                                try {
+                                    const result = await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
+                                    console.log('result:', result);
+                                    if (result !== RESULTS.GRANTED && result !== RESULTS.LIMITED) {
+                                        setShowDownloadModal(true);
+                                        setDownloadModalMessage('Photo library permission denied');
+                                        setTimeout(() => {
+                                            setShowDownloadModal(false);
+                                            Linking.openSettings();
+                                        }, 2000);
+                                        return;
+                                    }
+                                } catch (error) {
+                                    console.error('Error requesting permission:', error);
+                                    setDownloadModalMessage('Error requesting permission');
+                                    setMessageInfo('Error requesting permission');
+                                    setShowMessage(true);
+                                    return;
+                                }
+                            }
+                        } else if (Platform.OS === 'android') {
+                            const hasPermission = await hasAndroidPermission();
+                            if (!hasPermission) {
+                                setDownloadModalMessage('Storage permission denied');
+                                setMessageInfo('Storage permission denied');
+                                setShowMessage(true);
+                                return;
+                            }
+                        }
+
+                        setDownloadModalMessage('Processing image...');
+
+                        try {
+                            // Validate and process base64 data
+                            if (!base64Data || typeof base64Data !== 'string') {
+                                throw new Error('Invalid image data');
+                            }
+
+                            // Clean and process the base64 string
+                            let processedBase64 = base64Data;
+                            if (!base64Data.startsWith('data:image')) {
+                                // Remove any potential prefixes
+                                processedBase64 = base64Data.replace(/^data:.*?;base64,/, '');
+                                // Keep the original format (WebP)
+                                processedBase64 = `data:image/webp;base64,${processedBase64}`;
+                            } else {
+                                // Fix any malformed data URI
+                                processedBase64 = processedBase64.replace(/^data:image\/image\//, 'data:image/');
+                            }
+
+                            // Clean the base64 string
+                            processedBase64 = processedBase64.trim();
+
+                            // For debugging
+                            console.log('Saving image with length:', processedBase64.length);
+                            console.log('Base64 string starts with:', processedBase64.substring(0, 50));
+
+                            setDownloadModalMessage('Saving image...');
+
+                            // Create a proper filename
+                            const cleanFilename = (filename || 'temp_image')
+                                .replace(/\.[^/.]+$/, "") // Remove extension
+                                .replace(/[^a-zA-Z0-9]/g, '_') // Replace any non-alphanumeric chars with underscore
+                                .replace(/_+/g, '_') // Replace multiple underscores with single
+                                .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+                            
+                            if (Platform.OS === 'ios') {
+                                const photoDir = `${RNFS.DocumentDirectoryPath}/Photos`;
+                                const finalPath = `${photoDir}/${cleanFilename}.jpg`;
+
+                                // Create Photos directory if it doesn't exist
+                                await RNFS.mkdir(photoDir).catch(() => {});
+                                
+                                try {
+                                    // Extract just the base64 data without the data URI prefix
+                                    const base64Data = processedBase64.replace(/^data:image\/\w+;base64,/, '');
+                                    
+                                    // Save as JPEG directly
+                                    await RNFS.writeFile(finalPath, base64Data, 'base64');
+                                    
+                                    // Verify file exists and has content
+                                    const fileExists = await RNFS.exists(finalPath);
+                                    if (!fileExists) {
+                                        throw new Error('File was not created successfully');
+                                    }
+
+                                    const fileStats = await RNFS.stat(finalPath);
+                                    console.log('File size:', fileStats.size);
+                                    
+                                    if (fileStats.size === 0) {
+                                        throw new Error('File is empty');
+                                    }
+
+                                    // Save to photo library
+                                    const { CameraRoll } = require("@react-native-camera-roll/camera-roll");
+                                    await CameraRoll.save(`file://${finalPath}`, {
+                                        type: 'photo',
+                                        album: 'LTO Wallet'
+                                    });
+
+                                    // Clean up temporary file
+                                    await RNFS.unlink(finalPath).catch(() => {});
+                                } catch (error) {
+                                    console.error('Photo saving error:', error);
+                                    // Try to clean up the file even if saving failed
+                                    await RNFS.unlink(finalPath).catch(() => {});
+                                    throw error;
+                                }
+                            } else {
+                                // Android path
+                                const finalPath = `${RNFS.PicturesDirectoryPath}/LTO Wallet/${cleanFilename}.webp`;
+                                await RNFS.mkdir(`${RNFS.PicturesDirectoryPath}/LTO Wallet`).catch(() => {});
+                                await RNFS.writeFile(finalPath, processedBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+                            }
+
+                            setDownloadModalMessage(`Saved to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
+                            setMessageInfo(`Saved Ownable to ${Platform.OS === 'ios' ? 'Photos' : 'Gallery'}`);
+                            setShowMessage(true);
+
+                        } catch (saveError) {
+                            console.error('Error saving to camera roll:', saveError);
+                            setDownloadModalMessage('Failed to save image');
+                            setMessageInfo('Failed to save image');
+                            setShowMessage(true);
+                        }
+                    } catch (error) {
+                        console.error('Error in downloadOwnable:', error);
+                        setDownloadModalMessage('Error saving image');
+                        setMessageInfo('Failed to save image');
+                        setShowMessage(true);
+                    } finally {
+                        setTimeout(() => {
+                            setShowDownloadModal(false);
+                        }, 2000);
+                    }
+                };
+
+                setShowDownloadModal(true);
+                downloadOwnable(data);
+            }
+
             if (data.type === 'sdkerror') {
                 console.log('SDK error:', data.data);
                 setSdkError(true);
@@ -77,64 +272,6 @@ const NewOwnablesTabScreen = () => {
                 }, 5000);
             }
 
-            if (data.type === 'downloadOwnable') {
-                const downloadOwnable = async (data: any) => {
-                    const { base64Data, filename } = data;
-                    const path = `${RNFS.DocumentDirectoryPath}/${filename}`;
-                    RNFS.writeFile(path, base64Data, 'base64').then(() => {
-                        console.log('File written to', path);
-                        setDownloadModalMessage(`Downloaded ${filename}`);
-                    }).catch((error) => {
-                        console.error('Error writing file:', error);
-                        setDownloadModalMessage(`Error downloading ${filename}`);
-                    }).finally(() => {
-                        setTimeout(() => {
-                            setShowDownloadModal(false);
-                            setMessageInfo(`Downloaded Ownable to ${Platform.OS === 'android' ? 'Downloads' : 'Files'}`);
-                            setShowMessage(true);
-                        }, 2000);
-                    });
-                }
-                if (Platform.OS === 'android') {
-                    //check for permissions 
-                    check(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE)
-                        .then((result) => {
-                            switch (result) {
-                                case RESULTS.UNAVAILABLE:
-                                    console.log(
-                                        'This feature is not available (on this device / in this context)',
-                                    );
-                                    break;
-                                case RESULTS.DENIED:
-                                    console.log('The permission has not been requested / is denied but requestable');
-                                    request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE).then((result) => {
-                                        if (result === RESULTS.GRANTED) {
-                                            console.log('Permission granted');
-                                            downloadOwnable(data);
-                                        }
-                                    });
-                                    break;
-                                case RESULTS.GRANTED:
-                                    console.log('The permission is granted');
-                                    downloadOwnable(data);
-                                    break;
-                                case RESULTS.BLOCKED:
-                                    console.log('The permission is denied and not requestable anymore');
-                                    setErrorMessage('Permission denied unable to download ownable');
-                                    break;
-                            }
-                        })
-                        .catch((error) => {
-                            console.log('Error checking permissions:', error);
-                            setErrorMessage('Error checking permissions,please try again');
-                        });
-                } else {
-                    downloadOwnable(data);
-                }
-                setShowDownloadModal(true);
-
-            }
-
             if (data.type === 'address') {
                 console.log('Address:', data.data);
                 setWebviewUrl(url);
@@ -145,14 +282,14 @@ const NewOwnablesTabScreen = () => {
                 console.log('Open Info:', data.data);
                 InAppBrowser.open('https://docs.ltonetwork.com/ownables/what-are-ownables');
             }
-            if(data.type === 'openExplorer'){
+
+            if (data.type === 'openExplorer') {
                 InAppBrowser.open(data.data);
             }
         } catch (error) {
-            console.error('Error parsing message from WebView:', error);
+            console.error('Error handling WebView message:', error);
         }
-
-    }
+    };
 
     const handleShouldStartLoadWithRequest = (request: any): boolean => {
         // console.log('handleShouldStartLoadWithRequest', request.url);
@@ -175,20 +312,19 @@ const NewOwnablesTabScreen = () => {
                             restartServer();
                         }}
                     />
-
                 </View>
             )}
             <MainScreenContainer disableScroll={true}>
                 <OverviewHeader
-                    icon={'menu'}
-                    onPress={() => navigation.navigate('Menu')}
+                    icon="menu"
+                    onPress={() => navigation.navigate('Menu' as never)}
                     hideQR={true}
                     input={<StyledImage testID="logo-title" source={logoTitle} />}
                 />
-                <>
-                    {!sdkError && <WebView
+                <View style={{ flex: 1, backgroundColor: '#0D0D0D' }}>
+                    <WebView
                         ref={webViewRef}
-                        backgroundColor="#0D0D0D"
+                        style={{ flex: 1 }}
                         source={{
                             uri: webviewUrl,
                             headers: {
@@ -196,13 +332,10 @@ const NewOwnablesTabScreen = () => {
                                 'Pragma': 'no-cache',
                                 'Expires': '0',
                             },
-
                         }}
-                        allowsUnsecureHttps={true}
                         originWhitelist={['*']}
                         allowUniversalAccessFromFileURLs={true}
                         allowFileAccessFromFileURLs={true}
-                        incognito={false}
                         onMessage={handleMessageFromWeb}
                         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
                         onLoadStart={() => {
@@ -212,7 +345,7 @@ const NewOwnablesTabScreen = () => {
                             setWebViewLoading(false);
                             const seed = LTOService.getSeed();
                             if (!seed) {
-                                navigation.navigate('Root');
+                                navigation.navigate('Root' as never);
                                 return;
                             }
                             if (webViewRef.current) {
@@ -226,49 +359,8 @@ const NewOwnablesTabScreen = () => {
                             setWebViewError(true);
                             restartServer();
                         }}
-                        style={{ flex: 1, backgroundColor: '#0D0D0D' }}
-                    />}
-                </>
-                {
-                    sdkError && (
-                        <View style={
-                            {
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: 10,
-                                borderRadius: 10,
-                                top: "50%",
-                            }
-                        }>
-                            <View style={{
-                                display: 'flex',
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                            }}>
-                                <RneIcons
-                                    name="warning"
-                                    type='font-awesome'
-                                    color={'white'}
-                                    size={15}
-                                    style={{ backgroundColor: '#35363b', borderRadius: 100, width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}
-                                />
-                                <Text style={{ color: 'white', fontSize: 14 }}> Ownable Module Timeout</Text>
-                            </View>
-                            <Button
-                                title="Relaunch"
-                                onPress={() => {
-                                    setSdkError(false);
-                                    setWebViewError(false);
-                                    setWebViewLoading(true);
-                                    setWebviewUrl('');
-                                    restartServer();
-                                }}
-                            />
-                        </View>
-                    )
-                }
+                    />
+                </View>
             </MainScreenContainer>
             <Modal
                 animationType="slide"
@@ -291,23 +383,22 @@ const NewOwnablesTabScreen = () => {
             </Modal>
             {/* BT: Left it here for debugging purposes */}
             {/* {webViewError && (
-                <View style={styles.errorOverlay}>
-                    <Text style={styles.errorText}>Error from Ownable SDK</Text>
-                    <Button
-                        title="Retry"
-                        onPress={() => {
-                            setWebViewError(false);
-                            setWebViewLoading(true);
-                            setWebviewUrl('');
-                            restartServer();
-                        }}
-                    />
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                </View>
-            )} */}
+                    <View style={styles.errorOverlay}>
+                        <Text style={styles.errorText}>Error from Ownable SDK</Text>
+                        <Button
+                            title="Retry"
+                            onPress={() => {
+                                setWebViewError(false);
+                                setWebViewLoading(true);
+                                setWebviewUrl('');
+                                restartServer();
+                            }}
+                        />
+                        <Text style={styles.errorText}>{errorMessage}</Text>
+                    </View>
+                )} */}
 
         </View>
-
     );
 };
 

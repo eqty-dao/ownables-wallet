@@ -276,18 +276,18 @@ export default function App() {
     // eslint-disable-next-line
   }, []);
 
-  // useEffect(() => {
-  //   if (LTOService.address.length > 1) {
-  //     const stopPolling = PollingService.startPolling(
-  //       LTOService.address,
-  //       (newCount: any) => {
-  //         setMessages(newCount);
-  //       },
-  //       5000
-  //     );
-  //     return () => stopPolling();
-  //   }
-  // }, [LTOService.address]);
+  useEffect(() => {
+    if (LTOService.address.length > 1) {
+      const stopPolling = PollingService.startPolling(
+        LTOService.address,
+        (newCount: any) => {
+          setMessages(newCount);
+        },
+        5000
+      );
+      return () => stopPolling();
+    }
+  }, [LTOService.address]);
 
   const deleteOwnable = async (id: string, packageCid: string) => {
     const pkg = PackageService.info(packageCid);

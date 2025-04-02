@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertColor, Button, CircularProgress, Dialog, DialogContent, DialogContentText } from "@mui/material";
+import { AlertColor, Button, CircularProgress, Dialog, DialogContent, DialogContentText, Icon } from "@mui/material";
 import { ReactComponent as MenuIcon } from "../../assets/actions_menu_icon.svg";
 import { ReactComponent as CloseIcon } from "../../assets/close_icon.svg";
 import { ReactComponent as DeleteIcon } from "../../assets/delete_icon.svg";
@@ -8,7 +8,9 @@ import { ReactComponent as TransferIcon } from "../../assets/transfer_icon.svg";
 import { ReactComponent as InfoIcon } from "../../assets/info_icon.svg";
 import { ReactComponent as PlusIcon } from "../../assets/plus_icon.svg";
 import { ReactComponent as SwapIcon } from "../../assets/redeem.svg";
-import { SwapHoriz } from "@mui/icons-material"
+import { ReactComponent as DownloadIcon } from "../../assets/consume_icon.svg";
+import { ReactComponent as RWAIcon } from "../../assets/EQTY_BADGE.svg";
+import { Download, SwapHoriz } from "@mui/icons-material"
 import { EventChain } from "@ltonetwork/lto";
 import { TypedMetadata } from "../../interfaces/TypedOwnableInfo";
 import { useState } from "react";
@@ -33,7 +35,8 @@ enum OwnableActionType {
   AddToCollection = "AddToCollection",
   Bridge = "Bridge",
   Download = "Download",
-  Redeem = "Redeem"
+  Redeem = "Redeem",
+  RWA = "RWA"
 }
 
 interface OwnableActionsFabProps {
@@ -57,6 +60,8 @@ interface OwnableActionsFabProps {
   showBridge: () => void;
   downloadOwnable: () => void;
   title: string;
+  hasRWA: boolean;
+  onShowRWA: () => void;
 }
 
 const wasConsumed = (chain: EventChain): boolean => {
@@ -164,6 +169,10 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         setShowRedeemDialog(true);
         fetchRedeemValue();
         break;
+      case OwnableActionType.RWA:
+        props.onClose();
+        props.onShowRWA();
+        break;
       default:
         console.error("Unknown action:", action);
     }
@@ -186,8 +195,8 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
     }
   };
 
-  const makeActionsList = (): any => {
-    const actions = [
+  const makeActionsList = (): TypedFabItem[] => {
+    const actions: TypedFabItem[] = [
       {
         id: OwnableActionType.AddToCollection,
         title: "Add to Category",
@@ -202,12 +211,7 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         id: OwnableActionType.Info,
         title: "Info",
         icon: InfoIcon,
-      },
-      // {
-      //   id: OwnableActionType.Download,
-      //   title: "Download",
-      //   icon: Download,
-      // }
+      }
     ];
 
     if (props.isConsumable) {
@@ -234,12 +238,26 @@ export default function OwnableActionsFab(props: OwnableActionsFabProps) {
         title: "Transfer",
         icon: TransferIcon,
       });
+      actions.push({
+        id: OwnableActionType.Download,
+        title: "Download",
+        icon: Download,
+      });
     }
-    if (props.isRedeemable) {
+    if (props.isRedeemable && props.isTransferable) {
       actions.push({
         id: OwnableActionType.Redeem,
         title: "Redeem",
         icon: () => <SwapIcon />,
+        backgroundColor: themeColors.primary,
+      });
+    }
+    if (props.hasRWA && props.isTransferable) {
+      actions.push({
+        id: OwnableActionType.RWA,
+        title: "RWA",
+        icon: () => <img src={require("../../assets/EQTY_BADGE.png")} style={{ width: "35px", height: "35px" }} />,
+        backgroundColor: 'rgb(110, 176, 77)',
       });
     }
 
