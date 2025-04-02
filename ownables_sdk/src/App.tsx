@@ -157,6 +157,7 @@ export default function App() {
   const [showImportPackage, setShowImportPackage] = useState(false);
   const [showOBuilderNotAvailable, setShowOBuilderNotAvailable] = useState(false);
   const [showOBuilderNotAvailableMessage, setShowOBuilderNotAvailableMessage] = useState('');
+  
   // DC: filters
   const {
     collection,
@@ -284,7 +285,8 @@ export default function App() {
         (newCount: any) => {
           setMessages(newCount);
         },
-        5000
+        5000,
+        isDownloading
       );
       return () => stopPolling();
     }

@@ -1,5 +1,5 @@
 import { Component, ReactNode, RefObject, createRef } from "react";
-import { Modal, Box, Paper, Tooltip, Dialog, IconButton, Typography, DialogContent, DialogTitle } from "@mui/material";
+import { Modal, Box, Paper, Tooltip, Dialog, IconButton, Typography, DialogContent, DialogTitle, styled } from "@mui/material";
 import OwnableActionsFab from "./OwnableActionsFab";
 import { themeColors } from "../../theme/themeColors";
 import { themeStyles } from "../../theme/themeStyles";
@@ -41,6 +41,7 @@ import { RedeemService } from "../../services/Redeem.service";
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CloseIcon from '@mui/icons-material/Close';
 import IDBService from "../../services/IDB.service";
+import { activityLogService } from "../../services/ActivityLog.service";
 
 interface OwnableProps {
   chain: EventChain;
@@ -787,42 +788,6 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   closeAddToCollection = () =>
     this.setState({ showAddToCollection: false, pkgId: "" });
 
-  showRWAContent = async () => {
-    try {
-      const html = await PackageService.getAssetAsText(this.pkg.cid, "rwa.html");
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      const bodyText = doc.body.textContent || '';
-
-      // Extract mnemonic and public key with more precise patterns
-      const mnemonicMatch = bodyText.match(/Mnemonic:\s*((?:\w+\s+){11}\w+)/);
-      const publicKeyMatch = bodyText.match(/Public Key:\s*([A-Za-z0-9]+)$/);
-
-      const mnemonic = mnemonicMatch ? mnemonicMatch[1].trim() : null;
-      const publicKey = publicKeyMatch ? publicKeyMatch[1].trim() : null;
-
-      this.setState({
-        rwaHtmlContent: doc.body.innerHTML,
-        showRWAModal: true,
-        mnemonic,
-        publicKey
-      });
-    } catch (error) {
-      console.error("Error loading RWA content:", error);
-      enqueueSnackbar("Failed to load RWA content", { variant: "error" });
-    }
-  }
-
-  private copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      enqueueSnackbar(`${label} copied to clipboard!`, {
-        variant: "success",
-        autoHideDuration: 2000
-      });
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-      enqueueSnackbar("Failed to copy to clipboard", { variant: "error" });
-    });
-  }
 
   render() {
     return (

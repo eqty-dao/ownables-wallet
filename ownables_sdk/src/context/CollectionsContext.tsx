@@ -58,7 +58,6 @@ export const CollectionsProvider = (props: Props) => {
   const [collections, setCollections] = useState<Array<CollectionItemType>>(
     CollectionService.getAll()
   );
-  const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [isUpdatingCollection, setIsUpdating] = useState<boolean>(false);
   const [updatingCollectionId, setUpdatingCollectionId] = useState<string>("");
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
