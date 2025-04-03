@@ -61,8 +61,6 @@ interface OwnableState {
   stateDump: StateDump;
   info?: TypedOwnableInfo;
   metadata: TypedMetadata;
-  showRWAModal: boolean;
-  rwaHtmlContent: string;
 }
 
 interface OwnableDetailsModalProps {
@@ -93,11 +91,6 @@ interface OwnableDetailsModalState {
   redeemAddress?: string;
   redeemLoading: boolean;
   redeemStatus: string;
-  hasRWA: boolean;
-  showRWAModal: boolean;
-  rwaHtmlContent: string;
-  mnemonic: string | null;
-  publicKey: string | null;
 }
 
 const backButtonStyle = {
@@ -182,11 +175,6 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       isRedeemable: false,
       redeemLoading: false,
       redeemStatus: '',
-      hasRWA: false,
-      showRWAModal: false,
-      rwaHtmlContent: '',
-      mnemonic: null,
-      publicKey: null,
     };
   }
 
@@ -195,7 +183,10 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   }
 
   get isTransferred(): boolean {
-    return !!this.state.info && this.state.info.owner !== LTOService.address;
+    const thisOwner = LTOService.address;
+    const allEvents = this.chain.events;
+    const lastEvent = allEvents[allEvents.length - 1];
+    return !!lastEvent?.parsedData?.transfer?.to && lastEvent?.parsedData?.transfer?.to !== thisOwner;
   }
 
   get isBridged() {
@@ -335,6 +326,11 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   ): Promise<void> {
     try {
       const bridgeAddress = await BridgeService.getBridgeAddress();
+
+      if (!bridgeAddress) {
+        enqueueSnackbar("Bridge not available, please try again later", { variant: "error" });
+        return;
+      }
 
       //   const previousHash: string = this.chain.latestHash.hex;
 
@@ -870,7 +866,6 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
               onTransfer={this.toggleShowTransferDialog}
               onAddToCollection={this.toggleAddToCollection}
               showBridge={() => this.setState({ showBridgeDialog: true })}
-              downloadOwnable={this.downloadOwnable}
               title={this.pkg.name}
               onRedeem={(value: number | null) => {
                 if (value !== null) {

@@ -799,6 +799,7 @@ export default function OwnableThumb(props: OwnableThumbProps) {
 
   const checkIfRWA = async () => {
     const exists = await PackageService.exists(props.packageCid, "rwa.html");
+    console.log("OwnableThumb -> exists", exists)
     setHasRWA(exists);
   }
 
