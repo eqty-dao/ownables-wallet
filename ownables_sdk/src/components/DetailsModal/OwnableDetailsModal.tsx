@@ -1,5 +1,5 @@
 import { Component, ReactNode, RefObject, createRef } from "react";
-import { Modal, Box, Paper, Tooltip, Dialog, IconButton, Typography, DialogContent, DialogTitle } from "@mui/material";
+import { Modal, Box, Paper, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, Typography, DialogContentText, IconButton, styled } from "@mui/material";
 import OwnableActionsFab from "./OwnableActionsFab";
 import { themeColors } from "../../theme/themeColors";
 import { themeStyles } from "../../theme/themeStyles";
@@ -38,10 +38,9 @@ import { sendRNPostMessage } from "../../utils/postMessage";
 import SessionStorageService from "../../services/SessionStorage.service";
 import LocalStorageService from "../../services/LocalStorage.service";
 import { RedeemService } from "../../services/Redeem.service";
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import CloseIcon from '@mui/icons-material/Close';
-import IDBService from "../../services/IDB.service";
 import { activityLogService } from "../../services/ActivityLog.service";
+import CloseIcon from '@mui/icons-material/Close';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 interface OwnableProps {
   chain: EventChain;
@@ -64,7 +63,6 @@ interface OwnableState {
   showRWAModal: boolean;
   rwaHtmlContent: string;
 }
-
 interface OwnableDetailsModalProps {
   chain: EventChain;
   packageCid: string;
@@ -151,15 +149,23 @@ const paperStyle = {
 
 const checkIcon = <CircleCheckIcon style={{ width: "40px", height: "40px" }} />;
 
+const BadgeContainer = styled("div")`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 35px;
+  height: 35px;
+  z-index: 10;
+  img {
+    width: 100%;
+    height: 100%;
+  }
+`;
+
 export default class OwnableDetailsModal extends Component<OwnableDetailsModalProps, OwnableDetailsModalState> {
   private readonly pkg: TypedPackage;
   private readonly iframeRef: RefObject<HTMLIFrameElement>;
   private busy = false;
-  private hasRWA = false;
-  private showRWAModal = false;
-  private rwaHtmlContent = '';
-  private mnemonic = '';
-  private publicKey = '';
 
   constructor(props: OwnableDetailsModalProps) {
     super(props);
@@ -337,7 +343,11 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       const bridgeAddress = await BridgeService.getBridgeAddress();
 
       //   const previousHash: string = this.chain.latestHash.hex;
-
+      if (!bridgeAddress) {
+        sendRNPostMessage(JSON.stringify({ type: "error", message: "Bridge not available" }));
+        enqueueSnackbar("Bridge not available, please try again later", { variant: "error" });
+        return;
+      }
       await this.execute({ transfer: { to: bridgeAddress } });
 
       this.chain.validate();
@@ -483,75 +493,37 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
     await this.execute(event.data.msg);
   };
+
   downloadOwnable = async () => {
     try {
-      // find any image with webp,.png,.jpg,.jpeg,.gif
-      const imageFormatExtension = ["webp", "png", "jpg", "jpeg", "gif"]
-      const _package = await IDBService.getAll(`package:${this.pkg.cid}`)
-      const image = _package.find((i: any) => imageFormatExtension.includes(i.name?.split(".")[1]))
-      if (!image) {
-        throw new Error("No image found");
-      }
-
-      // Ensure we have a valid filename
-      const filename = this.pkg.name || 'ownable';
-      const extension = image.type || 'webp';
-      const safeFilename = `${filename}.webp`;
-
-      // Create a new blob with the correct type
-      const imageBlob = new Blob([image], { type: `${image.type || 'image/webp'}` });
-
-      // Convert to base64
-      const reader = new FileReader();
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          const result = reader.result;
-          if (typeof result === 'string') {
-            // Remove the data URL prefix if it exists
-            const base64 = result.includes('base64,') ?
-              result.split('base64,')[1] :
-              result;
-            resolve(base64);
-          } else {
-            reject(new Error("Failed to convert image to base64"));
-          }
-        };
-        reader.onerror = () => reject(new Error("Failed to read image file"));
-        reader.readAsDataURL(imageBlob);
+      const zip = await OwnableService.zip(this.chain);
+      const content = await zip.generateAsync({
+        type: "uint8array",
       });
+      const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+        this.chain.state?.base58,
+        8,
+        ""
+      )}.zip`;
+      const base64Data = btoa(
+        new Uint8Array(content).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
+      sendRNPostMessage(JSON.stringify({ type: "downloadOwnable", base64Data: base64Data, filename: filename }));
 
-      // Send the image data to the mobile app with guaranteed non-null values
-      sendRNPostMessage(JSON.stringify({
-        type: "downloadOwnable",
-        base64Data: `data:image/${extension};base64,${base64Data}`,
-        filename: safeFilename
-      }));
-    } catch (error) {
-      console.error('Error in downloadOwnable:', error);
-      // Send error to React Native
-      sendRNPostMessage(JSON.stringify({
-        type: "error",
-        message: "Failed to prepare image for download"
-      }));
-    }
-  }
-
-  downloadImage = async () => {
-    try {
-      const { image, type } = await OwnableService.getImageAndType(this.chain);
-      if (!image) {
-        console.error("No image found");
-        enqueueSnackbar("Requested data is not available", { variant: "error" });
-        return;
-      }
-      const filename = `${this.state.metadata?.name || 'ownable'}.${type}`;
-      sendRNPostMessage(JSON.stringify({ type: "downloadImage", image: image, filename: filename }));
     } catch (e) {
       console.error("OwnableThumb -> getImage -> e", e);
     }
   }
 
   private async redeem(): Promise<void> {
+    activityLogService.logActivity({
+      activity: `Started Redeeming Ownable ${this.pkg.name}`,
+      timestamp: new Date().getTime(),
+    });
+
     this.setState({
       redeemLoading: true,
       redeemStatus: 'Initializing redeem process...'
@@ -672,9 +644,9 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
 
     try {
       const exists = await PackageService.exists(this.pkg.cid, "rwa.html");
-      this.hasRWA = exists;
+      this.setState({ hasRWA: exists });
     } catch (error) {
-      this.hasRWA = false;
+      this.setState({ hasRWA: false });
       console.error("Error checking RWA status:", error);
     }
   }
@@ -729,38 +701,6 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     </button>
   );
 
-  showRWAContent = async () => {
-    try {
-      const html = await PackageService.getAssetAsText(this.pkg.cid, "rwa.html");
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      const bodyText = doc.body.textContent || '';
-
-      // Extract mnemonic and public key with more precise patterns
-      const mnemonicMatch = bodyText.match(/Mnemonic:\s*((?:\w+\s+){11}\w+)/);
-      const publicKeyMatch = bodyText.match(/Public Key:\s*([A-Za-z0-9]+)$/);
-
-      const mnemonic = mnemonicMatch ? mnemonicMatch[1].trim() : null;
-      const publicKey = publicKeyMatch ? publicKeyMatch[1].trim() : null;
-    } catch (error) {
-      console.error("Error loading RWA content:", error);
-      enqueueSnackbar("Failed to load RWA content", { variant: "error" });
-    }
-  }
-
-  private copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      enqueueSnackbar(`${label} copied to clipboard!`, {
-        variant: "success",
-        autoHideDuration: 2000
-      });
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-      enqueueSnackbar("Failed to copy to clipboard", { variant: "error" });
-    });
-  }
-
-
-
   onConsumePressed = () => {
     !!this.state.info && this.props.onConsume(this.state.info);
   };
@@ -781,7 +721,42 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
   closeAddToCollection = () =>
     this.setState({ showAddToCollection: false, pkgId: "" });
 
+  showRWAContent = async () => {
+    try {
+      const html = await PackageService.getAssetAsText(this.pkg.cid, "rwa.html");
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const bodyText = doc.body.textContent || '';
 
+      // Extract mnemonic and public key with more precise patterns
+      const mnemonicMatch = bodyText.match(/Mnemonic:\s*((?:\w+\s+){11}\w+)/);
+      const publicKeyMatch = bodyText.match(/Public Key:\s*([A-Za-z0-9]+)$/);
+
+      const mnemonic = mnemonicMatch ? mnemonicMatch[1].trim() : null;
+      const publicKey = publicKeyMatch ? publicKeyMatch[1].trim() : null;
+
+      this.setState({
+        rwaHtmlContent: doc.body.innerHTML,
+        showRWAModal: true,
+        mnemonic,
+        publicKey
+      });
+    } catch (error) {
+      console.error("Error loading RWA content:", error);
+      enqueueSnackbar("Failed to load RWA content", { variant: "error" });
+    }
+  }
+
+  private copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      enqueueSnackbar(`${label} copied to clipboard!`, {
+        variant: "success",
+        autoHideDuration: 2000
+      });
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      enqueueSnackbar("Failed to copy to clipboard", { variant: "error" });
+    });
+  }
 
   render() {
     return (
@@ -792,136 +767,201 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         aria-describedby="modal-description"
         sx={modalStyle}
       >
-        <Box component="div">
-          <Box sx={{ ...modalStyle, p: 2 }}>
-            <Box
+        <Box sx={{ ...modalStyle, p: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              justifyContent: "space-between",
+            }}
+          >
+            <this.BackButton />
+            <FavoriteButton packageName={this.props.chain.id} />
+          </Box>
+          <p style={ownableNameStyle}>{this.state.metadata?.name}</p>
+          <p style={ownableDescStyle}>{this.state.metadata?.description}</p>
+
+          <Paper sx={paperStyle}>
+            <OwnableFrame
+              id={this.chain.id}
+              packageCid={this.pkg.cid}
+              isDynamic={this.pkg.isDynamic}
+              iframeRef={this.iframeRef}
+              onLoad={() => this.onLoad()}
+            />
+            {this.state.hasRWA && (
+              <BadgeContainer>
+                <img src={require("../../assets/EQTY_BADGE.png")} alt="EQTY Badge" />
+              </BadgeContainer>
+            )}
+
+            <If condition={this.isTransferred && !this.isBridged}>
+              <Tooltip
+                title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+                followCursor
+              >
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                    Transferred
+                  </LtoOverlayBanner>
+                </LtoOverlay>
+              </Tooltip>
+            </If>
+            <If condition={this.isBridged && this.isTransferred}>
+              <Tooltip
+                title="You're unable to interact with this Ownable, because it has been transferred to a different account."
+                followCursor
+              >
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                    Bridged
+                  </LtoOverlayBanner>
+                </LtoOverlay>
+              </Tooltip>
+            </If>
+            <If condition={this.isRedeemed}>
+              <Tooltip
+                title="You're unable to interact with this Ownable, because it has been sent to the redeemed."
+                followCursor
+              >
+                <LtoOverlay isForDetailsScreen={false}>
+                  <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
+                    Redeemed
+                  </LtoOverlayBanner>
+                </LtoOverlay>
+              </Tooltip>
+            </If>
+          </Paper>
+          <OwnableActionsFab
+            onDelete={this.props.onDelete}
+            open={this.state.showMenu}
+            onOpen={this.toggleMenu}
+            onClose={this.toggleMenu}
+            closeModal={this.onClose}
+            packageCid={this.props.packageCid}
+            isConsumable={this.pkg.isConsumable && !this.isTransferred}
+            isTransferable={this.pkg.isTransferable && !this.isTransferred}
+            isBridgeable={!this.isTransferred && this.hasNFT}
+            chain={this.props.chain}
+            metadata={this.state.metadata}
+            onShowInfo={this.toggleShowInfo}
+            onConsume={this.onConsumePressed}
+            onTransfer={this.toggleShowTransferDialog}
+            onAddToCollection={this.toggleAddToCollection}
+            showBridge={() => this.setState({ showBridgeDialog: true })}
+            downloadOwnable={() => this.downloadOwnable()}
+            title={this.pkg.name}
+            onRedeem={(value: number | null) => {
+              if (value !== null) {
+                try {
+                  this.redeem();
+                } catch (error) {
+                  console.error("Error during redeem:", error);
+                  this.setState({ redeemStatus: "Failed to redeem. Please try again." });
+                }
+              }
+            }}
+            isRedeemable={this.state.isRedeemable && !this.isRedeemed}
+            hasRWA={this.state.hasRWA}
+            onShowRWA={this.showRWAContent}
+          />
+          <OwnableInfoDrawer
+            open={this.state.showInfo}
+            onClose={this.toggleShowInfo}
+            chain={this.props.chain}
+            metadata={this.state.metadata}
+          />
+          <TransferOwnableDrawer
+            title="Transfer Ownable"
+            open={this.state.showTransferDialog}
+            onClose={this.toggleShowTransferDialog}
+            onSubmit={(address) => this.transfer(address)}
+            ok="Transfer"
+            validate={this.onValidate}
+            TextFieldProps={{ label: "Recipient address" }}
+          />
+          <BridgeOwnableDrawer
+            title="Bridge Ownable"
+            open={this.state.showBridgeDialog}
+            onClose={() => this.setState({ showBridgeDialog: false })}
+            onSubmit={(address: string, fee: number | null, nftNetwork: string) =>
+              this.bridge(address, fee, nftNetwork)
+            }
+            validate={() => ""}
+            nftNetwork={this.nftNetwork}
+          />
+          <AddToCollectionDrawer
+            title="Add to Category"
+            open={this.state.showAddToCollection}
+            onClose={this.closeAddToCollection}
+            pkgId={this.props.chain.id}
+          />
+          {this.state.redeemLoading && (
+            <Dialog open={this.state.redeemLoading}
+              onClose={() => { }}
               sx={{
-                display: "flex",
-                flexDirection: "row",
-                justifyContent: "space-between",
+                "& .MuiDialog-paper": {
+                  backgroundColor: "#141414",
+                  color: "white",
+                  borderRadius: "10px",
+                  width: "100%",
+                },
+                "& .MuiDialogTitle-root": {
+                  borderBottom: "1px solid #141414",
+                  color: "white",
+                },
+                "& .MuiDialogActions-root": {
+                  padding: "10px",
+                  justifyContent: "center",
+                },
+                "& .MuiDialogContent-root": {
+                  padding: "20px",
+                },
               }}
             >
-              <this.BackButton />
-              <FavoriteButton packageName={this.props.chain.id} />
-            </Box>
-            <p style={ownableNameStyle}>{this.state.metadata?.name}</p>
-            <p style={ownableDescStyle}>{this.state.metadata?.description}</p>
-
-            <Paper sx={paperStyle}>
-              <OwnableFrame
-                id={this.chain.id}
-                packageCid={this.pkg.cid}
-                isDynamic={this.pkg.isDynamic}
-                iframeRef={this.iframeRef}
-                onLoad={() => this.onLoad()}
-              />
-
-              <If condition={this.isTransferred && !this.isBridged}>
-                <Tooltip
-                  title="You're unable to interact with this Ownable, because it has been transferred to a different account."
-                  followCursor
+              <DialogTitle>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <img
+                    src={'/logo_popup.png'}
+                    alt={"oBuilder Logo"}
+                    style={{}}
+                  />
+                  <b>Redeeming Ownable</b>
+                </div>
+                <IconButton
+                  onClick={() => this.setState({ redeemLoading: false })}
+                  sx={{
+                    position: 'absolute',
+                    right: 8,
+                    top: 8,
+                    color: 'white'
+                  }}
                 >
-                  <LtoOverlay isForDetailsScreen={false}>
-                    <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                      Transferred
-                    </LtoOverlayBanner>
-                  </LtoOverlay>
-                </Tooltip>
-              </If>
-              <If condition={this.isBridged && this.isTransferred}>
-                <Tooltip
-                  title="You're unable to interact with this Ownable, because it has been transferred to a different account."
-                  followCursor
-                >
-                  <LtoOverlay isForDetailsScreen={false}>
-                    <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                      Bridged
-                    </LtoOverlayBanner>
-                  </LtoOverlay>
-                </Tooltip>
-              </If>
-              <If condition={this.isRedeemed}>
-                <Tooltip
-                  title="You're unable to interact with this Ownable, because it has been sent to the redeemed."
-                  followCursor
-                >
-                  <LtoOverlay isForDetailsScreen={false}>
-                    <LtoOverlayBanner icon={checkIcon} isForDetailsScreen={false}>
-                      Redeemed
-                    </LtoOverlayBanner>
-                  </LtoOverlay>
-                </Tooltip>
-              </If>
-            </Paper>
-            <OwnableActionsFab
-              onDelete={this.props.onDelete}
-              open={this.state.showMenu}
-              onOpen={this.toggleMenu}
-              onClose={this.toggleMenu}
-              closeModal={this.onClose}
-              packageCid={this.props.packageCid}
-              isConsumable={this.pkg.isConsumable && !this.isTransferred}
-              isTransferable={this.pkg.isTransferable && !this.isTransferred}
-              isBridgeable={!this.isTransferred && this.hasNFT}
-              chain={this.props.chain}
-              metadata={this.state.metadata}
-              onShowInfo={this.toggleShowInfo}
-              onConsume={this.onConsumePressed}
-              onTransfer={this.toggleShowTransferDialog}
-              onAddToCollection={this.toggleAddToCollection}
-              showBridge={() => this.setState({ showBridgeDialog: true })}
-              downloadOwnable={this.downloadOwnable}
-              title={this.pkg.name}
-              onRedeem={(value: number | null) => {
-                if (value !== null) {
-                  try {
-                    this.redeem();
-                  } catch (error) {
-                    console.error("Error during redeem:", error);
-                  }
-                }
-              }}
-              isRedeemable={this.state.isRedeemable && !this.isRedeemed}
-              hasRWA={this.hasRWA}
-              onShowRWA={this.showRWAContent}
-              downloadImage={this.downloadImage}
-            />
-            <OwnableInfoDrawer
-              open={this.state.showInfo}
-              onClose={this.toggleShowInfo}
-              chain={this.props.chain}
-              metadata={this.state.metadata}
-            />
-            <TransferOwnableDrawer
-              title="Transfer Ownable"
-              open={this.state.showTransferDialog}
-              onClose={this.toggleShowTransferDialog}
-              onSubmit={(address) => this.transfer(address)}
-              ok="Transfer"
-              validate={this.onValidate}
-              TextFieldProps={{ label: "Recipient address" }}
-            />
-            <BridgeOwnableDrawer
-              title="Bridge Ownable"
-              open={this.state.showBridgeDialog}
-              onClose={() => this.setState({ showBridgeDialog: false })}
-              onSubmit={(address: string, fee: number | null, nftNetwork: string) =>
-                this.bridge(address, fee, nftNetwork)
-              }
-              validate={() => ""}
-              nftNetwork={this.nftNetwork}
-            />
-            <AddToCollectionDrawer
-              title="Add to Category"
-              open={this.state.showAddToCollection}
-              onClose={this.closeAddToCollection}
-              pkgId={this.props.chain.id}
-            />
-          </Box>
-          {this.showRWAModal && (
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContentText sx={{ color: "white", fontSize: "1.2rem", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                <DialogContent>
+                  <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: 2,
+                    gap: 2
+                  }}>
+                    <CircularProgress />
+                    <Typography>
+                      {this.state.redeemStatus}
+                    </Typography>
+                  </Box>
+                </DialogContent>
+              </DialogContentText>
+            </Dialog>
+          )}
+          {this.state.showRWAModal && (
             <Dialog
-              open={this.showRWAModal}
-              onClose={() => this.showRWAContent()}
+              open={this.state.showRWAModal}
+              onClose={() => this.setState({ showRWAModal: false })}
               maxWidth="sm"
               fullWidth
               sx={{
@@ -954,7 +994,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                   <b>RWA Details</b>
                 </div>
                 <IconButton
-                  onClick={() => this.showRWAContent()}
+                  onClick={() => this.setState({ showRWAModal: false })}
                   sx={{
                     position: 'absolute',
                     right: 8,
@@ -971,9 +1011,9 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                   flexDirection: 'column',
                   gap: 2
                 }}>
-                  {(this.mnemonic || this.publicKey) ? (
+                  {(this.state.mnemonic || this.state.publicKey) ? (
                     <>
-                      {this.mnemonic && (
+                      {this.state.mnemonic && (
                         <Box sx={{
                           backgroundColor: '#2d2d2d',
                           borderRadius: 1,
@@ -1007,10 +1047,10 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                                 flex: 1
                               }}
                             >
-                              {this.mnemonic}
+                              {this.state.mnemonic}
                             </Typography>
                             <IconButton
-                              onClick={() => this.copyToClipboard(this.mnemonic!, 'Mnemonic')}
+                              onClick={() => this.copyToClipboard(this.state.mnemonic!, 'Mnemonic')}
                               sx={{
                                 color: 'white',
                                 padding: '8px',
@@ -1022,7 +1062,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                           </Box>
                         </Box>
                       )}
-                      {this.publicKey && (
+                      {this.state.publicKey && (
                         <Box sx={{
                           backgroundColor: '#2d2d2d',
                           borderRadius: 1,
@@ -1056,10 +1096,10 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                                 flex: 1
                               }}
                             >
-                              {this.publicKey}
+                              {this.state.publicKey}
                             </Typography>
                             <IconButton
-                              onClick={() => this.copyToClipboard(this.publicKey!, 'Public Key')}
+                              onClick={() => this.copyToClipboard(this.state.publicKey!, 'Public Key')}
                               sx={{
                                 color: 'white',
                                 padding: '8px',
@@ -1084,7 +1124,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word'
                     }}>
-                      <div dangerouslySetInnerHTML={{ __html: this.rwaHtmlContent }} />
+                      <div dangerouslySetInnerHTML={{ __html: this.state.rwaHtmlContent }} />
                     </Box>
                   )}
                 </Box>

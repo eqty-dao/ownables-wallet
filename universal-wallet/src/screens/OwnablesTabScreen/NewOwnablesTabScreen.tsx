@@ -11,10 +11,10 @@ import { Icon as RneIcons } from 'react-native-elements'
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import RNFS from 'react-native-fs';
 import { Modal } from 'react-native';
+import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
 import RNPhotoManipulator from 'react-native-photo-manipulator';
-import { check, PERMISSIONS, RESULTS, request } from 'react-native-permissions';
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -99,6 +99,7 @@ const NewOwnablesTabScreen = () => {
     const handleMessageFromWeb = (event: any) => {
         try {
             const data = JSON.parse(event.nativeEvent.data);
+            console.log('data:', data);
 
             if (data.type === 'downloadOwnable') {
                 const downloadOwnable = async (data: any) => {
@@ -107,7 +108,7 @@ const NewOwnablesTabScreen = () => {
                         console.log('filename:', filename);
                         setShowDownloadModal(true);
                         setDownloadModalMessage('Requesting permissions...');
-                        
+
                         // Check and request permissions first
                         if (Platform.OS === 'ios') {
                             const permission = await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
@@ -178,21 +179,21 @@ const NewOwnablesTabScreen = () => {
                                 .replace(/[^a-zA-Z0-9]/g, '_') // Replace any non-alphanumeric chars with underscore
                                 .replace(/_+/g, '_') // Replace multiple underscores with single
                                 .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
-                            
+
                             if (Platform.OS === 'ios') {
                                 const photoDir = `${RNFS.DocumentDirectoryPath}/Photos`;
                                 const finalPath = `${photoDir}/${cleanFilename}.jpg`;
 
                                 // Create Photos directory if it doesn't exist
                                 await RNFS.mkdir(photoDir).catch(() => {});
-                                
+
                                 try {
                                     // Extract just the base64 data without the data URI prefix
                                     const base64Data = processedBase64.replace(/^data:image\/\w+;base64,/, '');
-                                    
+
                                     // Save as JPEG directly
                                     await RNFS.writeFile(finalPath, base64Data, 'base64');
-                                    
+
                                     // Verify file exists and has content
                                     const fileExists = await RNFS.exists(finalPath);
                                     if (!fileExists) {
@@ -201,13 +202,13 @@ const NewOwnablesTabScreen = () => {
 
                                     const fileStats = await RNFS.stat(finalPath);
                                     console.log('File size:', fileStats.size);
-                                    
+
                                     if (fileStats.size === 0) {
                                         throw new Error('File is empty');
                                     }
 
                                     // Save to photo library
-                                    const { CameraRoll } = require("@react-native-camera-roll/camera-roll");
+                                    const { CameraRoll } = require("@react-native-community/cameraroll");
                                     await CameraRoll.save(`file://${finalPath}`, {
                                         type: 'photo',
                                         album: 'LTO Wallet'

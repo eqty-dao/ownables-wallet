@@ -154,9 +154,10 @@ export default class OwnableService {
       await rpc.init(chain.id, js, new Uint8Array(wasm));
       const stateDump = await this.apply(chain, []);
       await this.initStore(chain, cid, uniqueMessageHash, stateDump);
+      sendRNPostMessage(JSON.stringify({ type: "init", message: `Ownable ${uniqueMessageHash} initialized` }));
     } catch (error) {
       console.error(error);
-
+      sendRNPostMessage(JSON.stringify({ type: "error", message: error as string }));
     }
   }
 
