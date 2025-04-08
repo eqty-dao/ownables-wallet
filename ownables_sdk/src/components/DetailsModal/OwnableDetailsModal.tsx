@@ -469,7 +469,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         this.state.stateDump
       );
 
-      await OwnableService.store(this.chain, stateDump);
+      // await OwnableService.store(this.chain, stateDump);
       await this.refresh(stateDump);
       this.setState({ applied: this.chain.latestHash, stateDump });
     } catch (error) {

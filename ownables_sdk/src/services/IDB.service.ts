@@ -1,5 +1,4 @@
 import TypedDict from "../interfaces/TypedDict";
-import { sendRNPostMessage } from "../utils/postMessage";
 
 const DB_NAME = "ownables";
 
@@ -25,51 +24,69 @@ export default class IDBService {
 
   static async get(store: string, key: string): Promise<any> {
     return new Promise(async (resolve, reject) => {
-      const tx = (await this.db)
-        .transaction(store, "readonly")
-        .objectStore(store)
-        .get(key);
+      try {
+        // Check if store exists
+        if (!(await this.hasStore(store))) {
+          throw new Error(`Store "${store}" does not exist`);
+        }
 
-      tx.onsuccess = () => resolve(tx.result);
-      tx.onerror = (event) => reject(this.error(event));
+        const tx = (await this.db)
+          .transaction(store, "readonly")
+          .objectStore(store)
+          .get(key);
+
+        tx.onsuccess = () => resolve(tx.result);
+        tx.onerror = (event) => reject(this.error(event));
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
   static async getAll(store: string): Promise<Array<any>> {
     return new Promise(async (resolve, reject) => {
-      const tx = (await this.db)
-        .transaction(store, "readonly")
-        .objectStore(store)
-        .getAll();
+      try {
+        // Check if store exists
+        if (!(await this.hasStore(store))) {
+          throw new Error(`Store "${store}" does not exist`);
+        }
 
-      tx.onsuccess = () => resolve(tx.result);
-      tx.onerror = (event) => reject(this.error(event));
+        const tx = (await this.db)
+          .transaction(store, "readonly")
+          .objectStore(store)
+          .getAll();
+
+        tx.onsuccess = () => resolve(tx.result);
+        tx.onerror = (event) => reject(this.error(event));
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
   static async getMap(store: string): Promise<Map<any, any>> {
+
+    //initialize the connection to the database
+    await this.open();
+
     return new Promise(async (resolve, reject) => {
-      try {
-        const tx = (await this.db)
-          .transaction(store, "readonly")
-          .objectStore(store)
-          .openCursor();
+      const tx = (await this.db)
+        .transaction(store, "readonly")
+        .objectStore(store)
+        .openCursor();
 
-        const map = new Map();
+      const map = new Map();
 
-        tx.onsuccess = () => {
-          let cursor = tx.result;
-          if (cursor) {
-            map.set(cursor.primaryKey, cursor.value);
-            cursor.continue();
-          } else {
-            return resolve(map);
-          }
-        };
-        tx.onerror = (event) => reject(this.error(event));
-      } catch (error) {
-        //sendRNPostMessage(JSON.stringify({ data: "sdkerror", error: error }));
-      }
+      tx.onsuccess = () => {
+        let cursor = tx.result;
+        if (cursor) {
+          map.set(cursor.primaryKey, cursor.value);
+          cursor.continue();
+        } else {
+          return resolve(map);
+        }
+      };
+      tx.onerror = (event) => reject(this.error(event));
     });
   }
 
@@ -199,11 +216,11 @@ export default class IDBService {
     const stores =
       store instanceof RegExp
         ? Array.from((await this.db).objectStoreNames).filter((name) =>
-          name.match(store)
-        )
+            name.match(store)
+          )
         : (await this.db).objectStoreNames.contains(store)
-          ? store
-          : [];
+        ? store
+        : [];
 
     if (stores.length === 0) return;
 
