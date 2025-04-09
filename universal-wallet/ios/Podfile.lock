@@ -949,6 +949,10 @@ PODS:
     - React-debug
   - react-native-biometrics (3.0.1):
     - React-Core
+  - react-native-cameraroll (7.10.0):
+    - glog
+    - RCT-Folly (= 2022.05.16.00)
+    - React-Core
   - react-native-get-random-values (1.11.0):
     - React-Core
   - react-native-pager-view (6.3.0):
@@ -1146,7 +1150,7 @@ PODS:
     - React-Core
   - RNInAppBrowser (3.7.0):
     - React-Core
-  - RNPermissions (5.3.0):
+  - RNPermissions (5.2.1):
     - React-Core
   - RNScreens (3.30.1):
     - glog
@@ -1219,6 +1223,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - react-native-biometrics (from `../node_modules/react-native-biometrics`)
+  - "react-native-cameraroll (from `../node_modules/@react-native-camera-roll/camera-roll`)"
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-randombytes (from `../node_modules/react-native-randombytes`)
@@ -1333,6 +1338,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   react-native-biometrics:
     :path: "../node_modules/react-native-biometrics"
+  react-native-cameraroll:
+    :path: "../node_modules/@react-native-camera-roll/camera-roll"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
   react-native-pager-view:
@@ -1452,6 +1459,7 @@ SPEC CHECKSUMS:
   React-logger: 55764cd993880c6f887505854581c9faf68feff2
   React-Mapbuffer: 15dfcfeb4428d8799cce75e7fe85b18b706029e0
   react-native-biometrics: 43ed5b828646a7862dbc7945556446be00798e7d
+  react-native-cameraroll: 1695b2153f690b3a5d6addf54e714da4fa81ff55
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-pager-view: 1ffe79b7a9a86f42b76b33f1da81b2140e9b1dad
   react-native-randombytes: 3c8f3e89d12487fd03a2f966c288d495415fc116
@@ -1484,7 +1492,7 @@ SPEC CHECKSUMS:
   RNDeviceInfo: afc27b3f24bd0e97181bf3e9f23cfa4c9040dd32
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNInAppBrowser: 6d3eb68d471b9834335c664704719b8be1bfdb20
-  RNPermissions: 5017380d9fe1f63f0d1403139bc8d630fe0b7a19
+  RNPermissions: 61ce234d00582b8042d680aa8268a1596682f08f
   RNScreens: cedc9bffb599d0bcd57903ef2ce0eef1df5d1065
   RNSVG: f70944ff686a4fa2771cff9e81c9856a81738009
   RNVectorIcons: 76364622e6f8e55bb456705582cde20f55ef889c

@@ -65,28 +65,36 @@ export default class IDBService {
   }
 
   static async getMap(store: string): Promise<Map<any, any>> {
-
     //initialize the connection to the database
     await this.open();
 
     return new Promise(async (resolve, reject) => {
-      const tx = (await this.db)
-        .transaction(store, "readonly")
-        .objectStore(store)
-        .openCursor();
-
-      const map = new Map();
-
-      tx.onsuccess = () => {
-        let cursor = tx.result;
-        if (cursor) {
-          map.set(cursor.primaryKey, cursor.value);
-          cursor.continue();
-        } else {
-          return resolve(map);
+      try {
+        // Check if store exists
+        if (!(await this.hasStore(store))) {
+          await this.createStore(store);
         }
-      };
-      tx.onerror = (event) => reject(this.error(event));
+
+        const tx = (await this.db)
+          .transaction(store, "readonly")
+          .objectStore(store)
+          .openCursor();
+
+        const map = new Map();
+
+        tx.onsuccess = () => {
+          let cursor = tx.result;
+          if (cursor) {
+            map.set(cursor.primaryKey, cursor.value);
+            cursor.continue();
+          } else {
+            return resolve(map);
+          }
+        };
+        tx.onerror = (event) => reject(this.error(event));
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 

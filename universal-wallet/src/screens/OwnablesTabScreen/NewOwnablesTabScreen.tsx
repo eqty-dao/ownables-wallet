@@ -14,7 +14,6 @@ import { Modal } from 'react-native';
 import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
-import RNPhotoManipulator from 'react-native-photo-manipulator';
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -100,7 +99,6 @@ const NewOwnablesTabScreen = () => {
         try {
             const data = JSON.parse(event.nativeEvent.data);
             console.log('data:', data);
-
             if (data.type === 'downloadOwnable') {
                 const downloadOwnable = async (data: any) => {
                     try {
@@ -185,7 +183,7 @@ const NewOwnablesTabScreen = () => {
                                 const finalPath = `${photoDir}/${cleanFilename}.jpg`;
 
                                 // Create Photos directory if it doesn't exist
-                                await RNFS.mkdir(photoDir).catch(() => {});
+                                await RNFS.mkdir(photoDir).catch(() => { });
 
                                 try {
                                     // Extract just the base64 data without the data URI prefix
@@ -208,24 +206,24 @@ const NewOwnablesTabScreen = () => {
                                     }
 
                                     // Save to photo library
-                                    const { CameraRoll } = require("@react-native-community/cameraroll");
+                                    const { CameraRoll } = require("@react-native-camera-roll/camera-roll");
                                     await CameraRoll.save(`file://${finalPath}`, {
                                         type: 'photo',
                                         album: 'LTO Wallet'
                                     });
 
                                     // Clean up temporary file
-                                    await RNFS.unlink(finalPath).catch(() => {});
+                                    await RNFS.unlink(finalPath).catch(() => { });
                                 } catch (error) {
                                     console.error('Photo saving error:', error);
                                     // Try to clean up the file even if saving failed
-                                    await RNFS.unlink(finalPath).catch(() => {});
+                                    await RNFS.unlink(finalPath).catch(() => { });
                                     throw error;
                                 }
                             } else {
                                 // Android path
                                 const finalPath = `${RNFS.PicturesDirectoryPath}/LTO Wallet/${cleanFilename}.webp`;
-                                await RNFS.mkdir(`${RNFS.PicturesDirectoryPath}/LTO Wallet`).catch(() => {});
+                                await RNFS.mkdir(`${RNFS.PicturesDirectoryPath}/LTO Wallet`).catch(() => { });
                                 await RNFS.writeFile(finalPath, processedBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
                             }
 
