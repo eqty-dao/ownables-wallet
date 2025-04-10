@@ -1,0 +1,12 @@
+diff --git a/node_modules/react-native-inappbrowser-reborn/android/build.gradle b/node_modules/react-native-inappbrowser-reborn/android/build.gradle
+index 7777777..8888888 100644
+--- a/node_modules/react-native-inappbrowser-reborn/android/build.gradle
++++ b/node_modules/react-native-inappbrowser-reborn/android/build.gradle
+@@ -63,7 +63,7 @@ dependencies {
+     def androidXAnnotation = safeExtGet('androidXAnnotation', androidXVersion)
+     def androidXBrowser = safeExtGet('androidXBrowser', androidXVersion)
+     implementation "androidx.annotation:annotation:$androidXAnnotation"
+-    implementation "androidx.browser:browser:$androidXBrowser"
++    implementation "androidx.browser:browser:1.5.0"
+   }
+ } 
