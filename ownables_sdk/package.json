@@ -8,8 +8,8 @@
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@fontsource/montserrat": "^4.5.14",
-    "@ltonetwork/http-message-signatures": "^0.1.11",
-    "@ltonetwork/lto": "^0.15.16",
+    "@ltonetwork/http-message-signatures": "^0.1.12",
+    "@ltonetwork/lto": "^0.15.17",
     "@mui/icons-material": "^5.11.9",
     "@mui/material": "^5.11.10",
     "@sentry/cli": "^2.38.1",
@@ -37,7 +37,9 @@
     "react-dom": "^18.2.0",
     "react-json-view": "^1.21.3",
     "react-scripts": "5.0.1",
-    "simple-iframe-rpc": "0.1.10",
+    "simple-iframe-rpc": "^0.1.10",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "stream-browserify": "^3.0.0",
     "tuai": "^1.0.8",
     "typescript": "^4.9.5",
@@ -93,6 +95,5 @@
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.2"
-  },
-  "packageManager": "yarn@1.22.22"
+  }
 }

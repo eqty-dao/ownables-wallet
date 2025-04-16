@@ -7,6 +7,7 @@ import { MessageExt, MessageInfo } from "../interfaces/MessageInfo";
 import { sign } from "@ltonetwork/http-message-signatures";
 import LTOService from "./LTO.service";
 import { AppConfig } from "../AppConfig";
+import PackageService from "./Package.service";
 
 export class RelayService {
   static relayURL = AppConfig.RELAY();
@@ -359,5 +360,67 @@ export class RelayService {
       message,
       messageHash,
     }));
+  }
+
+
+  /**
+   * Read a single message by its hash.
+   */
+  static async readSingleMessage(hash: string) {
+    const sender = LTOService.account;
+    if (!sender) {
+      console.error("Account not initialized");
+      return null;
+    }
+
+    const address = sender.address;
+    const url = `${this.relayURL}/inboxes/${address}/${hash}`;
+
+    try {
+      const response = await this.handleSignedRequest("GET", url);
+
+      if (response?.data) {
+        const message = Message.from(response.data);
+
+        if (message.isEncrypted()) {
+          message.decryptWith(sender);
+        }
+
+        return await PackageService.processPackage(message, hash, true);
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error reading single message:", error);
+      return null;
+    }
+  }
+
+
+  static async list(offset: number, limit: number) {
+    const sender = await LTOService.getAccount();
+
+    if (!sender) {
+      console.error("Account not initialized");
+      return null;
+    }
+
+    const address = sender.address;
+    const isRelayAvailable = await this.isRelayUp();
+    if (!isRelayAvailable) return null;
+
+    const url = `${this.relayURL}/v2/inboxes/${address}?limit=${limit}&offset=${offset}`;
+
+    try {
+      const response = await this.handleSignedRequest("GET", url);
+      if (!response) {
+        console.error("Failed to read relay metadata:", response);
+        return null;
+      }
+      return response.data || null;
+    } catch (error) {
+      console.error("Failed to read relay metadata:", error);
+      return null;
+    }
   }
 }

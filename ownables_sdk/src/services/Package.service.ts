@@ -91,7 +91,7 @@ export default class PackageService {
     return Array.from(set).sort((a, b) => (a.title >= b.title ? 1 : -1));
   }
 
-  static info(nameOrCid: string, uniqueMessageHash?: string): TypedPackage | null {
+  static info(nameOrCid: string, uniqueMessageHash?: string): TypedPackage {
     const packages = (LocalStorageService.get("packages") ||
       []) as TypedPackage[];
 
@@ -103,16 +103,32 @@ export default class PackageService {
           pkg.versions.some((v) => v.uniqueMessageHash === uniqueMessageHash))
     );
 
-    if (!found) {
-      return null;
-    }
-    // replace get the correct title
-    const regex = new RegExp(/ownable/i);
-    const title = found.name.replace(regex, "").replace("_", " ")
-      .replace(/\b\w/, (c) => c.toUpperCase());
-    found.title = title;
+    if (!found) throw new Error(`Package not found: ${nameOrCid}`);
     return found;
   }
+
+  // static info(nameOrCid: string, uniqueMessageHash?: string): TypedPackage | null {
+  //   const packages = (LocalStorageService.get("packages") ||
+  //     []) as TypedPackage[];
+
+  //   const found = packages.find(
+  //     (pkg) =>
+  //       (pkg.name === nameOrCid ||
+  //         pkg.versions.some((v) => v.cid === nameOrCid)) &&
+  //       (!uniqueMessageHash ||
+  //         pkg.versions.some((v) => v.uniqueMessageHash === uniqueMessageHash))
+  //   );
+
+  //   if (!found) {
+  //     return null;
+  //   }
+  //   // replace get the correct title
+  //   const regex = new RegExp(/ownable/i);
+  //   const title = found.name.replace(regex, "").replace("_", " ")
+  //     .replace(/\b\w/, (c) => c.toUpperCase());
+  //   found.title = title;
+  //   return found;
+  // }
 
   // private static storePackageInfo(
   //   title: string,
@@ -164,8 +180,8 @@ export default class PackageService {
     cid: string,
     keywords: string[],
     capabilities: TypedPackageCapabilities,
-    uniqueMessageHash: string,
     isNotLocal?: boolean,
+    uniqueMessageHash?: string
   ): TypedPackage {
     const packages = (LocalStorageService.get("packages") ||
       []) as TypedPackage[];
@@ -208,6 +224,58 @@ export default class PackageService {
 
     return pkg;
   }
+
+  // private static storePackageInfo(
+  //   title: string,
+  //   name: string,
+  //   description: string | undefined,
+  //   cid: string,
+  //   keywords: string[],
+  //   capabilities: TypedPackageCapabilities,
+  //   uniqueMessageHash: string,
+  //   isNotLocal?: boolean,
+  // ): TypedPackage {
+  //   const packages = (LocalStorageService.get("packages") ||
+  //     []) as TypedPackage[];
+
+  //   // Locate the package with matching cid and uniqueMessageHash
+  //   let pkg = packages.find(
+  //     (pkg) =>
+  //       pkg.name === name &&
+  //       pkg.cid === cid &&
+  //       pkg.uniqueMessageHash === uniqueMessageHash
+  //   );
+
+  //   if (!pkg) {
+  //     // Create new package entry if not found
+  //     pkg = {
+  //       title,
+  //       name,
+  //       description,
+  //       cid,
+  //       keywords,
+  //       isNotLocal,
+  //       ...capabilities,
+  //       uniqueMessageHash,
+  //       versions: [{ date: new Date(), cid, uniqueMessageHash }],
+  //     };
+  //     packages.push(pkg);
+  //   } else {
+  //     // Update package and add new version info if it's an update
+  //     Object.assign(pkg, {
+  //       description,
+  //       keywords,
+  //       uniqueMessageHash,
+  //       ...capabilities,
+  //     });
+  //     pkg.versions.push({ date: new Date(), cid, uniqueMessageHash });
+  //   }
+
+  //   // Save all packages back to LocalStorage under the single "packages" key
+  //   LocalStorageService.set("packages", packages);
+
+  //   return pkg;
+  // }
 
   static async extractAssets(zipFile: File, chain?: boolean): Promise<File[]> {
     const zip = await JSZip.loadAsync(zipFile);
@@ -364,7 +432,7 @@ export default class PackageService {
       cid,
       keywords,
       capabilities,
-      ""
+      true
     );
   }
 
@@ -434,8 +502,8 @@ export default class PackageService {
               cid,
               keywords,
               capabilities,
+              isNotLocal,
               uniqueMessageHash,
-              isNotLocal
             );
 
             const chain = EventChain.from(chainJson);
@@ -524,8 +592,8 @@ export default class PackageService {
           cid,
           keywords,
           capabilities,
+          isNotLocal,
           uniqueMessageHash,
-          isNotLocal
         );
 
         const chain = EventChain.from(chainJson);
@@ -642,6 +710,92 @@ export default class PackageService {
     } catch (error) {
       console.error("Error checking if asset exists:", error);
       return false;
+    }
+  }
+
+
+  static async processPackage(
+    message: any,
+    uniqueMessageHash?: string,
+    isNotLocal = false
+  ) {
+    try {
+      let chainJson: any;
+      let files: File[];
+      let packageJson: TypedDict;
+
+      //Extract files
+      if (isNotLocal) {
+        files = await this.extractAssets(message.data.buffer, false);
+        packageJson = await this.getPackageJson("package.json", files);
+        chainJson = await this.getChainJson("chain.json", message.data.buffer);
+      } else {
+        files = message; // Local files
+        packageJson = await this.getPackageJson("package.json", files);
+      }
+
+      //Check for required JSON files
+      if (!packageJson) {
+        throw new Error("Missing package.json in extracted assets");
+      }
+      if (isNotLocal && !chainJson) {
+        throw new Error("Missing chain.json for relay package");
+      }
+
+      //Calculate CID
+      const cid = await calculateCid(files);
+
+      //Check for duplicates
+      if (await IDBService.hasStore(`package:${cid}`)) {
+        if (
+          isNotLocal &&
+          chainJson &&
+          !(await this.isCurrentEvent(chainJson))
+        ) {
+          console.warn(`Package with CID ${cid} is already current or newer.`);
+          return null;
+        }
+      }
+
+      //Prepare metadata
+      const name = packageJson.name || "Unnamed Package";
+      const title = name
+        .replace(/^ownable-|-ownable$/, "")
+        .replace(/[-_]+/, " ")
+        .replace(/\b\w/, (c: string) => c.toUpperCase());
+      const description = packageJson.description;
+      const keywords: string[] = packageJson.keywords || [];
+      const capabilities = await this.getCapabilities(files);
+
+      //Store assets
+      await this.storeAssets(cid, files);
+
+      //Store package info
+      const pkg = this.storePackageInfo(
+        title,
+        name,
+        description,
+        cid,
+        keywords,
+        capabilities,
+        isNotLocal,
+        uniqueMessageHash
+      );
+
+      //Attach chain if needed
+      if (isNotLocal && chainJson) {
+        const chain = EventChain.from(chainJson);
+        pkg.chain = chain;
+      }
+
+      if (uniqueMessageHash) {
+        pkg.uniqueMessageHash = uniqueMessageHash;
+      }
+
+      return pkg;
+    } catch (error) {
+      console.error("Error processing package:", error);
+      throw error;
     }
   }
 }
