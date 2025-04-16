@@ -327,8 +327,6 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
                 />
               </FileDetails>
               <StatusIndicator status={item.status}>
-                {item.status === 'completed' && <CheckCircleIcon />}
-                {item.status === 'failed' && <ErrorIcon />}
               </StatusIndicator>
             </FileItem>
           ))}
