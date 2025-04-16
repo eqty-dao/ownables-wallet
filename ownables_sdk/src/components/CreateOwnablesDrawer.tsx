@@ -146,6 +146,12 @@ const CreateOwnablesDrawer = (props: Props) => {
       const response =
         await axios.get(
           `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/availableChains`,
+          {
+            headers: {
+        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+              Accept: "*/*",
+            },
+          }
         );
       let _ = new Object();
       Object.keys(response.data).forEach((key) => {
@@ -173,6 +179,12 @@ const CreateOwnablesDrawer = (props: Props) => {
       console.log("OBUILDER", AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder()));
       const address = await axios.get(
         `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/GetServerInfo`,
+        {
+          headers: {
+            "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+            Accept: "*/*",
+          },
+        }
       );
       let serverAddress;
       if (network === Network.MAINNET) {
@@ -562,6 +574,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       const headers1 = {
         "Content-Type": "multipart/form-data",
         Accept: "*/*",
+        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
       };
       const combinedHeaders = { ...signedRequest.headers, ...headers1 };
       console.log("combinedHeaders", combinedHeaders);

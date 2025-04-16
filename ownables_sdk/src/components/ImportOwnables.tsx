@@ -20,6 +20,8 @@ import DownloadProgressModal from "./DownloadProgressModal";
 import { useCollections } from "../context/CollectionsContext";
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import axios from "axios";
+import { AppConfig } from "../AppConfig";
 
 export interface Ownable {
   chain: EventChain;
@@ -146,27 +148,15 @@ const DownloadButton = styled(IconButton)`
 
 const ImportOwnablesDrawer = (props: Props) => {
   const { open, onClose, setOwnables } = props;
-  // const isMobile = useMediaQuery('(max-width:600px)');
-  // // const [ownables, setOwnables] = useState<OwnablePreview[]>([]);
-  // const [loading, setLoading] = useState(false);
-  // const [totalOwnables, setTotalOwnables] = useState(0);
-  // const [isFetching, setIsFetching] = useState(false);
-  // const [builderAddress, setBuilderAddress] = useState<string>("");
-  // const [importedHashes, setImportedHashes] = useState<Set<string>>(new Set());
-  // const [relayData, setRelaydata] = useState<RelayData[]>([]);
-  // const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  // const [downloadProgress, setDownloadProgress] = useState(0);
-  // const [downloadItems, setDownloadItems] = useState<any[]>([]);
-  // const [showDownloadModal, setShowDownloadModal] = useState(false);
-  // const { isDownloading, setIsDownloading } = useCollections();
 
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<RelayData[]>([]);
   const [loading, setLoading] = useState(false);
   const [builderAddress, setBuilderAddress] = useState<string | null>(null);
   const [importedHashes, setImportedHashes] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
+
 
 
   useEffect(() => {
@@ -209,119 +199,6 @@ const ImportOwnablesDrawer = (props: Props) => {
     setLoading(false);
   }, [currentPage, itemsPerPage]);
 
-
-
-
-  // const handleDownloadAll = async () => {
-  //   setIsDownloading(true);
-  //   const items = relayData.map(ownable => ({
-  //     id: ownable.hash,
-  //     name: ownable.hash.substring(0, 15) + '...',
-  //     hash: ownable.hash,
-  //     progress: 0,
-  //     status: 'pending' as const,
-  //     size: ownable.size
-  //   }));
-
-  //   setDownloadItems(items);
-  //   setShowDownloadModal(true);
-  //   setIsDownloadingAll(true);
-
-  //   // Start download process
-  //   setTimeout(async () => {
-  //     for (let i = 0; i < items.length; i++) {
-  //       try {
-  //         const ownable = relayData[i];
-  //         const existing = props.existingOwnables.find((o) => o.package === ownable.hash);
-
-  //         if (!existing) {
-  //           // Update status to downloading
-  //           setDownloadItems(prev => 
-  //             prev.map(item => 
-  //               item.id === ownable.hash 
-  //                 ? { ...item, status: 'downloading' as const } 
-  //                 : item
-  //             )
-  //           );
-
-  //           // Simulate progress updates
-  //           const progressInterval = setInterval(() => {
-  //             setDownloadItems(prev => 
-  //               prev.map(item => 
-  //                 item.id === ownable.hash && item.status === 'downloading'
-  //                   ? { ...item, progress: Math.min(item.progress + Math.random() * 10, 95) } 
-  //                   : item
-  //               )
-  //             );
-  //           }, 300);
-
-  //           // Perform actual download
-  //           const downloadedOwnable = await fetchOwnableByHash(ownable.hash);
-
-  //           // Clear interval
-  //           clearInterval(progressInterval);
-
-  //           if (downloadedOwnable) {
-  //             props.setOwnables((prev: Ownable[]) => [...prev, { chain: downloadedOwnable.chain, package: downloadedOwnable.cid, uniqueMessageHash: ownable.hash }]);
-
-  //             // Update status to completed
-  //             setDownloadItems(prev => 
-  //               prev.map(item => 
-  //                 item.id === ownable.hash 
-  //                   ? { ...item, progress: 100, status: 'completed' as const } 
-  //                   : item
-  //               )
-  //             );
-  //           } else {
-  //             // Update status to failed
-  //             setDownloadItems(prev => 
-  //               prev.map(item => 
-  //                 item.id === ownable.hash 
-  //                   ? { ...item, status: 'failed' as const } 
-  //                   : item
-  //               )
-  //             );
-  //           }
-  //         } else {
-  //           // Already exists, mark as completed
-  //           setDownloadItems(prev => 
-  //             prev.map(item => 
-  //               item.id === ownable.hash 
-  //                 ? { ...item, progress: 100, status: 'completed' as const } 
-  //                 : item
-  //             )
-  //           );
-  //         }
-  //       } catch (error) {
-  //         console.error(`Failed to download ownable ${relayData[i].hash}:`, error);
-
-  //         // Update status to failed
-  //         setDownloadItems(prev => 
-  //           prev.map(item => 
-  //             item.id === relayData[i].hash 
-  //               ? { ...item, status: 'failed' as const } 
-  //               : item
-  //           )
-  //         );
-  //       }
-  //     }
-
-  //     setIsDownloadingAll(false);
-
-  //     // Show final notification after 2 seconds to let user see the completed state
-  //     setTimeout(() => {
-  //       setIsDownloading(false);
-  //       const successCount = downloadItems.filter(item => item.status === 'completed').length;
-  //       enqueueSnackbar(`Import All ownables completed`, { 
-  //         variant: "success",
-  //         autoHideDuration: 5000,
-  //       });
-  //       window.location.reload();
-  //       onClose();
-  //     }, 2000);
-  //   }, 100);
-  //   setIsDownloading(false);
-  // };
 
   const handleImportMessage = async (hash: string) => {
     try {
@@ -390,39 +267,6 @@ const ImportOwnablesDrawer = (props: Props) => {
 
   };
 
-
-
-  // const fetchOwnables = async () => {
-  //   setIsDownloading(true);
-  //   if (isFetching) return;
-  //   setIsFetching(true);
-
-
-  //   sendRNPostMessage(JSON.stringify({ type: "clear_cache", data: "clear cache" }));
-
-  //   let metadata = await RelayService.listOwnables();
-
-  //   if (metadata.length === 0) {
-  //     setLoading(false);
-  //     setRelaydata([]);
-  //     return;
-  //   }
-
-  //   setRelaydata(metadata);
-  //   setTotalOwnables(metadata?.length || 0);
-
-  //   // for (const hash of metadata) {
-  //   //   const ownable = await PackageService.importFromRelayByMessageHash(hash.hash);
-  //   //   if (ownable) {
-  //   //     setOwnables((prev) => [...prev, ownable as unknown as OwnablePreview]);
-  //   //   }
-  //   // }
-
-  //   setLoading(false);
-  //   setIsFetching(false);
-  //   setIsDownloading(false);
-  // }
-
   const getPackageDisplayName = (str: string) => {
     if (!str) return '';
     const regex = new RegExp(/ownable/i);
@@ -431,20 +275,27 @@ const ImportOwnablesDrawer = (props: Props) => {
   }
 
   const fetchBuilderAddress = async () => {
-    const builderAddress = await IDBService.getAll("builderAddress");
-    if (builderAddress.length > 0) {
-      setBuilderAddress(builderAddress[0].address);
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_OBUILDER}/api/v1/GetServerInfo`,
+        {
+          headers: {
+            "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+            Accept: "*/*",
+          },
+        }
+      );
+      const serverAddress =
+        AppConfig.Network() === "T"
+          ? response.data.serverLtoWalletAddress_T
+          : response.data.serverLtoWalletAddress_L;
+      setBuilderAddress(serverAddress);
+    } catch (error) {
+      console.error("Failed to fetch builder address:", error);
+      setBuilderAddress(null);
     }
-  }
+  };
 
-  // const fetchImportedHashes = async () => {
-  //   try {
-  //     const hashes = await LocalStorageService.get("messageHashes");
-  //     setImportedHashes(new Set(hashes));
-  //   } catch (error) {
-  //     console.error("Failed to fetch imported hashes:", error);
-  //   }
-  // };
   const isMobile = useMediaQuery('(max-width:600px)');
   return (
     <>
@@ -521,23 +372,6 @@ const ImportOwnablesDrawer = (props: Props) => {
               </Box>
             </Box>
           </Box>
-
-          {/* <Box sx={{
-            mt: 2,
-            background: 'rgba(81, 0, 148, 0.2)',
-            padding: '16px',
-            borderRadius: '12px',
-          }}>
-            <Typography variant="body1" sx={{
-              color: themeColors.titleText,
-              fontSize: isMobile ? '0.9rem' : '1rem',
-              fontWeight: 500
-            }}>
-              {totalOwnables > 0
-                ? `You have ${totalOwnables} ownables available.`
-                : "No ownables available"}
-            </Typography>
-          </Box> */}
           <Box sx={{
             flex: 1,
             overflow: 'auto',
@@ -558,7 +392,7 @@ const ImportOwnablesDrawer = (props: Props) => {
                 <MessageListItem key={index}>
                   <Box sx={{ width: '100%' }}>
                     <MessageTitle>
-                      {ownable.hash}
+                      {ownable.metadata?.title || ownable.hash}
                     </MessageTitle>
                     <MessageHash>
                       {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
@@ -672,32 +506,6 @@ const ImageComponent = ({ _ownable }: { _ownable: { cid: string } }) => {
   );
 };
 
-// export interface RelayMessage {
-//   type: string;
-//   sender: string;
-//   recipient: string;
-//   timestamp: string;
-//   signature: string;
-//   hash: string;
-//   mediaType: string;
-//   size: number;
-//   senderKeyType: string;
-//   senderPublicKey: string;
-// }
-
-// export interface RelayData {
-//   type: string;
-//   sender: {
-//     keyType: string;
-//     publicKey: string;
-//   };
-//   recipient: string;
-//   timestamp: string;
-//   signature: string;
-//   hash: string;
-//   mediaType: string;
-//   data: string;
-// }
 export interface OwnablePreview {
   title: string;
   name: string;
@@ -755,4 +563,10 @@ export interface RelayData {
   size: number;
   senderKeyType: string;
   senderPublicKey: string;
+  metadata?:{
+    timestamp: string;
+    size: number;
+    title: string;
+    thumbnail: string;
+  }
 }
