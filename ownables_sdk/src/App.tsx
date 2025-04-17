@@ -253,7 +253,6 @@ export default function App() {
       sendRNPostMessage(JSON.stringify({ type: "ready" }));
     }
   }, [window.localStorage]);
-
   useEffect(() => {
     if (importingOwnables === true && selectedTab === TabType.ALL) {
       setSelectedTab(TabType.INTERSTITIAL);

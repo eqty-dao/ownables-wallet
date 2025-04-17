@@ -74,6 +74,7 @@ const MessageListItem = styled(ListItem)`
   gap: 16px;
   align-items: flex-start;
   width: 100%;
+  position: relative;
 
   @media (max-width: 600px) {
     padding: 12px;
@@ -84,6 +85,58 @@ const MessageListItem = styled(ListItem)`
     background: rgba(81, 0, 148, 0.25);
     border-color: rgba(81, 0, 148, 0.3);
     transform: translateY(-2px);
+  }
+
+  &.already-imported {
+    background: rgba(76, 175, 80, 0.05);
+    border-color: rgba(76, 175, 80, 0.15);
+
+    &:hover {
+      background: rgba(76, 175, 80, 0.08);
+      border-color: rgba(76, 175, 80, 0.2);
+    }
+  }
+`;
+
+const ImportedBadge = styled(Box)`
+  position: absolute;
+  top: 16px;
+  right: 80px;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    color: #4CAF50;
+  }
+
+  span {
+    color: #4CAF50;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Satoshi', sans-serif;
+    line-height: 1;
+  }
+
+  @media (max-width: 600px) {
+    right: 64px;
+    padding: 4px 8px;
+    
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+    
+    span {
+      font-size: 11px;
+    }
   }
 `;
 
@@ -263,9 +316,9 @@ const ImportOwnablesDrawer = (props: Props) => {
   }, [currentPage, itemsPerPage]);
 
   const updateDownloadProgress = (hash: string, progress: number, status: DownloadItem['status']) => {
-    setDownloadItems(items => 
-      items.map(item => 
-        item.hash === hash 
+    setDownloadItems(items =>
+      items.map(item =>
+        item.hash === hash
           ? { ...item, progress, status }
           : item
       )
@@ -282,7 +335,7 @@ const ImportOwnablesDrawer = (props: Props) => {
         status: 'downloading',
         size: messages.find(m => m.hash === hash)?.size
       };
-      
+
       setDownloadItems(prev => [...prev, newItem]);
       setShowDownloadModal(true);
 
@@ -292,6 +345,23 @@ const ImportOwnablesDrawer = (props: Props) => {
         const chain = importedPackage.chain ? importedPackage.chain : null;
 
         if (chain) {
+          // Check if the package is already current or newer
+          const existingOwnable = props.existingOwnables.find(
+            (o) => o.package === importedPackage.cid
+          );
+
+          if (existingOwnable) {
+            updateDownloadProgress(hash, 100, 'completed');
+            setImportedHashes((prev) => new Set(prev).add(hash));
+
+            if (!isBulkDownload) {
+              enqueueSnackbar(`Package is already current or newer`, {
+                variant: "info",
+              });
+            }
+            return;
+          }
+
           setOwnables((prevOwnables) => [
             ...prevOwnables,
             {
@@ -303,11 +373,17 @@ const ImportOwnablesDrawer = (props: Props) => {
 
           updateDownloadProgress(hash, 100, 'completed');
           setImportedHashes((prev) => new Set(prev).add(hash));
-          
+
           const messageCount = await LocalStorageService.get("messageCount");
           const newCount = Math.max(0, parseInt(messageCount || "0", 10) - 1);
           await LocalStorageService.set("messageCount", newCount);
-          
+
+          const clientHashes = LocalStorageService.get("messageHashes") || [];
+          const newHashes = messages.map(message => message.hash);
+          const allHashes = [...clientHashes, ...newHashes];
+          await LocalStorageService.set("messageHashes", allHashes);
+          await LocalStorageService.set("lastModified", new Date().toISOString());
+
           if (!isBulkDownload) {
             enqueueSnackbar(`Ownable imported successfully!`, {
               variant: "success",
@@ -341,23 +417,23 @@ const ImportOwnablesDrawer = (props: Props) => {
   };
 
   const handleClose = () => {
-    props.onClose();
-    // if (!downloadItems.some(item => item.status === 'downloading')) {
-    //   setDownloadItems([]);
-    //   setShowDownloadModal(false);
-    //   props.onClose();
-    // } else {
+    // if (downloadItems.some(item => item.status === 'downloading')) {
     //   enqueueSnackbar("Please wait for downloads to complete or cancel them", {
     //     variant: "warning",
     //   });
+    //   return;
     // }
+    // setDownloadItems([]);
+    // setShowDownloadModal(false);
+    props.onClose();
   };
 
   const handleDownloadAll = async () => {
     setIsDownloadingAll(true);
     setShowDownloadModal(true);
+    const messagesToDownload = messages.filter(message => !props.existingOwnables.some(ownable => ownable.uniqueMessageHash === message.uniqueMessageHash));
 
-    const items: DownloadItem[] = messages.map(message => ({
+    const items: DownloadItem[] = messagesToDownload.map(message => ({
       id: message.hash,
       name: message.metadata?.title || message.hash.substring(0, 12) + '...',
       hash: message.hash,
@@ -370,9 +446,9 @@ const ImportOwnablesDrawer = (props: Props) => {
 
     const batchSize = 3;
     const chunks = [];
-    
-    for (let i = 0; i < messages.length; i += batchSize) {
-      chunks.push(messages.slice(i, i + batchSize));
+
+    for (let i = 0; i < messagesToDownload.length; i += batchSize) {
+      chunks.push(messagesToDownload.slice(i, i + batchSize));
     }
 
     try {
@@ -380,10 +456,17 @@ const ImportOwnablesDrawer = (props: Props) => {
         await Promise.all(chunk.map(message => handleImportMessage(message.hash, true)));
       }
 
-      enqueueSnackbar("All downloads completed!", { 
+      enqueueSnackbar("All downloads completed!", {
         variant: "success",
         autoHideDuration: 3000
       });
+
+      const clientHashes = LocalStorageService.get("messageHashes") || [];
+      const newHashes = messagesToDownload.map(message => message.hash);
+      const allHashes = [...clientHashes, ...newHashes];
+      await LocalStorageService.set("messageHashes", allHashes);
+      await LocalStorageService.set("lastModified", new Date().toISOString());
+      await LocalStorageService.set("messageCount", 0);
 
       setTimeout(() => {
         window.location.reload();
@@ -407,9 +490,7 @@ const ImportOwnablesDrawer = (props: Props) => {
   };
 
   const handleCloseDownloadModal = () => {
-    if (!downloadItems.some(item => item.status === 'downloading')) {
-      setShowDownloadModal(false);
-    }
+    setShowDownloadModal(false);
   };
 
   const getPackageDisplayName = (str: string) => {
@@ -507,11 +588,19 @@ const ImportOwnablesDrawer = (props: Props) => {
                   aria-label="close"
                   onClick={handleClose}
                   sx={{
-                    ...closeModalBtnStyle,
+                    color: '#F44336',
                     width: '40px',
                     height: '40px',
+                    padding: '8px',
                     '&:hover': {
                       background: 'rgba(244, 67, 54, 0.1)',
+                    },
+                    '&:active': {
+                      background: 'rgba(244, 67, 54, 0.2)',
+                    },
+                    svg: {
+                      width: '24px',
+                      height: '24px',
                     }
                   }}
                 >
@@ -536,56 +625,69 @@ const ImportOwnablesDrawer = (props: Props) => {
             },
           }}>
             <List>
-              {messages.map((ownable, index) => (
-                <MessageListItem key={index}>
-                  <ThumbnailImage 
-                    src={ownable.metadata?.thumbnail || defaultCube} 
-                    alt={ownable.metadata?.title || "Ownable thumbnail"}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = defaultCube;
-                    }}
-                  />
-                  <Box sx={{ 
-                    width: '100%',
-                    minWidth: 0,
-                  }}>
-                    <MessageTitle>
-                      {ownable.sender === builderAddress ? "oBuilder" : ownable.sender}
-                    </MessageTitle>
-                    <MessageHash>
-                      {ownable.metadata?.title || ownable.hash || "Unknown"}
-                    </MessageHash>
-                    <MessageHash>
-                      {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
-                    </MessageHash>
+              {messages.map((ownable, index) => {
+                const isAlreadyImported = !!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash);
+                return (
+                  <MessageListItem
+                    key={index}
+                    className={isAlreadyImported ? 'already-imported' : ''}
+                  >
+
+                    <ThumbnailImage
+                      src={ownable.metadata?.thumbnail || defaultCube}
+                      alt={ownable.metadata?.title || "Ownable thumbnail"}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = defaultCube;
+                      }}
+                    />
                     <Box sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mt: 1,
-                      gap: 2
+                      width: '100%',
+                      minWidth: 0,
                     }}>
-                      <MessageTimestamp>
-                        {new Date(ownable.timestamp).toLocaleString()}
-                      </MessageTimestamp>
-                      <Box sx={{ flexShrink: 0 }}>
-                        <DownloadButton
-                          onClick={() => handleImportMessage(ownable.hash)}
-                          disabled={!!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash)}
-                          className={props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash) ? 'completed' : ''}
-                        >
-                          {props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash) ? (
-                            <CheckCircleIcon />
-                          ) : (
-                            <DownloadIcon />
-                          )}
-                        </DownloadButton>
+                      <MessageTitle>
+                        {ownable.sender === builderAddress ? "oBuilder" : ownable.sender}
+                      </MessageTitle>
+                      <MessageHash>
+                        {ownable.metadata?.title || ownable.hash || "Unknown"}
+                      </MessageHash>
+                      <MessageHash>
+                        {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
+                      </MessageHash>
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mt: 1,
+                        gap: 2
+                      }}>
+                        <MessageTimestamp>
+                          {new Date(ownable.timestamp).toLocaleString()}
+                        </MessageTimestamp>
+                        <Box sx={{ flexShrink: 0 }}>
+                          <DownloadButton
+                            onClick={() => handleImportMessage(ownable.hash)}
+                            disabled={isAlreadyImported}
+                            className={isAlreadyImported ? 'completed' : ''}
+                          >
+                            {isAlreadyImported ? (
+                              <CheckCircleIcon />
+                            ) : (
+                              <DownloadIcon />
+                            )}
+                          </DownloadButton>
+                        </Box>
                       </Box>
                     </Box>
-                  </Box>
-                </MessageListItem>
-              ))}
+                    {/* {isAlreadyImported && (
+                      <ImportedBadge>
+                        <CheckCircleIcon />
+                        <span>Already Imported</span>
+                      </ImportedBadge>
+                    )} */}
+                  </MessageListItem>
+                );
+              })}
             </List>
             {loading && (
               <Box sx={{
@@ -721,10 +823,11 @@ export interface RelayData {
   size: number;
   senderKeyType: string;
   senderPublicKey: string;
-  metadata?:{
+  metadata?: {
     timestamp: string;
     size: number;
     title: string;
     thumbnail: string;
-  }
+  },
+  uniqueMessageHash: string;
 }
