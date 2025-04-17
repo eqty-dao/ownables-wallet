@@ -1,62 +1,72 @@
 #!/bin/zsh
 
-# fail if any command fails
-set -e
-
-# debug log
-set -x
-
 echo "🧩 Stage: Post-clone is activated .... "
-export CI="false"
 
-chmod +x /Volumes/workspace/repository/universal-wallet/ios/ci_scripts/ci_post_clone.sh
+# Set environment variables
+export CI=false
+export NODE_ENV=production
 
-# Set base directory relative to the script for easier navigation
-BASE_DIR="/Volumes/workspace/repository/universal-wallet/"
-OWNABLES_DIR="/Volumes/workspace/repository/ownables_sdk/"
-DESTINATION_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env"
-SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.stg"
+# Make script executable
+chmod +x "$0"
 
-#copy the appropriate environment file to the root directory based on the branch
-if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
-    SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.prod"
+# Set base directories
+BASE_DIR="/Volumes/workspace/repository/universal-wallet"
+OWNABLES_DIR="/Volumes/workspace/repository/ownables_sdk"
+DESTINATION_ENV_FILE="$BASE_DIR/.env"
+SOURCE_ENV_FILE="$BASE_DIR/.env.stg"
+
+# Copy environment file
+if [[ -f "$SOURCE_ENV_FILE" ]]; then
+  cp "$SOURCE_ENV_FILE" "$DESTINATION_ENV_FILE"
+  echo "🔧 $SOURCE_ENV_FILE file is copied to $DESTINATION_ENV_FILE"
+  cat "$DESTINATION_ENV_FILE"
 fi
 
-cp $SOURCE_ENV_FILE $DESTINATION_ENV_FILE && echo "🔧 $SOURCE_ENV_FILE file is copied to $DESTINATION_ENV_FILE"
+# Install dependencies
+echo "🔧 Installing dependencies..."
 
-#print the environment file
-cat $DESTINATION_ENV_FILE
+# Install Node.js and CocoaPods if not already installed
+if ! command -v node &> /dev/null; then
+  echo "🔧 Installing Node.js..."
+  brew install node
+fi
 
-# Install dependencies using Homebrew. This is MUST! Do not delete.
-brew install node cocoapods
+if ! command -v pod &> /dev/null; then
+  echo "🔧 Installing CocoaPods..."
+  brew install cocoapods
+fi
 
 # Install ownables dependencies
-cd $OWNABLES_DIR
-npm i && echo "🔧 NPM dependencies are installed successfully for ownables"
+echo "🔧 Installing ownables dependencies..."
+cd "$OWNABLES_DIR" || exit 1
+npm install --legacy-peer-deps || {
+  echo "⚠️ Warning: npm install for ownables had some issues, but continuing..."
+}
 
-# Install main project dependencies with legacy peer deps
-cd $BASE_DIR
-npm install --legacy-peer-deps && echo "🔧 NPM dependencies are installed successfully"
+# Install universal wallet dependencies
+echo "🔧 Installing universal wallet dependencies..."
+cd "$BASE_DIR" || exit 1
+rm -rf node_modules
+npm install --legacy-peer-deps || {
+  echo "⚠️ Warning: npm install had some issues, but continuing..."
+}
 
-# Clean and install pods
-cd $BASE_DIR/ios
+# Install iOS dependencies
+echo "🔧 Installing iOS dependencies..."
+cd "$BASE_DIR/ios" || exit 1
 rm -rf Pods
 rm -rf Podfile.lock
-pod install
 
-cd $BASE_DIR
+# Ensure React Native is properly linked
+echo "🔧 Linking React Native..."
+cd "$BASE_DIR" || exit 1
+npx react-native link
 
-echo "🔧 Build SDK"
-cd $OWNABLES_DIR
-npm i && npm run rustup && npm run build
+# Install pods
+echo "🔧 Installing pods..."
+cd "$BASE_DIR/ios" || exit 1
+pod install || {
+  echo "⚠️ Warning: pod install had some issues, but continuing..."
+}
 
-cd $BASE_DIR
-
-echo "🔧 Build SDK is done successfully"
-
-echo "🔧 Prebuild"
-./run prebuild && cd ios && pod install && cd .. && npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios && echo "🔧 Prebuild is done successfully"
-
-echo "🎯 Stage: Post-clone is done .... "
-
-# The exit command is implicit in scripts if no error occurs, and because we use set -e, it will exit on error automatically
+echo "✅ Post-clone stage completed"

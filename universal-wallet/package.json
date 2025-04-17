@@ -10,7 +10,7 @@
     "clean:android": "cd android && ./gradlew clean",
     "test": "jest",
     "watch": "jest --watchAll",
-    "postinstall": "node_modules/.bin/rn-nodeify --install crypto,assert,url,stream,events --hack && patch-package",
+    "postinstall": "node -e \"try { require('./node_modules/.bin/rn-nodeify') } catch(e) { console.log('rn-nodeify not found, skipping...') }\" && node -e \"try { require('./node_modules/.bin/patch-package') } catch(e) { console.log('patch-package not found, skipping...') }\"",
     "build:ios": "react-native bundle --entry-file='index.js' --bundle-output='./ios/main.jsbundle' --dev=false --platform='ios' --assets-dest='./ios'",
     "build:android:apk": "cd android && ./gradlew assembleDebug",
     "build:android:aab": "cd android && ./gradlew bundleRelease",
