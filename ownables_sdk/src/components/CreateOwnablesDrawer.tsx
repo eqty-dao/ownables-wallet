@@ -143,14 +143,19 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const fetchBuildAmount = useCallback(async () => {
     try {
+
+      const checkUseXAPIKey = await activityLogService.checkUseXAPIKey();
+      const headers = checkUseXAPIKey ? {
+        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+        Accept: "*/*",
+      } : {
+        Accept: "*/*",
+      };
       const response =
         await axios.get(
           `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/availableChains`,
           {
-            headers: {
-        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
-              Accept: "*/*",
-            },
+            headers: headers,
           }
         );
       let _ = new Object();
@@ -180,10 +185,7 @@ const CreateOwnablesDrawer = (props: Props) => {
       const address = await axios.get(
         `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/GetServerInfo`,
         {
-          headers: {
-            "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
-            Accept: "*/*",
-          },
+          headers: headers,
         }
       );
       let serverAddress;
@@ -272,7 +274,7 @@ const CreateOwnablesDrawer = (props: Props) => {
     LTOService.getBalance().then(({ regular }) => {
       console.log("regular", regular);
       if (!regular) return;
-      if(regular === undefined) return;
+      if (regular === undefined) return;
       setBalance(parseFloat((regular / 100000000).toFixed(2)));
       setAvailable(regular);
       // sendRNPostMessage(JSON.stringify({ type: "balance", data: balance }));
@@ -573,10 +575,14 @@ const CreateOwnablesDrawer = (props: Props) => {
       request.url =
         request.url + `?ltoNetworkId=${getNetworkFromQuery()}`;
       console.log("signedRequest", signedRequest);
-      const headers1 = {
+      const checkUseXAPIKey = await activityLogService.checkUseXAPIKey();
+      const headers1 = checkUseXAPIKey ? {
         "Content-Type": "multipart/form-data",
         Accept: "*/*",
         "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+      } : {
+        "Content-Type": "multipart/form-data",
+        Accept: "*/*",
       };
       const combinedHeaders = { ...signedRequest.headers, ...headers1 };
       console.log("combinedHeaders", combinedHeaders);

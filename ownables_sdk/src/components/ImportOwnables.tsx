@@ -23,6 +23,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import axios from "axios";
 import { AppConfig } from "../AppConfig";
 import defaultCube from "../assets/cube.png";
+import { activityLogService } from "../services/ActivityLog.service";
 
 export interface Ownable {
   chain: EventChain;
@@ -499,13 +500,17 @@ const ImportOwnablesDrawer = (props: Props) => {
 
   const fetchBuilderAddress = async () => {
     try {
+      const checkUseXAPIKey = await activityLogService.checkUseXAPIKey();
+      const headers = checkUseXAPIKey ? {
+        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+        Accept: "*/*",
+      } : {
+        Accept: "*/*",
+      };
       const response = await axios.get(
         `${process.env.REACT_APP_OBUILDER}/api/v1/GetServerInfo`,
         {
-          headers: {
-            "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
-            Accept: "*/*",
-          },
+          headers: headers,
         }
       );
       const serverAddress =
