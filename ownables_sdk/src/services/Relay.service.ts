@@ -1,4 +1,4 @@
-import { EventChain, LTO, Message, Relay } from "@ltonetwork/lto";
+import { Binary, EventChain, LTO, Message, Relay } from "@ltonetwork/lto";
 import axios from "axios";
 import sendFile from "./relayhelper.service";
 import JSZip from "jszip";
@@ -8,6 +8,7 @@ import { sign } from "@ltonetwork/http-message-signatures";
 import LTOService from "./LTO.service";
 import { AppConfig } from "../AppConfig";
 import PackageService from "./Package.service";
+import { IMessageMeta } from "@ltonetwork/lto/interfaces";
 
 export class RelayService {
   static relayURL = AppConfig.RELAY();
@@ -56,7 +57,11 @@ export class RelayService {
   /**
    * Send ownable to a recipient.
    */
-  static async sendOwnable(recipient: string, content?: Uint8Array) {
+  static async sendOwnable(
+    recipient: string,
+    content: Uint8Array,
+    meta: Partial<IMessageMeta>
+  ) {
     const sender = LTOService.account;
 
     if (!recipient) {
@@ -66,18 +71,26 @@ export class RelayService {
 
     try {
       if (sender) {
-        const messageHash = await sendFile(
-          this.relay,
-          content,
-          sender,
-          recipient
-        );
-        return messageHash;
+        const messageContent = Binary.from(content);
+
+        //const recipientAccount = await lto.resolveAccount(recipient);
+
+        const message = new Message(
+          messageContent,
+          "application/octet-stream",
+          meta
+        )
+          .to(recipient)
+          .signWith(sender);
+
+        await this.relay.send(message);
+        return message.hash.base58;
       }
     } catch (error) {
       console.error("Error sending message:", error);
     }
   }
+
   static async getOwnableData(hash: string): Promise<any | null> {
     if (!hash) {
       console.error("Hash not provided");

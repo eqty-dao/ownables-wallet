@@ -105,8 +105,8 @@ const ThumbnailImage = styled('img')`
 const MessageTitle = styled(Typography)`
   color: ${themeColors.titleText};
   font-family: 'Satoshi', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 400;
   margin-bottom: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -232,10 +232,12 @@ const ImportOwnablesDrawer = (props: Props) => {
       }
     };
     fetchData();
+    fetchBuilderAddress();
   }, [open]);
 
   useEffect(() => {
     fetchMessages();
+    fetchBuilderAddress();
   }, [currentPage, itemsPerPage]);
 
   const fetchMessages = useCallback(async () => {
@@ -338,6 +340,19 @@ const ImportOwnablesDrawer = (props: Props) => {
     }
   };
 
+  const handleClose = () => {
+    props.onClose();
+    // if (!downloadItems.some(item => item.status === 'downloading')) {
+    //   setDownloadItems([]);
+    //   setShowDownloadModal(false);
+    //   props.onClose();
+    // } else {
+    //   enqueueSnackbar("Please wait for downloads to complete or cancel them", {
+    //     variant: "warning",
+    //   });
+    // }
+  };
+
   const handleDownloadAll = async () => {
     setIsDownloadingAll(true);
     setShowDownloadModal(true);
@@ -369,6 +384,10 @@ const ImportOwnablesDrawer = (props: Props) => {
         variant: "success",
         autoHideDuration: 3000
       });
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error("Error in bulk download:", error);
       enqueueSnackbar("Some downloads failed. Check the download modal for details.", {
@@ -427,7 +446,7 @@ const ImportOwnablesDrawer = (props: Props) => {
     <>
       <LtoDrawer
         open={open}
-        onClose={onClose}
+        onClose={handleClose}
         shouldHideBackdrop={false}
         isPersistent={true}
         height="100%"
@@ -465,6 +484,7 @@ const ImportOwnablesDrawer = (props: Props) => {
                   <Button
                     onClick={handleDownloadAll}
                     startIcon={<CloudDownloadIcon />}
+                    disabled={isDownloadingAll}
                     sx={{
                       background: '#510094',
                       color: themeColors.titleText,
@@ -485,11 +505,14 @@ const ImportOwnablesDrawer = (props: Props) => {
                 )}
                 <IconButton
                   aria-label="close"
-                  onClick={props.onClose}
+                  onClick={handleClose}
                   sx={{
                     ...closeModalBtnStyle,
                     width: '40px',
-                    height: '40px'
+                    height: '40px',
+                    '&:hover': {
+                      background: 'rgba(244, 67, 54, 0.1)',
+                    }
                   }}
                 >
                   <CloseDrawerIcon />
@@ -528,8 +551,11 @@ const ImportOwnablesDrawer = (props: Props) => {
                     minWidth: 0,
                   }}>
                     <MessageTitle>
-                      {ownable.metadata?.title || ownable.hash}
+                      {ownable.sender === builderAddress ? "oBuilder" : ownable.sender}
                     </MessageTitle>
+                    <MessageHash>
+                      {ownable.metadata?.title || ownable.hash || "Unknown"}
+                    </MessageHash>
                     <MessageHash>
                       {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
                     </MessageHash>

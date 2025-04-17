@@ -28,6 +28,8 @@ import { BridgeService } from "../services/Bridge.service";
 import shortId from "../utils/shortId";
 import SessionStorageService from "../services/SessionStorage.service";
 import LocalStorageService from "../services/LocalStorage.service";
+import { IMessageMeta } from "@ltonetwork/lto/interfaces";
+import { PACKAGE_TYPE } from "./DetailsModal/OwnableDetailsModal";
 
 interface OwnableProps {
   chain: EventChain;
@@ -103,6 +105,18 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
     return nftNetwork || "";
   }
 
+  private async constructMeta(): Promise<Partial<IMessageMeta>> {
+    const title = this.pkg.title;
+    const description = this.pkg.description ?? "";
+    const type = PACKAGE_TYPE;
+
+    return {
+      title,
+      description,
+      type,
+    };
+  }
+
   private async transfer(to: string): Promise<void> {
     try {
       const value = await RelayService.isRelayUp();
@@ -113,8 +127,8 @@ export default class Ownable extends Component<OwnableProps, OwnableState> {
         const content = await zip.generateAsync({
           type: "uint8array",
         });
-
-        const messageHash = await RelayService.sendOwnable(to, content);
+        const meta = await this.constructMeta();
+        const messageHash = await RelayService.sendOwnable(to, content, meta);
         enqueueSnackbar(`Ownable ${messageHash} sent Successfully!!`, {
           variant: "success",
         });

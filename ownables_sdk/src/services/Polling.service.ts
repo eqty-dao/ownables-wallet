@@ -86,7 +86,6 @@ export class PollingService {
       clearInterval(intervalId);
     };
   }
-
   /**
    * Clear cached headers and hashes
    */

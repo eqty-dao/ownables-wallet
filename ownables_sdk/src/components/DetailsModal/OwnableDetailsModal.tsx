@@ -42,6 +42,8 @@ import { activityLogService } from "../../services/ActivityLog.service";
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import IDBService from "../../services/IDB.service";
+import { IMessageMeta } from "@ltonetwork/lto/interfaces";
+export const PACKAGE_TYPE = "ownable";
 
 interface OwnableProps {
   chain: EventChain;
@@ -248,7 +250,6 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
     );
   }
 
-
   private async transfer(to: string): Promise<void> {
     try {
       const value = await RelayService.isRelayUp();
@@ -259,33 +260,28 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         const content = await zip.generateAsync({
           type: "uint8array",
         });
-        const messageHash = await RelayService.sendOwnable(to, content);
-        enqueueSnackbar(`Ownable ${messageHash} sent Successfully!!`, {
+
+        //construct Metadata
+        const meta = await this.constructMeta();
+
+        await RelayService.sendOwnable(to, content, meta);
+        enqueueSnackbar(`Ownable sent Successfully!!`, {
           variant: "success",
         });
-        //Remove ownable from relay's inbox
+
         if (this.pkg.uniqueMessageHash) {
-          console.log(this.pkg.uniqueMessageHash);
-          //Remove ownable from relay's inbox
+          //remove from relay
           await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
 
-          //remove ownable from IDB
-          //await OwnableService.delete(this.chain.id);
+          //remove from IDB
+          await OwnableService.delete(this.chain.id);
 
-          //remove hash from localstorage messageHashes
-          await LocalStorageService.removeItem(
-            "messageHashes",
-            this.pkg.uniqueMessageHash
-          );
-
-          //remove package from localstorage packages
+          //remove from LS
           // await LocalStorageService.removeByField(
           //   "packages",
           //   "uniqueMessageHash",
           //   this.pkg.uniqueMessageHash
           // );
-
-          //this.props.onRemove();
         }
       } else {
         enqueueSnackbar("Server is down", { variant: "error" });
@@ -301,6 +297,119 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       console.error("Error during transfer:", error);
     }
   }
+
+  private async resizeToThumbnail(file: File): Promise<Blob> {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = URL.createObjectURL(file);
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 50;
+    canvas.height = 50;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get canvas context");
+
+    ctx.drawImage(img, 0, 0, 50, 50);
+
+    const quality = 0.8; // adjustment
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/webp", quality)
+    );
+
+    if (!blob) {
+      throw new Error("Failed to create thumbnail blob");
+    }
+
+    if (blob.size > 256 * 1024) {
+      throw new Error("Compressed thumbnail still exceeds 256KB");
+    }
+
+    return blob;
+  }
+
+  private async constructMeta(): Promise<Partial<IMessageMeta>> {
+    const title = this.pkg.title;
+    const description = this.pkg.description ?? "";
+    const type = PACKAGE_TYPE;
+
+    let thumbnail: Binary | undefined;
+
+    const thumbnailFile = await IDBService.get(
+      `package:${this.pkg.cid}`,
+      "thumbnail.webp"
+    );
+
+    if (thumbnailFile) {
+      const resizedFile = await this.resizeToThumbnail(thumbnailFile);
+      const buffer = await resizedFile.arrayBuffer();
+      thumbnail = Binary.from(new Uint8Array(buffer));
+    }
+
+    return {
+      type,
+      title,
+      description,
+      thumbnail,
+    };
+  }
+
+
+  // private async transfer(to: string): Promise<void> {
+  //   try {
+  //     const value = await RelayService.isRelayUp();
+
+  //     if (value) {
+  //       await this.execute({ transfer: { to: to } });
+  //       const zip = await OwnableService.zip(this.chain);
+  //       const content = await zip.generateAsync({
+  //         type: "uint8array",
+  //       });
+  //       const messageHash = await RelayService.sendOwnable(to, content);
+  //       enqueueSnackbar(`Ownable ${messageHash} sent Successfully!!`, {
+  //         variant: "success",
+  //       });
+  //       //Remove ownable from relay's inbox
+  //       if (this.pkg.uniqueMessageHash) {
+  //         console.log(this.pkg.uniqueMessageHash);
+  //         //Remove ownable from relay's inbox
+  //         await RelayService.removeOwnable(this.pkg.uniqueMessageHash);
+
+  //         //remove ownable from IDB
+  //         //await OwnableService.delete(this.chain.id);
+
+  //         //remove hash from localstorage messageHashes
+  //         await LocalStorageService.removeItem(
+  //           "messageHashes",
+  //           this.pkg.uniqueMessageHash
+  //         );
+
+  //         //remove package from localstorage packages
+  //         // await LocalStorageService.removeByField(
+  //         //   "packages",
+  //         //   "uniqueMessageHash",
+  //         //   this.pkg.uniqueMessageHash
+  //         // );
+
+  //         //this.props.onRemove();
+  //       }
+  //     } else {
+  //       enqueueSnackbar("Server is down", { variant: "error" });
+  //     }
+
+  //     // const filename = `ownable.${shortId(this.chain.id, 12, "")}.${shortId(
+  //     //   this.chain.state?.base58,
+  //     //   8,
+  //     //   ""
+  //     // )}.zip`;
+  //     // asDownload(content, filename);
+  //   } catch (error) {
+  //     console.error("Error during transfer:", error);
+  //   }
+  // }
 
   // private async transfer(to: string): Promise<void> {
   //   try {
@@ -470,7 +579,7 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
         this.state.stateDump
       );
 
-      // await OwnableService.store(this.chain, stateDump);
+      await OwnableService.store(this.chain, stateDump);
       await this.refresh(stateDump);
       this.setState({ applied: this.chain.latestHash, stateDump });
     } catch (error) {
@@ -604,7 +713,8 @@ export default class OwnableDetailsModal extends Component<OwnableDetailsModalPr
       });
 
       this.setState({ redeemStatus: 'Almost done...' });
-      await RelayService.sendOwnable(redeemAddress, content);
+      const meta = await this.constructMeta();
+      await RelayService.sendOwnable(redeemAddress, content, meta);
 
       // Store redemption details
       this.setState({ redeemStatus: 'Storing redemption details...' });

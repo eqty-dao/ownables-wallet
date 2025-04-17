@@ -133,33 +133,60 @@ export default class OwnableService {
     chain: any,
     cid: string,
     rpc: OwnableRPC,
-    uniqueMessageHash: string
+    uniqueMessageHash?: string
   ): Promise<void> {
-    try {
-      if (this._rpc.has(chain.id)) {
-        try {
-          delete (this._rpc.get(chain.id) as any).handler;
-        } catch (e) { }
-      }
-
-      this._rpc.set(chain.id, rpc);
-      const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
-      const js = workerJsSource + moduleJs;
-
-      const wasm = (await PackageService.getAsset(
-        cid,
-        "ownable_bg.wasm",
-        (fr, file) => fr.readAsArrayBuffer(file)
-      )) as ArrayBuffer;
-      await rpc.init(chain.id, js, new Uint8Array(wasm));
-      const stateDump = await this.apply(chain, []);
-      await this.initStore(chain, cid, uniqueMessageHash, stateDump);
-      sendRNPostMessage(JSON.stringify({ type: "init", message: `Ownable ${uniqueMessageHash} initialized` }));
-    } catch (error) {
-      console.error(error);
-      sendRNPostMessage(JSON.stringify({ type: "error", message: error as string }));
+    if (this._rpc.has(chain.id)) {
+      try {
+        delete (this._rpc.get(chain.id) as any).handler;
+      } catch (e) {}
     }
+
+    this._rpc.set(chain.id, rpc);
+    const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
+    const js = workerJsSource + moduleJs;
+
+    const wasm = (await PackageService.getAsset(
+      cid,
+      "ownable_bg.wasm",
+      (fr, file) => fr.readAsArrayBuffer(file)
+    )) as ArrayBuffer;
+    await rpc.init(chain.id, js, new Uint8Array(wasm));
+    const stateDump = await this.apply(chain, []);
+    await this.initStore(chain, cid, uniqueMessageHash, stateDump);
   }
+
+
+  // static async init(
+  //   chain: any,
+  //   cid: string,
+  //   rpc: OwnableRPC,
+  //   uniqueMessageHash: string
+  // ): Promise<void> {
+  //   try {
+  //     if (this._rpc.has(chain.id)) {
+  //       try {
+  //         delete (this._rpc.get(chain.id) as any).handler;
+  //       } catch (e) { }
+  //     }
+
+  //     this._rpc.set(chain.id, rpc);
+  //     const moduleJs = await PackageService.getAssetAsText(cid, "ownable.js");
+  //     const js = workerJsSource + moduleJs;
+
+  //     const wasm = (await PackageService.getAsset(
+  //       cid,
+  //       "ownable_bg.wasm",
+  //       (fr, file) => fr.readAsArrayBuffer(file)
+  //     )) as ArrayBuffer;
+  //     await rpc.init(chain.id, js, new Uint8Array(wasm));
+  //     const stateDump = await this.apply(chain, []);
+  //     await this.initStore(chain, cid, uniqueMessageHash, stateDump);
+  //     sendRNPostMessage(JSON.stringify({ type: "init", message: `Ownable ${uniqueMessageHash} initialized` }));
+  //   } catch (error) {
+  //     console.error(error);
+  //     sendRNPostMessage(JSON.stringify({ type: "error", message: error as string }));
+  //   }
+  // }
 
   static async apply(
     partialChain: EventChain,

@@ -270,6 +270,8 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const loadBalance = () => {
     LTOService.getBalance().then(({ regular }) => {
+      console.log("regular", regular);
+      if (!regular) return;
       if(regular === undefined) return;
       setBalance(parseFloat((regular / 100000000).toFixed(2)));
       setAvailable(regular);
