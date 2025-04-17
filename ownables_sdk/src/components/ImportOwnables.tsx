@@ -379,10 +379,6 @@ const ImportOwnablesDrawer = (props: Props) => {
           await LocalStorageService.set("messageCount", newCount);
 
           const clientHashes = LocalStorageService.get("messageHashes") || [];
-          const newHashes = messages.map(message => message.hash);
-          const allHashes = [...clientHashes, ...newHashes];
-          await LocalStorageService.set("messageHashes", allHashes);
-          await LocalStorageService.set("lastModified", new Date().toISOString());
 
           if (!isBulkDownload) {
             enqueueSnackbar(`Ownable imported successfully!`, {
@@ -431,7 +427,8 @@ const ImportOwnablesDrawer = (props: Props) => {
   const handleDownloadAll = async () => {
     setIsDownloadingAll(true);
     setShowDownloadModal(true);
-    const messagesToDownload = messages.filter(message => !props.existingOwnables.some(ownable => ownable.uniqueMessageHash === message.uniqueMessageHash));
+    // const isAlreadyImported = !!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash);
+    const messagesToDownload = messages.filter(message => !props.existingOwnables.some(ownable => ownable.uniqueMessageHash === message.hash));
 
     const items: DownloadItem[] = messagesToDownload.map(message => ({
       id: message.hash,
