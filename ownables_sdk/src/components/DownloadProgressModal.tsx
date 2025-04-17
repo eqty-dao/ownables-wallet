@@ -49,6 +49,8 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
     maxWidth: 480,
     minWidth: 360,
     width: '100%',
+    margin: theme.breakpoints.down('sm') ? '0' : '32px',
+    height: theme.breakpoints.down('sm') ? '100%' : 'auto',
   },
   '& .MuiBackdrop-root': {
     backdropFilter: 'blur(5px)',
@@ -56,61 +58,65 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
   }
 }));
 
-const DialogHeader = styled(DialogTitle)({
+const DialogHeader = styled(DialogTitle)(({ theme }) => ({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '16px 20px',
+  padding: theme.breakpoints.down('sm') ? '12px 16px' : '16px 20px',
   borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
   background: 'linear-gradient(180deg, rgba(81, 0, 148, 0.4) 0%, rgba(81, 0, 148, 0) 100%)',
-});
+}));
 
-const FileItem = styled(Box)({
+const FileItem = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  padding: '16px 0',
+  padding: theme.breakpoints.down('sm') ? '12px 0' : '16px 0',
   borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
   '&:last-child': {
     borderBottom: 'none',
   },
-});
+}));
 
-const FileIcon = styled(Box)({
-  width: 48,
-  height: 48,
-  marginRight: 16,
+const FileIcon = styled(Box)(({ theme }) => ({
+  width: theme.breakpoints.down('sm') ? 36 : 48,
+  height: theme.breakpoints.down('sm') ? 36 : 48,
+  marginRight: theme.breakpoints.down('sm') ? 12 : 16,
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-});
+  '& svg': {
+    width: theme.breakpoints.down('sm') ? 24 : 32,
+    height: theme.breakpoints.down('sm') ? 24 : 32,
+  }
+}));
 
 const FileDetails = styled(Box)({
   flex: 1,
 });
 
-const FileName = styled(Typography)({
+const FileName = styled(Typography)<{ theme?: any }>(({ theme }) => ({
   color: themeColors.titleText,
   fontWeight: 600,
-  fontSize: '16px',
+  fontSize: theme?.breakpoints.down('sm') ? '14px' : '16px',
   marginBottom: '4px',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-});
+}));
 
-const FileHash = styled(Typography)({
+const FileHash = styled(Typography)<{ theme?: any }>(({ theme }) => ({
   color: 'rgba(255, 255, 255, 0.7)',
-  fontSize: '12px',
+  fontSize: theme?.breakpoints.down('sm') ? '10px' : '12px',
   fontFamily: 'monospace',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
   maxWidth: '100%',
-});
+}));
 
-const StyledLinearProgress = styled(LinearProgress)(({ theme }) => ({
+const StyledLinearProgress = styled(LinearProgress)<{ theme?: any }>(({ theme }) => ({
   marginTop: 8,
-  height: 8,
+  height: theme?.breakpoints.down('sm') ? 6 : 8,
   borderRadius: 4,
   backgroundColor: 'rgba(255, 255, 255, 0.1)',
   '& .MuiLinearProgress-bar': {
@@ -118,14 +124,17 @@ const StyledLinearProgress = styled(LinearProgress)(({ theme }) => ({
   },
 }));
 
-const StatusIndicator = styled(Box)<{ status: 'pending' | 'downloading' | 'completed' | 'failed' }>(({ status }) => ({
-  width: 24,
-  height: 24,
+const StatusIndicator = styled(Box)<{ 
+  status: 'pending' | 'downloading' | 'completed' | 'failed';
+  theme?: any;
+}>(({ status, theme }) => ({
+  width: theme?.breakpoints.down('sm') ? 20 : 24,
+  height: theme?.breakpoints.down('sm') ? 20 : 24,
   borderRadius: '50%',
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
-  marginLeft: 16,
+  marginLeft: theme?.breakpoints.down('sm') ? 12 : 16,
   ...getStatusStyles(status),
 }));
 
@@ -182,18 +191,18 @@ const CancelButton = styled(Button)({
   },
 });
 
-const MinimizeButton = styled(Button)({
+const MinimizeButton = styled(Button)<{ theme?: any }>(({ theme }) => ({
   color: '#ffffff',
   background: 'rgba(81, 0, 148, 0.2)',
   borderRadius: '8px',
-  padding: '8px 16px',
-  fontSize: '14px',
+  padding: theme?.breakpoints.down('sm') ? '6px 12px' : '8px 16px',
+  fontSize: theme?.breakpoints.down('sm') ? '12px' : '14px',
   marginRight: '8px',
   textTransform: 'none',
   '&:hover': {
     background: 'rgba(81, 0, 148, 0.3)',
   },
-});
+}));
 
 const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
   open,
@@ -299,16 +308,43 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
       fullScreen={isMobile}
     >
       <DialogHeader>
-        <Typography sx={{ fontSize: '20px', fontWeight: 600, color: themeColors.titleText }}>
+        <Typography sx={{ 
+          fontSize: isMobile ? '18px' : '20px', 
+          fontWeight: 600, 
+          color: themeColors.titleText 
+        }}>
           {title}
         </Typography>
-        <IconButton onClick={onClose} sx={{ color: themeColors.error }}>
-          <CloseIcon />
+        <IconButton 
+          onClick={onClose} 
+          sx={{ 
+            color: themeColors.error,
+            padding: isMobile ? '8px' : '12px',
+          }}
+        >
+          <CloseIcon sx={{ fontSize: isMobile ? '20px' : '24px' }} />
         </IconButton>
       </DialogHeader>
       
-      <DialogContent sx={{ padding: 0 }}>
-        <Box sx={{ padding: '16px 20px', maxHeight: '400px', overflow: 'auto' }}>
+      <DialogContent sx={{ 
+        padding: 0,
+        height: isMobile ? 'calc(100% - 120px)' : 'auto',
+      }}>
+        <Box sx={{ 
+          padding: isMobile ? '12px 16px' : '16px 20px',
+          maxHeight: isMobile ? '100%' : '400px',
+          overflow: 'auto',
+          '&::-webkit-scrollbar': {
+            width: '4px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'rgba(255, 255, 255, 0.05)',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#510094',
+            borderRadius: '4px',
+          },
+        }}>
           {downloadItems.map((item) => (
             <FileItem key={item.id}>
               <FileIcon>
@@ -326,8 +362,7 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
                   }
                 />
               </FileDetails>
-              <StatusIndicator status={item.status}>
-              </StatusIndicator>
+              <StatusIndicator status={item.status} />
             </FileItem>
           ))}
         </Box>
@@ -335,19 +370,31 @@ const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
         <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
-          padding: '16px 20px', 
+          alignItems: 'center',
+          padding: isMobile ? '12px 16px' : '16px 20px',
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          background: 'rgba(81, 0, 148, 0.1)'
+          background: 'rgba(81, 0, 148, 0.1)',
+          position: isMobile ? 'fixed' : 'relative',
+          bottom: isMobile ? 0 : 'auto',
+          left: 0,
+          right: 0,
         }}>
           <Box>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            <Typography variant="body2" sx={{ 
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: isMobile ? '12px' : '14px',
+            }}>
               Overall Progress: {Math.round(getTotalProgress())}%
             </Typography>
           </Box>
           <Box>
             <MinimizeButton 
               onClick={handleMinimize}
-              size="small"
+              size={isMobile ? "small" : "medium"}
+              sx={{
+                padding: isMobile ? '6px 12px' : '8px 16px',
+                fontSize: isMobile ? '12px' : '14px',
+              }}
             >
               Minimize
             </MinimizeButton>
