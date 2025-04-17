@@ -129,3 +129,5 @@ universal-wallet/android/key.properties
 universal-wallet/android/app/src/main/assets/www/
 .vscode/
 ownables_sdk/.vscode/
+
+test_ci/
