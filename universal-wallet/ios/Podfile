@@ -28,6 +28,9 @@ end
 target 'universalWallet' do
   config = use_native_modules!
 
+  # Permissions
+  pod 'RNPermissions', :path => '../node_modules/react-native-permissions'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # Enables Flipper.
@@ -51,5 +54,12 @@ target 'universalWallet' do
       config[:reactNativePath],
       :mac_catalyst_enabled => false
     )
+    
+    # Add permissions configuration
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      end
+    end
   end
 end
