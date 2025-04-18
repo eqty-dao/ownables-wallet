@@ -5,6 +5,10 @@ set -e
 
 echo "Starting pre-build setup..."
 
+# Get the repository root directory
+REPO_ROOT=$(git rev-parse --show-toplevel)
+echo "Repository root: $REPO_ROOT"
+
 # Install Node.js if not present
 if ! command -v node &> /dev/null; then
     echo "Installing Node.js..."
@@ -17,7 +21,7 @@ fi
 
 # Install npm dependencies
 echo "Installing npm dependencies..."
-cd ..
+cd "$REPO_ROOT"
 npm install
 
 # Install CocoaPods if not present
@@ -28,7 +32,7 @@ fi
 
 # Install pods
 echo "Installing pods..."
-cd ios
+cd "$REPO_ROOT/ios"
 pod install
 
 # Set environment variables
