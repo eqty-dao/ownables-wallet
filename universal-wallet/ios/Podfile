@@ -67,12 +67,26 @@ target 'universalWallet' do
         config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
         
         # Handle Hermes configuration
-        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
-        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'HERMES_ENABLE_DEBUGGER=1'
-        
-        # Add Hermes inspector configuration
         if target.name == 'hermes-engine'
+          # Base Hermes configuration
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'HERMES_ENABLE_DEBUGGER=1'
+          
+          # Add Hermes inspector configuration
           config.build_settings['OTHER_LDFLAGS'] = '$(inherited) -lhermes-inspector'
+          
+          # Ensure the inspector is included in the build
+          config.build_settings['OTHER_CFLAGS'] = '$(inherited) -DHERMES_ENABLE_DEBUGGER=1'
+          
+          # Add the inspector source files
+          config.build_settings['HEADER_SEARCH_PATHS'] = '$(inherited) "${PODS_ROOT}/hermes-engine/destroot/include"'
+          config.build_settings['LIBRARY_SEARCH_PATHS'] = '$(inherited) "${PODS_ROOT}/hermes-engine/destroot/lib"'
+          
+          # Additional settings for release builds
+          if config.name == 'Release'
+            config.build_settings['OTHER_CFLAGS'] = '$(inherited) -DHERMES_ENABLE_DEBUGGER=1 -DHERMES_ENABLE_CDP=1'
+            config.build_settings['OTHER_LDFLAGS'] = '$(inherited) -lhermes-inspector -lhermes-cdp'
+          end
         end
       end
     end
