@@ -56,11 +56,11 @@ jobs:
       # Prebuild the expo project
       - name: Prebuild the ownables_sdk
         working-directory: .
-        run: npm i -g yarn && cd ownables_sdk && ls -la && yarn i && yarn run rustup && export CI=false && yarn run build
+        run: npm i -g yarn && cd ownables_sdk && ls -la && yarn install && yarn run rustup && export CI=false && yarn run build
       - name: Prebuild the universal-wallet
         working-directory: .
-        run: cd universal-wallet && ls -la && yarn i && chmod +x ./run && ./run prebuild
-        # run: cd ownables_sdk && yarn i && cd .. && cd universal-wallet && yarn i && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV && ./run prebuild && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
+        run: cd universal-wallet && ls -la && yarn install && chmod +x ./run && ./run prebuild
+        # run: cd ownables_sdk && yarn install && cd .. && cd universal-wallet && yarn install && chmod +x ./run && ./run prebuild && ./run build-apk && echo "APK_PATH=$(pwd)/android/app/build/outputs/apk/release/app-release.apk" >>$GITHUB_ENV && ./run prebuild && ./run build-aab && echo "AAB_PATH=$(pwd)/android/app/build/outputs/bundle/release/app-release.aab" >>$GITHUB_ENV
       # Create a separate directory for the APK
       - name: build apk and copy to root
         run: cd universal-wallet && chmod +x ./run && ./run build-apk && cp android/app/build/outputs/apk/release/app-release.apk . && ls -la && echo "APK_PATH=$(pwd)/app-release.apk" >>$GITHUB_ENV
