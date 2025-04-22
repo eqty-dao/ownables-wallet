@@ -66,9 +66,14 @@ target 'universalWallet' do
         config.build_settings['VALID_ARCHS'] = 'arm64'
         config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
         
-        # Handle Hermes warnings
+        # Handle Hermes configuration
         config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
         config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'HERMES_ENABLE_DEBUGGER=1'
+        
+        # Add Hermes inspector configuration
+        if target.name == 'hermes-engine'
+          config.build_settings['OTHER_LDFLAGS'] = '$(inherited) -lhermes-inspector'
+        end
       end
     end
   end
