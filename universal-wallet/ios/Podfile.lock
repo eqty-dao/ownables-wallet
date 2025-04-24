@@ -961,7 +961,7 @@ PODS:
     - React-Core
   - react-native-randombytes (3.6.1):
     - React-Core
-  - react-native-safe-area-context (4.14.1):
+  - react-native-safe-area-context (4.8.2):
     - React-Core
   - react-native-static-server (0.6.0-alpha.8):
     - GCDWebServer (~> 3.0)
@@ -1152,11 +1152,10 @@ PODS:
     - React-Core
   - RNPermissions (5.3.0):
     - React-Core
-  - RNScreens (3.37.0):
+  - RNScreens (3.29.0):
     - glog
     - RCT-Folly (= 2022.05.16.00)
     - React-Core
-    - React-RCTImage
   - RNSVG (15.11.2):
     - React-Core
   - RNVectorIcons (10.2.0):
@@ -1466,7 +1465,7 @@ SPEC CHECKSUMS:
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-pager-view: ef2dfe6dbe24352056abc7dab58c93d272750139
   react-native-randombytes: 3c8f3e89d12487fd03a2f966c288d495415fc116
-  react-native-safe-area-context: 758e894ca5a9bd1868d2a9cfbca7326a2b6bf9dc
+  react-native-safe-area-context: bf9d9d58f0f6726d4a6257088044c2595017579d
   react-native-static-server: 4260c7869281fb32c9590d003a212e65c9f94b0b
   react-native-udp: 806f16ab890dd838bc073afcebd6a221d4965572
   react-native-webview: 2038f781e99d2c75c90da7d38d37675ef0a932df
@@ -1496,7 +1495,7 @@ SPEC CHECKSUMS:
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNInAppBrowser: 6d3eb68d471b9834335c664704719b8be1bfdb20
   RNPermissions: 5017380d9fe1f63f0d1403139bc8d630fe0b7a19
-  RNScreens: 3ce54903891fd6281865ad3e7cfe4c2bb438c70c
+  RNScreens: 59f615aa0782077560c8eea46c2daec3a716dba9
   RNSVG: 36ab724902de0406127ef8d63d940c055e2a1442
   RNVectorIcons: 76364622e6f8e55bb456705582cde20f55ef889c
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
