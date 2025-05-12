@@ -41,4 +41,7 @@ Make changes to the ownable SDK and build it using the following command:
 - Build bundle: `cd universal-wallet/ios ./run prebuild && ./run build bundle`
 - JS bundle: `cd universal-wallet && ./run prebuild && cd ios && pod install && cd .. && npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios`
 
+Build the ownable SDK:
+- `cd ownable_sdk && yarn && yarn build && cd ..`
+
 

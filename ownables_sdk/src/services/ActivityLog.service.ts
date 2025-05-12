@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import { AppConfig } from "../AppConfig";
 class ActivityLogService {
 
   activityLog: ActivityLog[];
@@ -51,6 +51,27 @@ class ActivityLogService {
         useBackup: 0,
         message: ''
       }
+    }
+  }
+
+  async checkUseXAPIKey(): Promise<boolean> {
+    try {
+      if (AppConfig.ENV() === 'STAGING') {
+        return true;
+      }
+      const response = await axios.get('https://ltonetwork.com/data/obuilder.json');
+      if (response.status === 200) {
+        if (response.data?.useXAPIKey === 1) {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error(error);
+      return false;
     }
   }
 

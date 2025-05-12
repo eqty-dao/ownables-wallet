@@ -143,9 +143,20 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const fetchBuildAmount = useCallback(async () => {
     try {
+
+      const checkUseXAPIKey = await activityLogService.checkUseXAPIKey();
+      const headers = checkUseXAPIKey ? {
+        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+        Accept: "*/*",
+      } : {
+        Accept: "*/*",
+      };
       const response =
         await axios.get(
           `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/availableChains`,
+          {
+            headers: headers,
+          }
         );
       let _ = new Object();
       Object.keys(response.data).forEach((key) => {
@@ -173,6 +184,9 @@ const CreateOwnablesDrawer = (props: Props) => {
       console.log("OBUILDER", AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder()));
       const address = await axios.get(
         `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/GetServerInfo`,
+        {
+          headers: headers,
+        }
       );
       let serverAddress;
       if (network === Network.MAINNET) {
@@ -258,7 +272,9 @@ const CreateOwnablesDrawer = (props: Props) => {
 
   const loadBalance = () => {
     LTOService.getBalance().then(({ regular }) => {
-      if(regular === undefined) return;
+      console.log("regular", regular);
+      if (!regular) return;
+      if (regular === undefined) return;
       setBalance(parseFloat((regular / 100000000).toFixed(2)));
       setAvailable(regular);
       // sendRNPostMessage(JSON.stringify({ type: "balance", data: balance }));
@@ -559,7 +575,12 @@ const CreateOwnablesDrawer = (props: Props) => {
       request.url =
         request.url + `?ltoNetworkId=${getNetworkFromQuery()}`;
       console.log("signedRequest", signedRequest);
-      const headers1 = {
+      const checkUseXAPIKey = await activityLogService.checkUseXAPIKey();
+      const headers1 = checkUseXAPIKey ? {
+        "Content-Type": "multipart/form-data",
+        Accept: "*/*",
+        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+      } : {
         "Content-Type": "multipart/form-data",
         Accept: "*/*",
       };

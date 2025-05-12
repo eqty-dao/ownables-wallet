@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text, Button, Platform, Linking, PermissionsAndroid } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useStaticServer } from '../../hooks/useStaticServer';
@@ -11,9 +11,64 @@ import { Icon as RneIcons } from 'react-native-elements'
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import RNFS from 'react-native-fs';
 import { Modal } from 'react-native';
-import { check, PERMISSIONS, request, RESULTS } from 'react-native-permissions';
+import { check, request, PERMISSIONS, RESULTS, Permission, PermissionStatus } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
+import { CameraRoll } from "@react-native-camera-roll/camera-roll";
+
+interface DownloadOwnableData {
+    type: 'downloadOwnable';
+    base64Data: string;
+    filename: string;
+}
+
+interface SdkErrorData {
+    type: 'sdkerror';
+    data: any;
+}
+
+interface AddressData {
+    type: 'address';
+    data: any;
+}
+
+interface OpenInfoData {
+    type: 'openInfo';
+    data: any;
+}
+
+interface OpenExplorerData {
+    type: 'openExplorer';
+    data: any;
+}
+
+type WebViewMessage = DownloadOwnableData | SdkErrorData | AddressData | OpenInfoData | OpenExplorerData;
+
+interface WebViewMessageEvent {
+    nativeEvent: {
+        data: string;
+    };
+}
+
+interface WebViewRequest {
+    url: string;
+    loading?: boolean;
+    title?: string;
+    canGoBack?: boolean;
+    canGoForward?: boolean;
+    lockIdentifier?: number;
+}
+
+interface WebViewError {
+    code?: number;
+    description?: string;
+    url?: string;
+    loading?: boolean;
+    title?: string;
+    canGoBack?: boolean;
+    canGoForward?: boolean;
+    lockIdentifier?: number;
+}
 
 const NewOwnablesTabScreen = () => {
     const { url, loading: serverLoading, restartServer } = useStaticServer();
@@ -95,42 +150,50 @@ const NewOwnablesTabScreen = () => {
         return await getRequestPermissionPromise();
     };
 
-    const handleMessageFromWeb = (event: any) => {
+    const handleMessageFromWeb = (event: WebViewMessageEvent) => {
         try {
-            const data = JSON.parse(event.nativeEvent.data);
+            const data = JSON.parse(event.nativeEvent.data) as WebViewMessage;
             console.log('data:', data);
             if (data.type === 'downloadOwnable') {
-                const downloadOwnable = async (data: any) => {
+                const downloadOwnable = async (downloadData: DownloadOwnableData) => {
                     try {
-                        const { base64Data, filename } = data;
+                        const { base64Data, filename } = downloadData;
                         console.log('filename:', filename);
                         setShowDownloadModal(true);
                         setDownloadModalMessage('Requesting permissions...');
 
                         // Check and request permissions first
                         if (Platform.OS === 'ios') {
-                            const permission = await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
-                            console.log('permission:', permission);
-                            if (permission !== RESULTS.GRANTED && permission !== RESULTS.LIMITED) {
-                                try {
+                            try {
+                                const permission = await check(PERMISSIONS.IOS.PHOTO_LIBRARY);
+                                console.log('Current permission status:', permission);
+                                
+                                if (permission === RESULTS.DENIED) {
                                     const result = await request(PERMISSIONS.IOS.PHOTO_LIBRARY);
-                                    console.log('result:', result);
                                     if (result !== RESULTS.GRANTED && result !== RESULTS.LIMITED) {
                                         setShowDownloadModal(true);
-                                        setDownloadModalMessage('Photo library permission denied');
+                                        setDownloadModalMessage('Photo library permission denied. Please enable in Settings.');
                                         setTimeout(() => {
                                             setShowDownloadModal(false);
                                             Linking.openSettings();
                                         }, 2000);
                                         return;
                                     }
-                                } catch (error) {
-                                    console.error('Error requesting permission:', error);
-                                    setDownloadModalMessage('Error requesting permission');
-                                    setMessageInfo('Error requesting permission');
-                                    setShowMessage(true);
+                                } else if (permission === RESULTS.BLOCKED) {
+                                    setShowDownloadModal(true);
+                                    setDownloadModalMessage('Photo library access is blocked. Please enable in Settings.');
+                                    setTimeout(() => {
+                                        setShowDownloadModal(false);
+                                        Linking.openSettings();
+                                    }, 2000);
                                     return;
                                 }
+                            } catch (error) {
+                                console.error('Permission check error:', error);
+                                setDownloadModalMessage('Error checking permissions');
+                                setMessageInfo('Error checking permissions');
+                                setShowMessage(true);
+                                return;
                             }
                         } else if (Platform.OS === 'android') {
                             const hasPermission = await hasAndroidPermission();
@@ -138,6 +201,9 @@ const NewOwnablesTabScreen = () => {
                                 setDownloadModalMessage('Storage permission denied');
                                 setMessageInfo('Storage permission denied');
                                 setShowMessage(true);
+                                setTimeout(() => {
+                                    setShowDownloadModal(false);
+                                }, 2000);
                                 return;
                             }
                         }
@@ -206,7 +272,6 @@ const NewOwnablesTabScreen = () => {
                                     }
 
                                     // Save to photo library
-                                    const { CameraRoll } = require("@react-native-camera-roll/camera-roll");
                                     await CameraRoll.save(`file://${finalPath}`, {
                                         type: 'photo',
                                         album: 'LTO Wallet'
@@ -214,10 +279,19 @@ const NewOwnablesTabScreen = () => {
 
                                     // Clean up temporary file
                                     await RNFS.unlink(finalPath).catch(() => { });
-                                } catch (error) {
+                                } catch (error: any) {
                                     console.error('Photo saving error:', error);
                                     // Try to clean up the file even if saving failed
                                     await RNFS.unlink(finalPath).catch(() => { });
+                                    if (error?.message?.includes('permission')) {
+                                        setShowDownloadModal(true);
+                                        setDownloadModalMessage('Photo library permission required');
+                                        setTimeout(() => {
+                                            setShowDownloadModal(false);
+                                            Linking.openSettings();
+                                        }, 2000);
+                                        return;
+                                    }
                                     throw error;
                                 }
                             } else {
@@ -290,7 +364,7 @@ const NewOwnablesTabScreen = () => {
         }
     };
 
-    const handleShouldStartLoadWithRequest = (request: any): boolean => {
+    const handleShouldStartLoadWithRequest = (request: WebViewRequest): boolean => {
         // console.log('handleShouldStartLoadWithRequest', request.url);
         if (request.url.startsWith('data:application/zip;base64,')) {
             return false;
@@ -351,7 +425,7 @@ const NewOwnablesTabScreen = () => {
                                 webViewRef.current.injectJavaScript(`window.localStorage.setItem('@seed', '${seed}')`);
                             }
                         }}
-                        onError={(syntheticEvent) => {
+                        onError={(syntheticEvent: { nativeEvent: WebViewError }) => {
                             const { nativeEvent } = syntheticEvent;
                             console.warn('WebView error: ', nativeEvent);
                             setErrorMessage(JSON.stringify(nativeEvent));

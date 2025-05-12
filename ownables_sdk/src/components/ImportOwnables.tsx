@@ -4,7 +4,7 @@ import { ReactComponent as CloseDrawerIcon } from "../assets/close_drawer_icon.s
 import styled from "@emotion/styled";
 import { themeStyles } from "../theme/themeStyles";
 import { themeColors } from "../theme/themeColors";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RelayService } from "../services/Relay.service";
 import { EventChain } from "@ltonetwork/lto";
 import Loading from "./Loading";
@@ -20,6 +20,10 @@ import DownloadProgressModal from "./DownloadProgressModal";
 import { useCollections } from "../context/CollectionsContext";
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import axios from "axios";
+import { AppConfig } from "../AppConfig";
+import defaultCube from "../assets/cube.png";
+import { activityLogService } from "../services/ActivityLog.service";
 
 export interface Ownable {
   chain: EventChain;
@@ -65,28 +69,106 @@ const MessageListItem = styled(ListItem)`
   border: 1px solid rgba(81, 0, 148, 0.2);
   border-radius: 16px;
   margin-bottom: 12px;
-  padding: 20px;
+  padding: 16px;
   transition: all 0.2s ease-in-out;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+  position: relative;
+
+  @media (max-width: 600px) {
+    padding: 12px;
+    gap: 12px;
+  }
 
   &:hover {
     background: rgba(81, 0, 148, 0.25);
     border-color: rgba(81, 0, 148, 0.3);
     transform: translateY(-2px);
   }
+
+  &.already-imported {
+    background: rgba(76, 175, 80, 0.05);
+    border-color: rgba(76, 175, 80, 0.15);
+
+    &:hover {
+      background: rgba(76, 175, 80, 0.08);
+      border-color: rgba(76, 175, 80, 0.2);
+    }
+  }
+`;
+
+const ImportedBadge = styled(Box)`
+  position: absolute;
+  top: 16px;
+  right: 80px;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    color: #4CAF50;
+  }
+
+  span {
+    color: #4CAF50;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Satoshi', sans-serif;
+    line-height: 1;
+  }
+
+  @media (max-width: 600px) {
+    right: 64px;
+    padding: 4px 8px;
+    
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+    
+    span {
+      font-size: 11px;
+    }
+  }
+`;
+
+const ThumbnailImage = styled('img')`
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(81, 0, 148, 0.2);
+
+  @media (max-width: 600px) {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+  }
 `;
 
 const MessageTitle = styled(Typography)`
   color: ${themeColors.titleText};
   font-family: 'Satoshi', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 400;
   margin-bottom: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  width: 100%;
 
   @media (max-width: 600px) {
-    font-size: 18px;
+    font-size: 16px;
   }
 `;
 
@@ -96,12 +178,27 @@ const MessageHash = styled(Typography)`
   font-size: 14px;
   line-height: 1.4;
   margin-bottom: 12px;
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+
+  @media (max-width: 600px) {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
 `;
 
 const MessageTimestamp = styled(Typography)`
   color: rgba(255, 255, 255, 0.5);
   font-size: 12px;
+  white-space: nowrap;
+
+  @media (max-width: 600px) {
+    font-size: 11px;
+  }
 `;
 
 const DownloadButton = styled(IconButton)`
@@ -111,6 +208,12 @@ const DownloadButton = styled(IconButton)`
   transition: all 0.2s ease-in-out;
   width: 48px;
   height: 48px;
+
+  @media (max-width: 600px) {
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+  }
 
   &:hover {
     background: #610094;
@@ -129,6 +232,11 @@ const DownloadButton = styled(IconButton)`
     width: 24px;
     height: 24px;
     color: ${themeColors.titleText};
+
+    @media (max-width: 600px) {
+      width: 20px;
+      height: 20px;
+    }
   }
 
   &.completed {
@@ -144,307 +252,244 @@ const DownloadButton = styled(IconButton)`
   }
 `;
 
+interface DownloadItem {
+  id: string;
+  name: string;
+  hash: string;
+  progress: number;
+  status: 'pending' | 'downloading' | 'completed' | 'failed';
+  size?: number;
+}
+
 const ImportOwnablesDrawer = (props: Props) => {
   const { open, onClose, setOwnables } = props;
-  const isMobile = useMediaQuery('(max-width:600px)');
-  // const [ownables, setOwnables] = useState<OwnablePreview[]>([]);
+
+  const [messages, setMessages] = useState<RelayData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [totalOwnables, setTotalOwnables] = useState(0);
-  const [isFetching, setIsFetching] = useState(false);
-  const [builderAddress, setBuilderAddress] = useState<string>("");
+  const [builderAddress, setBuilderAddress] = useState<string | null>(null);
   const [importedHashes, setImportedHashes] = useState<Set<string>>(new Set());
-  const [relayData, setRelaydata] = useState<RelayData[]>([]);
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [downloadItems, setDownloadItems] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
+  const [downloadItems, setDownloadItems] = useState<DownloadItem[]>([]);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const { isDownloading, setIsDownloading } = useCollections();
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     const fetchData = async () => {
       try {
-        await fetchOwnables();
+        await fetchMessages();
       }
       catch (e) {
         console.error(e);
       }
     };
     fetchData();
+    fetchBuilderAddress();
   }, [open]);
 
+  useEffect(() => {
+    fetchMessages();
+    fetchBuilderAddress();
+  }, [currentPage, itemsPerPage]);
 
+  const fetchMessages = useCallback(async () => {
+    setLoading(true);
+    try {
+      const offset = (currentPage - 1) * itemsPerPage;
+      const limit = itemsPerPage;
+      const relayData = await RelayService.list(offset, limit);
 
-  const fetchOwnableByHash = async (hash: string): Promise<any | null> => {
-    const ownable = await PackageService.importFromRelayByMessageHash(hash);
-    if (ownable) {
-      return ownable as unknown as Ownable;
+      if (relayData && Array.isArray(relayData.messages)) {
+        setTotalCount(relayData.total);
+        setMessages(relayData.messages);
+      } else {
+        setTotalCount(0);
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      setTotalCount(0);
+      setMessages([]);
     }
-    return null;
-  }
+    setLoading(false);
+  }, [currentPage, itemsPerPage]);
 
-  const handleDownloadAll = async () => {
-    setIsDownloading(true);
-    const items = relayData.map(ownable => ({
-      id: ownable.hash,
-      name: ownable.hash.substring(0, 15) + '...',
-      hash: ownable.hash,
-      progress: 0,
-      status: 'pending' as const,
-      size: ownable.size
-    }));
-    
-    setDownloadItems(items);
-    setShowDownloadModal(true);
-    setIsDownloadingAll(true);
-    
-    // Start download process
-    setTimeout(async () => {
-      for (let i = 0; i < items.length; i++) {
-        try {
-          const ownable = relayData[i];
-          const existing = props.existingOwnables.find((o) => o.package === ownable.hash);
-          
-          if (!existing) {
-            // Update status to downloading
-            setDownloadItems(prev => 
-              prev.map(item => 
-                item.id === ownable.hash 
-                  ? { ...item, status: 'downloading' as const } 
-                  : item
-              )
-            );
-            
-            // Simulate progress updates
-            const progressInterval = setInterval(() => {
-              setDownloadItems(prev => 
-                prev.map(item => 
-                  item.id === ownable.hash && item.status === 'downloading'
-                    ? { ...item, progress: Math.min(item.progress + Math.random() * 10, 95) } 
-                    : item
-                )
-              );
-            }, 300);
-            
-            // Perform actual download
-            const downloadedOwnable = await fetchOwnableByHash(ownable.hash);
-            
-            // Clear interval
-            clearInterval(progressInterval);
-            
-            if (downloadedOwnable) {
-              props.setOwnables((prev: Ownable[]) => [...prev, { chain: downloadedOwnable.chain, package: downloadedOwnable.cid, uniqueMessageHash: ownable.hash }]);
-              
-              // Update status to completed
-              setDownloadItems(prev => 
-                prev.map(item => 
-                  item.id === ownable.hash 
-                    ? { ...item, progress: 100, status: 'completed' as const } 
-                    : item
-                )
-              );
-            } else {
-              // Update status to failed
-              setDownloadItems(prev => 
-                prev.map(item => 
-                  item.id === ownable.hash 
-                    ? { ...item, status: 'failed' as const } 
-                    : item
-                )
-              );
-            }
-          } else {
-            // Already exists, mark as completed
-            setDownloadItems(prev => 
-              prev.map(item => 
-                item.id === ownable.hash 
-                  ? { ...item, progress: 100, status: 'completed' as const } 
-                  : item
-              )
-            );
-          }
-        } catch (error) {
-          console.error(`Failed to download ownable ${relayData[i].hash}:`, error);
-          
-          // Update status to failed
-          setDownloadItems(prev => 
-            prev.map(item => 
-              item.id === relayData[i].hash 
-                ? { ...item, status: 'failed' as const } 
-                : item
-            )
+  const updateDownloadProgress = (hash: string, progress: number, status: DownloadItem['status']) => {
+    setDownloadItems(items =>
+      items.map(item =>
+        item.hash === hash
+          ? { ...item, progress, status }
+          : item
+      )
+    );
+  };
+
+  const handleImportMessage = async (hash: string, isBulkDownload: boolean = false) => {
+    try {
+      const newItem: DownloadItem = {
+        id: hash,
+        name: hash.substring(0, 12) + '...',
+        hash,
+        progress: 0,
+        status: 'downloading',
+        size: messages.find(m => m.hash === hash)?.size
+      };
+
+      setDownloadItems(prev => [...prev, newItem]);
+      setShowDownloadModal(true);
+
+      const importedPackage = await RelayService.readSingleMessage(hash);
+
+      if (importedPackage) {
+        const chain = importedPackage.chain ? importedPackage.chain : null;
+
+        if (chain) {
+          // Check if the package is already current or newer
+          const existingOwnable = props.existingOwnables.find(
+            (o) => o.package === importedPackage.cid
           );
+
+          if (existingOwnable) {
+            updateDownloadProgress(hash, 100, 'completed');
+            setImportedHashes((prev) => new Set(prev).add(hash));
+
+            if (!isBulkDownload) {
+              enqueueSnackbar(`Package is already current or newer`, {
+                variant: "info",
+              });
+            }
+            return;
+          }
+
+          setOwnables((prevOwnables) => [
+            ...prevOwnables,
+            {
+              chain,
+              package: importedPackage.cid,
+              uniqueMessageHash: importedPackage.uniqueMessageHash,
+            },
+          ]);
+
+          updateDownloadProgress(hash, 100, 'completed');
+          setImportedHashes((prev) => new Set(prev).add(hash));
+
+          const messageCount = await LocalStorageService.get("messageCount");
+          const newCount = Math.max(0, parseInt(messageCount || "0", 10) - 1);
+          await LocalStorageService.set("messageCount", newCount);
+
+          const clientHashes = LocalStorageService.get("messageHashes") || [];
+
+          if (!isBulkDownload) {
+            enqueueSnackbar(`Ownable imported successfully!`, {
+              variant: "success",
+            });
+          }
+        } else {
+          updateDownloadProgress(hash, 0, 'failed');
+          if (!isBulkDownload) {
+            enqueueSnackbar(`Failed to parse import`, {
+              variant: "error",
+            });
+          }
+        }
+      } else {
+        updateDownloadProgress(hash, 0, 'failed');
+        if (!isBulkDownload) {
+          enqueueSnackbar(`Ownable already imported!`, {
+            variant: "error",
+          });
         }
       }
-      
-      setIsDownloadingAll(false);
-      
-      // Show final notification after 2 seconds to let user see the completed state
-      setTimeout(() => {
-        setIsDownloading(false);
-        const successCount = downloadItems.filter(item => item.status === 'completed').length;
-        enqueueSnackbar(`Import All ownables completed`, { 
-          variant: "success",
-          autoHideDuration: 5000,
+    } catch (error) {
+      console.error("Error importing message:", error);
+      updateDownloadProgress(hash, 0, 'failed');
+      if (!isBulkDownload) {
+        enqueueSnackbar(`Failed to import ownable`, {
+          variant: "error",
         });
+      }
+    }
+  };
+
+  const handleClose = () => {
+    // if (downloadItems.some(item => item.status === 'downloading')) {
+    //   enqueueSnackbar("Please wait for downloads to complete or cancel them", {
+    //     variant: "warning",
+    //   });
+    //   return;
+    // }
+    // setDownloadItems([]);
+    // setShowDownloadModal(false);
+    props.onClose();
+  };
+
+  const handleDownloadAll = async () => {
+    setIsDownloadingAll(true);
+    setShowDownloadModal(true);
+    // const isAlreadyImported = !!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash);
+    const messagesToDownload = messages.filter(message => !props.existingOwnables.some(ownable => ownable.uniqueMessageHash === message.hash));
+
+    const items: DownloadItem[] = messagesToDownload.map(message => ({
+      id: message.hash,
+      name: message.metadata?.title || message.hash.substring(0, 12) + '...',
+      hash: message.hash,
+      progress: 0,
+      status: 'pending',
+      size: message.size
+    }));
+
+    setDownloadItems(items);
+
+    const batchSize = 3;
+    const chunks = [];
+
+    for (let i = 0; i < messagesToDownload.length; i += batchSize) {
+      chunks.push(messagesToDownload.slice(i, i + batchSize));
+    }
+
+    try {
+      for (const chunk of chunks) {
+        await Promise.all(chunk.map(message => handleImportMessage(message.hash, true)));
+      }
+
+      enqueueSnackbar("All downloads completed!", {
+        variant: "success",
+        autoHideDuration: 3000
+      });
+
+      const clientHashes = LocalStorageService.get("messageHashes") || [];
+      const newHashes = messagesToDownload.map(message => message.hash);
+      const allHashes = [...clientHashes, ...newHashes];
+      await LocalStorageService.set("messageHashes", allHashes);
+      await LocalStorageService.set("lastModified", new Date().toISOString());
+      await LocalStorageService.set("messageCount", 0);
+
+      setTimeout(() => {
         window.location.reload();
-        onClose();
-      }, 2000);
-    }, 100);
-    setIsDownloading(false);
+      }, 1000);
+    } catch (error) {
+      console.error("Error in bulk download:", error);
+      enqueueSnackbar("Some downloads failed. Check the download modal for details.", {
+        variant: "warning",
+        autoHideDuration: 5000
+      });
+    } finally {
+      setIsDownloadingAll(false);
+    }
   };
 
   const handleCancelAllDownloads = () => {
+    setDownloadItems([]);
     setIsDownloadingAll(false);
     setShowDownloadModal(false);
-    setDownloadItems([]);
     enqueueSnackbar("All downloads cancelled", { variant: "info" });
   };
-  
+
   const handleCloseDownloadModal = () => {
-    setIsDownloading(false);
-    // If downloads are still in progress, just minimize instead of close
-    if (isDownloadingAll) {
-      return;
-    }
-    
     setShowDownloadModal(false);
-    window.location.reload();
   };
-
-  const handldleImportOwnable = async (hash: string) => {
-    setIsDownloading(true);
-    // Create a download item for the modal
-    const downloadItem = {
-      id: hash,
-      name: hash.substring(0, 15) + '...',
-      hash: hash,
-      progress: 0,
-      status: 'downloading' as const,
-      size: relayData.find(o => o.hash === hash)?.size
-    };
-    
-    setDownloadItems([downloadItem]);
-    setShowDownloadModal(true);
-    setLoading(true);
-    
-    const progressInterval = setInterval(() => {
-      setDownloadItems(prev => 
-        prev.map(item => 
-          item.id === hash && item.status === 'downloading'
-            ? { ...item, progress: Math.min(item.progress + Math.random() * 10, 95) } 
-            : item
-        )
-      );
-    }, 300);
-    
-    try {
-      const ownable = await fetchOwnableByHash(hash);
-      
-      // Clear interval
-      clearInterval(progressInterval);
-      
-      if (ownable) {
-        const existing = props.existingOwnables.find((o) => o.package === ownable.package);
-        if (existing) {
-          // Update status to failed
-          setDownloadItems(prev => 
-            prev.map(item => 
-              item.id === hash 
-                ? { ...item, status: 'failed' as const } 
-                : item
-            )
-          );
-          
-          enqueueSnackbar(`${getPackageDisplayName(ownable.name)} already exists`, { variant: "error" });
-          setLoading(false);
-          return;
-        }
-
-        props.setOwnables((prev: Ownable[]) => [...prev, { chain: ownable.chain, package: ownable.cid, uniqueMessageHash: hash }]);
-        
-        // Update status to completed
-        setDownloadItems(prev => 
-          prev.map(item => 
-            item.id === hash 
-              ? { ...item, progress: 100, status: 'completed' as const } 
-              : item
-          )
-        );
-        
-        setLoading(false);
-        setIsFetching(false);
-        setTotalOwnables(totalOwnables > 0 ? totalOwnables - 1 : 0);
-        
-        // Close after a short delay to show the completed state
-        setTimeout(() => {
-          setShowDownloadModal(false);
-          onClose();
-          window.location.reload();
-        }, 1500);
-      } else {
-        // Update status to failed
-        setDownloadItems(prev => 
-          prev.map(item => 
-            item.id === hash 
-              ? { ...item, status: 'failed' as const } 
-              : item
-          )
-        );
-        
-        enqueueSnackbar(`Failed to import ${hash}`, { variant: "error" });
-      }
-    } catch (error) {
-      // Clear interval
-      clearInterval(progressInterval);
-      
-      // Update status to failed
-      setDownloadItems(prev => 
-        prev.map(item => 
-          item.id === hash 
-            ? { ...item, status: 'failed' as const } 
-            : item
-        )
-      );
-      
-      console.error(`Failed to download ownable ${hash}:`, error);
-      enqueueSnackbar(`Failed to import ${hash}`, { variant: "error" });
-    }
-    
-    setLoading(false);
-    setIsDownloading(false);
-  };
-
-  const fetchOwnables = async () => {
-    setIsDownloading(true);
-    if (isFetching) return;
-    setIsFetching(true);
-
-
-    sendRNPostMessage(JSON.stringify({ type: "clear_cache", data: "clear cache" }));
-
-    let metadata = await RelayService.listOwnables();
-
-    if (metadata.length === 0) {
-      setLoading(false);
-      setRelaydata([]);
-      return;
-    }
-
-    setRelaydata(metadata);
-    setTotalOwnables(metadata?.length || 0);
-
-    // for (const hash of metadata) {
-    //   const ownable = await PackageService.importFromRelayByMessageHash(hash.hash);
-    //   if (ownable) {
-    //     setOwnables((prev) => [...prev, ownable as unknown as OwnablePreview]);
-    //   }
-    // }
-
-    setLoading(false);
-    setIsFetching(false);
-    setIsDownloading(false);
-  }
 
   const getPackageDisplayName = (str: string) => {
     if (!str) return '';
@@ -454,26 +499,37 @@ const ImportOwnablesDrawer = (props: Props) => {
   }
 
   const fetchBuilderAddress = async () => {
-    const builderAddress = await IDBService.getAll("builderAddress");
-    if (builderAddress.length > 0) {
-      setBuilderAddress(builderAddress[0].address);
-    }
-  }
-
-  const fetchImportedHashes = async () => {
     try {
-      const hashes = await LocalStorageService.get("messageHashes");
-      setImportedHashes(new Set(hashes));
+      const checkUseXAPIKey = await activityLogService.checkUseXAPIKey();
+      const headers = checkUseXAPIKey ? {
+        "X-API-Key": `${process.env.REACT_APP_OBUILDER_API_SECRET_KEY}`,
+        Accept: "*/*",
+      } : {
+        Accept: "*/*",
+      };
+      const response = await axios.get(
+        `${process.env.REACT_APP_OBUILDER}/api/v1/GetServerInfo`,
+        {
+          headers: headers,
+        }
+      );
+      const serverAddress =
+        AppConfig.Network() === "T"
+          ? response.data.serverLtoWalletAddress_T
+          : response.data.serverLtoWalletAddress_L;
+      setBuilderAddress(serverAddress);
     } catch (error) {
-      console.error("Failed to fetch imported hashes:", error);
+      console.error("Failed to fetch builder address:", error);
+      setBuilderAddress(null);
     }
   };
 
+  const isMobile = useMediaQuery('(max-width:600px)');
   return (
     <>
       <LtoDrawer
         open={open}
-        onClose={onClose}
+        onClose={handleClose}
         shouldHideBackdrop={false}
         isPersistent={true}
         height="100%"
@@ -507,7 +563,7 @@ const ImportOwnablesDrawer = (props: Props) => {
                 {props.title}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {relayData.length > 0 && (
+                {messages.length > 0 && (
                   <Button
                     onClick={handleDownloadAll}
                     startIcon={<CloudDownloadIcon />}
@@ -532,11 +588,22 @@ const ImportOwnablesDrawer = (props: Props) => {
                 )}
                 <IconButton
                   aria-label="close"
-                  onClick={props.onClose}
+                  onClick={handleClose}
                   sx={{
-                    ...closeModalBtnStyle,
+                    color: '#F44336',
                     width: '40px',
-                    height: '40px'
+                    height: '40px',
+                    padding: '8px',
+                    '&:hover': {
+                      background: 'rgba(244, 67, 54, 0.1)',
+                    },
+                    '&:active': {
+                      background: 'rgba(244, 67, 54, 0.2)',
+                    },
+                    svg: {
+                      width: '24px',
+                      height: '24px',
+                    }
                   }}
                 >
                   <CloseDrawerIcon />
@@ -544,23 +611,6 @@ const ImportOwnablesDrawer = (props: Props) => {
               </Box>
             </Box>
           </Box>
-
-          {/* <Box sx={{
-            mt: 2,
-            background: 'rgba(81, 0, 148, 0.2)',
-            padding: '16px',
-            borderRadius: '12px',
-          }}>
-            <Typography variant="body1" sx={{
-              color: themeColors.titleText,
-              fontSize: isMobile ? '0.9rem' : '1rem',
-              fontWeight: 500
-            }}>
-              {totalOwnables > 0
-                ? `You have ${totalOwnables} ownables available.`
-                : "No ownables available"}
-            </Typography>
-          </Box> */}
           <Box sx={{
             flex: 1,
             overflow: 'auto',
@@ -577,41 +627,69 @@ const ImportOwnablesDrawer = (props: Props) => {
             },
           }}>
             <List>
-              {relayData.map((ownable, index) => (
-                <MessageListItem key={index}>
-                  <Box sx={{ width: '100%' }}>
-                    <MessageTitle>
-                      {ownable.hash}
-                    </MessageTitle>
-                    <MessageHash>
-                      {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
-                    </MessageHash>
+              {messages.map((ownable, index) => {
+                const isAlreadyImported = !!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash);
+                return (
+                  <MessageListItem
+                    key={index}
+                    className={isAlreadyImported ? 'already-imported' : ''}
+                  >
+
+                    <ThumbnailImage
+                      src={ownable.metadata?.thumbnail || defaultCube}
+                      alt={ownable.metadata?.title || "Ownable thumbnail"}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = defaultCube;
+                      }}
+                    />
                     <Box sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mt: 1
+                      width: '100%',
+                      minWidth: 0,
                     }}>
-                      <MessageTimestamp>
-                        {new Date(ownable.timestamp).toLocaleString()}
-                      </MessageTimestamp>
-                      <Box sx={{ position: 'relative' }}>
-                        <DownloadButton
-                          onClick={() => handldleImportOwnable(ownable.hash)}
-                          disabled={!!props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash)}
-                          className={props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash) ? 'completed' : ''}
-                        >
-                          {props.existingOwnables.find((o) => o.uniqueMessageHash === ownable.hash) ? (
-                            <CheckCircleIcon />
-                          ) : (
-                            <DownloadIcon />
-                          )}
-                        </DownloadButton>
+                      <MessageTitle>
+                        {ownable.sender === builderAddress ? "oBuilder" : ownable.sender}
+                      </MessageTitle>
+                      <MessageHash>
+                        {ownable.metadata?.title || ownable.hash || "Unknown"}
+                      </MessageHash>
+                      <MessageHash>
+                        {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
+                      </MessageHash>
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mt: 1,
+                        gap: 2
+                      }}>
+                        <MessageTimestamp>
+                          {new Date(ownable.timestamp).toLocaleString()}
+                        </MessageTimestamp>
+                        <Box sx={{ flexShrink: 0 }}>
+                          <DownloadButton
+                            onClick={() => handleImportMessage(ownable.hash)}
+                            disabled={isAlreadyImported}
+                            className={isAlreadyImported ? 'completed' : ''}
+                          >
+                            {isAlreadyImported ? (
+                              <CheckCircleIcon />
+                            ) : (
+                              <DownloadIcon />
+                            )}
+                          </DownloadButton>
+                        </Box>
                       </Box>
                     </Box>
-                  </Box>
-                </MessageListItem>
-              ))}
+                    {/* {isAlreadyImported && (
+                      <ImportedBadge>
+                        <CheckCircleIcon />
+                        <span>Already Imported</span>
+                      </ImportedBadge>
+                    )} */}
+                  </MessageListItem>
+                );
+              })}
             </List>
             {loading && (
               <Box sx={{
@@ -625,7 +703,7 @@ const ImportOwnablesDrawer = (props: Props) => {
           </Box>
         </Box>
       </LtoDrawer>
-      
+
       <DownloadProgressModal
         open={showDownloadModal}
         onClose={handleCloseDownloadModal}
@@ -648,12 +726,10 @@ const ImageComponent = ({ _ownable }: { _ownable: { cid: string } }) => {
       if (_.length > 0) {
         const image = _.find((i: any) => i.name?.split(".")[1] === "webp" && i.name?.split(".")[0] !== "thumbnail")
         if (!image) {
-          // try thumbnail
           const thumbnail = _.find((i: any) => i.name?.split(".")[1] === "webp" && i.name?.split(".")[0] === "thumbnail")
           if (thumbnail) {
             return (URL.createObjectURL(thumbnail))
           } else {
-            // find any image with webp,.png,.jpg,.jpeg,.gif
             const _image = _.find((i: any) => i.name?.split(".")[1] === "webp" || i.name?.split(".")[1] === "png" || i.name?.split(".")[1] === "jpg" || i.name?.split(".")[1] === "jpeg" || i.name?.split(".")[1] === "gif")
             if (_image) {
               return (URL.createObjectURL(_image))
@@ -695,32 +771,6 @@ const ImageComponent = ({ _ownable }: { _ownable: { cid: string } }) => {
   );
 };
 
-// export interface RelayMessage {
-//   type: string;
-//   sender: string;
-//   recipient: string;
-//   timestamp: string;
-//   signature: string;
-//   hash: string;
-//   mediaType: string;
-//   size: number;
-//   senderKeyType: string;
-//   senderPublicKey: string;
-// }
-
-// export interface RelayData {
-//   type: string;
-//   sender: {
-//     keyType: string;
-//     publicKey: string;
-//   };
-//   recipient: string;
-//   timestamp: string;
-//   signature: string;
-//   hash: string;
-//   mediaType: string;
-//   data: string;
-// }
 export interface OwnablePreview {
   title: string;
   name: string;
@@ -764,9 +814,6 @@ export interface Version {
   uniqueMessageHash: string;
 }
 
-
-
-
 export interface RelayData {
   type: string;
   sender: string;
@@ -778,4 +825,11 @@ export interface RelayData {
   size: number;
   senderKeyType: string;
   senderPublicKey: string;
+  metadata?: {
+    timestamp: string;
+    size: number;
+    title: string;
+    thumbnail: string;
+  },
+  uniqueMessageHash: string;
 }

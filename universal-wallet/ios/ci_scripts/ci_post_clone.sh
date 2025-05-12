@@ -29,6 +29,7 @@ cat $DESTINATION_ENV_FILE
 
 # Install dependencies using Homebrew. This is MUST! Do not delete.
 brew install node cocoapods
+npm install -g yarn
 
 # Install ownables dependencies
 cd $OWNABLES_DIR
@@ -36,7 +37,8 @@ npm i && echo "🔧 NPM dependencies are installed successfully for ownables"
 
 # Install main project dependencies with legacy peer deps
 cd $BASE_DIR
-npm install --legacy-peer-deps && echo "🔧 NPM dependencies are installed successfully"
+yarn install
+# npm install --legacy-peer-deps && echo "🔧 NPM dependencies are installed successfully"
 
 # Clean and install pods
 cd $BASE_DIR/ios

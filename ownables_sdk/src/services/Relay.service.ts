@@ -1,4 +1,4 @@
-import { EventChain, LTO, Message, Relay } from "@ltonetwork/lto";
+import { Binary, EventChain, LTO, Message, Relay } from "@ltonetwork/lto";
 import axios from "axios";
 import sendFile from "./relayhelper.service";
 import JSZip from "jszip";
@@ -7,6 +7,8 @@ import { MessageExt, MessageInfo } from "../interfaces/MessageInfo";
 import { sign } from "@ltonetwork/http-message-signatures";
 import LTOService from "./LTO.service";
 import { AppConfig } from "../AppConfig";
+import PackageService from "./Package.service";
+import { IMessageMeta } from "@ltonetwork/lto/interfaces";
 
 export class RelayService {
   static relayURL = AppConfig.RELAY();
@@ -55,7 +57,11 @@ export class RelayService {
   /**
    * Send ownable to a recipient.
    */
-  static async sendOwnable(recipient: string, content?: Uint8Array) {
+  static async sendOwnable(
+    recipient: string,
+    content: Uint8Array,
+    meta: Partial<IMessageMeta>
+  ) {
     const sender = LTOService.account;
 
     if (!recipient) {
@@ -65,18 +71,26 @@ export class RelayService {
 
     try {
       if (sender) {
-        const messageHash = await sendFile(
-          this.relay,
-          content,
-          sender,
-          recipient
-        );
-        return messageHash;
+        const messageContent = Binary.from(content);
+
+        //const recipientAccount = await lto.resolveAccount(recipient);
+
+        const message = new Message(
+          messageContent,
+          "application/octet-stream",
+          meta
+        )
+          .to(recipient)
+          .signWith(sender);
+
+        await this.relay.send(message);
+        return message.hash.base58;
       }
     } catch (error) {
       console.error("Error sending message:", error);
     }
   }
+
   static async getOwnableData(hash: string): Promise<any | null> {
     if (!hash) {
       console.error("Hash not provided");
@@ -359,5 +373,67 @@ export class RelayService {
       message,
       messageHash,
     }));
+  }
+
+
+  /**
+   * Read a single message by its hash.
+   */
+  static async readSingleMessage(hash: string) {
+    const sender = LTOService.account;
+    if (!sender) {
+      console.error("Account not initialized");
+      return null;
+    }
+
+    const address = sender.address;
+    const url = `${this.relayURL}/inboxes/${address}/${hash}`;
+
+    try {
+      const response = await this.handleSignedRequest("GET", url);
+
+      if (response?.data) {
+        const message = Message.from(response.data);
+
+        if (message.isEncrypted()) {
+          message.decryptWith(sender);
+        }
+
+        return await PackageService.processPackage(message, hash, true);
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error reading single message:", error);
+      return null;
+    }
+  }
+
+
+  static async list(offset: number, limit: number) {
+    const sender = await LTOService.getAccount();
+
+    if (!sender) {
+      console.error("Account not initialized");
+      return null;
+    }
+
+    const address = sender.address;
+    const isRelayAvailable = await this.isRelayUp();
+    if (!isRelayAvailable) return null;
+
+    const url = `${this.relayURL}/v2/inboxes/${address}?limit=${limit}&offset=${offset}`;
+
+    try {
+      const response = await this.handleSignedRequest("GET", url);
+      if (!response) {
+        console.error("Failed to read relay metadata:", response);
+        return null;
+      }
+      return response.data || null;
+    } catch (error) {
+      console.error("Failed to read relay metadata:", error);
+      return null;
+    }
   }
 }
