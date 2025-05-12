@@ -133,7 +133,7 @@ export default function App() {
   const [showPackages, setShowPackages] = React.useState(false);
   const [openFab, setOpenFab] = React.useState(false);
   const [ownables, setOwnables] = useState<
-    Array<{ chain: EventChain; package: string }>
+    Array<{ chain: EventChain; package: string; uniqueMessageHash?: string }>
   >([]);
   const [filteredOwnables, setFilteredOwnables] = useState<
     Array<{ chain: EventChain; package: string }>
@@ -253,7 +253,6 @@ export default function App() {
       sendRNPostMessage(JSON.stringify({ type: "ready" }));
     }
   }, [window.localStorage]);
-
   useEffect(() => {
     if (importingOwnables === true && selectedTab === TabType.ALL) {
       setSelectedTab(TabType.INTERSTITIAL);
