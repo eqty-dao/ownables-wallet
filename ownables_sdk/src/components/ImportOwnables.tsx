@@ -303,7 +303,7 @@ const ImportOwnablesDrawer = (props: Props) => {
 
       if (relayData && Array.isArray(relayData.messages)) {
         setTotalCount(relayData.total);
-        setMessages(relayData.messages);
+        setMessages(relayData.messages?.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
       } else {
         setTotalCount(0);
         setMessages([]);
@@ -433,7 +433,7 @@ const ImportOwnablesDrawer = (props: Props) => {
 
     const items: DownloadItem[] = messagesToDownload.map(message => ({
       id: message.hash,
-      name: message.metadata?.title || message.hash.substring(0, 12) + '...',
+      name: message.meta?.title || message.hash.substring(0, 12) + '...',
       hash: message.hash,
       progress: 0,
       status: 'pending',
@@ -508,7 +508,7 @@ const ImportOwnablesDrawer = (props: Props) => {
         Accept: "*/*",
       };
       const response = await axios.get(
-        `${process.env.REACT_APP_OBUILDER}/api/v1/GetServerInfo`,
+        `${AppConfig.OBUILDER(await activityLogService.checkToUseBackupOBuilder())}/api/v1/GetServerInfo`,
         {
           headers: headers,
         }
@@ -636,8 +636,8 @@ const ImportOwnablesDrawer = (props: Props) => {
                   >
 
                     <ThumbnailImage
-                      src={ownable.metadata?.thumbnail || defaultCube}
-                      alt={ownable.metadata?.title || "Ownable thumbnail"}
+                      src={ownable.meta?.thumbnail || defaultCube}
+                      alt={ownable.meta?.title || "Ownable thumbnail"}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = defaultCube;
@@ -651,7 +651,7 @@ const ImportOwnablesDrawer = (props: Props) => {
                         {ownable.sender === builderAddress ? "oBuilder" : ownable.sender}
                       </MessageTitle>
                       <MessageHash>
-                        {ownable.metadata?.title || ownable.hash || "Unknown"}
+                        {getPackageDisplayName(ownable.meta?.title || "") || ownable.hash || "Unknown"}
                       </MessageHash>
                       <MessageHash>
                         {ownable.size ? `${(ownable.size / 1024 / 1024).toFixed(2)} MB` : "Unknown"}
@@ -814,6 +814,25 @@ export interface Version {
   uniqueMessageHash: string;
 }
 
+// {
+//   "version": 1,
+//   "meta": {
+//       "type": "ownable",
+//       "title": "Ownabletttt6",
+//       "description": "TTTT6",
+//       "thumbnail": "data:image/webp;base64,UklGRu4EAABXRUJQVlA4WAoAAAAwAAAAMQAAMQAASUNDUMgBAAAAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADZBTFBIKgAAAAEXIBZM5n8mnEZEhIOaSJKUY3h/b/KEbvYQRvR/AujMA68N+8cbeNGZAVZQOCDOAgAAsA4AnQEqMgAyAD5tLJFFpCKhmPqttEAGxLEAQeCtabUMBCA25PmA6G28ybz9PtMaZovVj9w2oN0lPQA/UAs7Whtkw26reYLdUjn5v2bVkC+LXCnrPoIaxLeRaD0PY6eHx2m+ycLd3e3cEEjZK49wco0Oj2I8GC77n1Vq3E4AAP7+9bw3BZp0SutEC0+el3Yu7Ki3hph1HZIzaA8DNkmQLh/Qe5k0TH/8Uvlr7ZbzYkeBGflOqLOuMXUempOpiJId5HL9hAWGjL/7TAMIJ24mUlkNu36HVhuXNQeb5guOaQqg1aPICQteRjxz0jLx6pk5E00Z6OKdQvHV9iyhKEs7m64W0uciPlhujjxn5IUWj8lC+wVFamWwbEGxHrvUeCH5JjThGH9/Hb+fIeJbXbYmEjvjBWEEjDpkCu/WfZcfYhcC/tbhDjxLqaGGsIYGklfwnO6z7OQIWZDAk0idUXXdvEYtZgKRk/Z8eGsbFFWZvDkz3ftKUNVCpDqFRdcA+1EwqBFl0D9hWiiXGHNfvSKvuMG7cob2fmxdFk1JMV5CKB6jOJNO/Zk2DHN/J+AjFQw21GTrivf+WwHZPZEKualdWIy+PkwCiqWPQUqwFL+1+OZifuL2UC98pGUZZ7/9ePmGgIz8647UQPKgYO4HNm2pBDpZY/fP9mvfztqLXV7FAYQnw9e+7oJ66gaRqBItSbJs1vz67+vZxt/XX/dJ18riyMswu0QX/UEwGRoC5wKqMjUXdO1bah9iio7FVHWWp9WCO+/MDXcAm8MPGPm5+pqNayMeJ48oCoeAGSLsy9U7ezUlDHWVEwf3WS98ymE+09137V5T0N7LTSYZSOEqj7XmBOhX1YfBDK/RSEZqJgowQTw/54eOEgWxHyCo6awu8xyGAVCtTJZaDP4vHgf5HHQEofxJiBjR0B7W74x9O0110UhfI3n84pdFroLDYAAAAA=="
+//   },
+//   "sender": "3JpP9eYsKqqdpaqjksSec8noyGJmSQTjDwG",
+//   "recipient": "3JmLEA9NRihPnwQ5Je4KNNuqPa2W7AvjkvH",
+//   "timestamp": "2025-04-17T12:48:46.819Z",
+//   "signature": "BBdu8wNh6v356GWsmtZvM33HdpttTyYFCdx7Gy8SNPCJWc8G13rHiGiofPy2XTM1QpGTuFX2hswEUdQYGuYWTEw",
+//   "hash": "6jD3BryWy3zHZpNLjWSkm6pkuV3AcocmFaXpjGQpJvxg",
+//   "mediaType": "application/octet-stream",
+//   "size": 1124957,
+//   "senderKeyType": "ed25519",
+//   "senderPublicKey": "Gu7qcgKjJFHy2nA2Sgz2HtGCwJi7TuKcdXN3hXGe3yrr"
+// }
+
 export interface RelayData {
   type: string;
   sender: string;
@@ -825,7 +844,7 @@ export interface RelayData {
   size: number;
   senderKeyType: string;
   senderPublicKey: string;
-  metadata?: {
+  meta?: {
     timestamp: string;
     size: number;
     title: string;
