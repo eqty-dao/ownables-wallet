@@ -1,5 +1,5 @@
 import { Binary, EventChain } from "@ltonetwork/lto";
-import { Card, CircularProgress, Paper, Tooltip } from "@mui/material";
+import { Card, CircularProgress, Paper, Tooltip, styled } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
 import { Component, ReactNode, RefObject, createRef, useEffect, useState } from "react";
 import { isObject } from "util";
@@ -80,6 +80,28 @@ const ownableDescStyle = {
   marginTop: "4px",
   marginBottom: "0px",
 };
+
+const AudioIcon = styled('div')`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 48px;
+  height: 48px;
+  background: #510094;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  border: 2px solid #222;
+  z-index: 10;
+
+  svg {
+    width: 30px;
+    height: 30px;
+    display: block;
+  }
+`;
 
 const checkIcon = <CircleCheckIcon style={{ width: "20px", height: "20px" }} />;
 
@@ -361,6 +383,13 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
     backgroundColor: "transparent",
   };
 
+   getPackageDisplayName = (str: string) => {
+    if (!str) return '';
+    const regex = new RegExp(/ownable/i);
+    return str?.replace(regex, "").replace(/[-_]+/, " ").trim()
+      .replace(/\b\w/, (c) => c.toUpperCase());
+  }
+
   render() {
     return (
       <div onClick={this.props.onOpenModal}>
@@ -379,6 +408,13 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
               iframeRef={this.iframeRef}
               onLoad={() => this.onLoad()}
             />
+          )}
+          {this.state.hasMp3 && (
+            <AudioIcon>
+              <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22 6v13.2a3.5 3.5 0 1 1-1.5-2.8V10h-7v9.2a3.5 3.5 0 1 1-1.5-2.8V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" fill="#fff" stroke="#fff" strokeLinejoin="round" strokeLinecap="round"/>
+              </svg>
+            </AudioIcon>
           )}
           {this.props.children}
           <If condition={this.isTransferred && !this.isBridged}>
@@ -420,7 +456,7 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
 
         </Paper>
         <div onClick={this.props.onOpenModal}>
-          <p style={ownableNameStyle}>{this.state.metadata?.name}</p>
+          <p style={ownableNameStyle}>{this.getPackageDisplayName(this.state.metadata?.name)}</p>
           <p style={ownableDescStyle}>{this.state.metadata?.description}</p>
         </div>
       </div>
