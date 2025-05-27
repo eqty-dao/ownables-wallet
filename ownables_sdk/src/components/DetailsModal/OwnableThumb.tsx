@@ -71,6 +71,9 @@ const ownableNameStyle = {
   ...themeStyles.fs16fw500lh19,
   marginTop: "12px",
   marginBottom: "0px",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap" as "nowrap",
 };
 const ownableDescStyle = {
   ...themeStyles.fs12fw400lh14,
