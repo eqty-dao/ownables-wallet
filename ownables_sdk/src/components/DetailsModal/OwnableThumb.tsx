@@ -106,6 +106,20 @@ const AudioIcon = styled('div')`
   }
 `;
 
+const BadgeContainer = styled("div")`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 35px;
+  height: 35px;
+  z-index: 10;
+  
+  img {
+    width: 100%;
+    height: 100%;
+  }
+`;
+
 const checkIcon = <CircleCheckIcon style={{ width: "20px", height: "20px" }} />;
 
 
@@ -113,6 +127,7 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
   private readonly pkg: TypedPackage;
   private readonly iframeRef: RefObject<HTMLIFrameElement>;
   private busy = false;
+  private hasRWA: boolean = false;
 
   constructor(props: OwnableProps) {
     super(props);
@@ -151,6 +166,12 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
   get nftNetwork(): string {
     const nftNetwork = this.state.info?.nft?.network;
     return nftNetwork || "";
+  }
+
+  private async getHasRWA(): Promise<boolean> {
+    const exists = await PackageService.exists(this.props.packageCid, "rwa.html");
+    console.log("OwnableThumb -> getHasRWA", exists)
+    return exists ?? false;
   }
 
   private async checkRedeemable(): Promise<boolean> {
@@ -244,9 +265,11 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
       )) as TypedMetadata)
       : this.state.metadata;
 
+    const hasRWA = await this.getHasRWA();
+    this.hasRWA = hasRWA;
+
     this.setState({ info, metadata });
   }
-
   private async apply(partialChain: EventChain): Promise<void> {
     if (this.busy) return;
     this.busy = true;
@@ -277,6 +300,8 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
 
     try {
       await OwnableService.init(this.chain, this.pkg.cid, rpc, this.pkg.uniqueMessageHash);
+      const hasRWA = await this.getHasRWA();
+      this.hasRWA = hasRWA;
       this.setState({ initialized: true });
     } catch (e) {
       if (e instanceof Cancelled) return;
@@ -388,8 +413,9 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
 
    getPackageDisplayName = (str: string) => {
     if (!str) return '';
+    console.log("OwnableThumb -> getPackageDisplayName", str)
     const regex = new RegExp(/ownable/i);
-    return str?.replace(regex, "").replace(/[-_]+/, " ").trim()
+    return str?.replace(regex, " ").replace(/[-_]+/, " ").trim()
       .replace(/\b\w/, (c) => c.toUpperCase());
   }
 
@@ -418,6 +444,11 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
                 <path d="M22 6v13.2a3.5 3.5 0 1 1-1.5-2.8V10h-7v9.2a3.5 3.5 0 1 1-1.5-2.8V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" fill="#fff" stroke="#fff" strokeLinejoin="round" strokeLinecap="round"/>
               </svg>
             </AudioIcon>
+          )}
+          {this.hasRWA && (
+            <BadgeContainer>
+              <img src={require("../../assets/EQTY_BADGE.png")} alt="EQTY Badge" />
+            </BadgeContainer>
           )}
           {this.props.children}
           <If condition={this.isTransferred && !this.isBridged}>
@@ -459,7 +490,7 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
 
         </Paper>
         <div onClick={this.props.onOpenModal}>
-          <p style={ownableNameStyle}>{this.getPackageDisplayName(this.state.metadata?.name)}</p>
+          <p style={ownableNameStyle}>{this.getPackageDisplayName(this.state.metadata?.name ?? "")}</p>
           <p style={ownableDescStyle}>{this.state.metadata?.description}</p>
         </div>
       </div>
