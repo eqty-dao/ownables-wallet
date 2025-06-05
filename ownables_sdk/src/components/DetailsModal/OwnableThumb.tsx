@@ -113,7 +113,7 @@ const BadgeContainer = styled("div")`
   width: 35px;
   height: 35px;
   z-index: 10;
-  
+
   img {
     width: 100%;
     height: 100%;
@@ -388,9 +388,9 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
 
   private async getImage(): Promise<void> {
     const files = await IDBService.getAll(`package:${this.pkg.cid}`);
-    const image = files.find((file) => file.name.endsWith(".webp") || file.name.endsWith(".jpg") || file.name.endsWith(".png"));
+    const image = files.find((file) => file.name.endsWith(".webp") || file.name.endsWith(".png") || file.name.endsWith(".gif"));
     const hasMp3 = files.some((file) => file.name.endsWith(".mp3"));
-    
+
     if (image) {
       const imageUrl = URL.createObjectURL(image);
       this.setState({ imageUrl, hasMp3 });
@@ -424,9 +424,9 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
       <div onClick={this.props.onOpenModal}>
         <Paper sx={this.paperStyle}>
           {this.state.imageUrl ? (
-            <img 
-              src={this.state.imageUrl} 
-              alt="Ownable" 
+            <img
+              src={this.state.imageUrl}
+              alt="Ownable"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
@@ -594,7 +594,7 @@ export default class OwnableThumb extends Component<OwnableProps, OwnableState> 
 //   width: 35px;
 //   height: 35px;
 //   z-index: 10;
-  
+
 //   img {
 //     width: 100%;
 //     height: 100%;
