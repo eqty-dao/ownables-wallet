@@ -1,0 +1,4 @@
+[submodule "ownables_sdk"]
+	path = ownables_sdk
+	url = https://github.com/eqty-dao/ownables-sdk.git
+	branch = main

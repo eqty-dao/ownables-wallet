@@ -16,8 +16,9 @@ This is the official repository for the LTO Universal Wallet. The wallet is a mo
 
 
 ## Getting Started
-1. Clone the repository.
-2. `cd ownable_sdk && yarn && yarn build && cd ..`
+1. Clone the repository with submodules: `git clone --recurse-submodules <repo-url>`
+2. If already cloned, initialize the SDK submodule: `git submodule update --init ownables_sdk`
+3. `cd ownables_sdk && yarn && yarn build && cd ..`
 
 This will build the ownable SDK and copy the build files to the `universal-wallet` project.
 ### Universal Wallet
@@ -42,6 +43,4 @@ Make changes to the ownable SDK and build it using the following command:
 - JS bundle: `cd universal-wallet && ./run prebuild && cd ios && pod install && cd .. && npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios`
 
 Build the ownable SDK:
-- `cd ownable_sdk && yarn && yarn build && cd ..`
-
-
+- `cd ownables_sdk && yarn && yarn build && cd ..`

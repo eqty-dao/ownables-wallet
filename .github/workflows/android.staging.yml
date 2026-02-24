@@ -16,7 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Build Android APK and email to team
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Setup Java and Node.js
         uses: actions/setup-java@v3
         with:

@@ -9,17 +9,20 @@ set -x
 echo "🧩 Stage: Post-clone is activated .... "
 export CI="false"
 
-chmod +x /Volumes/workspace/repository/universal-wallet/ios/ci_scripts/ci_post_clone.sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
+
+chmod +x "$REPO_ROOT/universal-wallet/ios/ci_scripts/ci_post_clone.sh"
 
 # Set base directory relative to the script for easier navigation
-BASE_DIR="/Volumes/workspace/repository/universal-wallet/"
-OWNABLES_DIR="/Volumes/workspace/repository/ownables_sdk/"
-DESTINATION_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env"
-SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.stg"
+BASE_DIR="$REPO_ROOT/universal-wallet"
+OWNABLES_DIR="$REPO_ROOT/ownables_sdk"
+DESTINATION_ENV_FILE="$BASE_DIR/.env"
+SOURCE_ENV_FILE="$BASE_DIR/.env.stg"
 
 #copy the appropriate environment file to the root directory based on the branch
 if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
-    SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.prod"
+    SOURCE_ENV_FILE="$BASE_DIR/.env.prod"
 fi
 
 cp $SOURCE_ENV_FILE $DESTINATION_ENV_FILE && echo "🔧 $SOURCE_ENV_FILE file is copied to $DESTINATION_ENV_FILE"
@@ -31,6 +34,9 @@ cat $DESTINATION_ENV_FILE
 brew install node cocoapods
 
 # Install ownables dependencies
+cd "$REPO_ROOT"
+git submodule update --init ownables_sdk
+
 cd $OWNABLES_DIR
 npm i && echo "🔧 NPM dependencies are installed successfully for ownables"
 
