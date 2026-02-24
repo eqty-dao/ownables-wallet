@@ -1,17 +1,9 @@
-import LocalStorageService from './LocalStorage.service';
 import { TypedTransaction } from '../interfaces/TypedTransaction';
 import { Network } from '../context/User.context';
+import AccountLifecycleService, { EvmAccount as WalletAccount } from './AccountLifecycle.service';
+import { isValidEvmAddress } from '../utils/evmAddress';
 
-const DEFAULT_DUMMY_SEED = 'abandon ability able about above absent absorb abstract absurd abuse access accident account accuse achieve acid';
-const DEFAULT_DUMMY_ADDRESS = '3JstubAddress111111111111111111111111111';
 const LTO_DECIMALS = 100000000;
-
-export interface WalletAccount {
-  address: string;
-  seed: string;
-  publicKey: string;
-  privateKey: string;
-}
 
 export interface TransferDraft {
   recipient: string;
@@ -27,89 +19,45 @@ const shortHash = (value: string): string => {
   return Math.abs(hash).toString(16).padStart(8, '0');
 };
 
-const buildAccountFromSeed = (seed: string): WalletAccount => {
-  const hash = shortHash(seed);
-  return {
-    address: `3J${hash}${DEFAULT_DUMMY_ADDRESS.slice(10)}`.slice(0, 42),
-    seed,
-    publicKey: `PUB_${hash}_${shortHash(seed + 'pub')}`,
-    privateKey: `PRV_${hash}_${shortHash(seed + 'prv')}`,
-  };
-};
-
 export default class LTOService {
-  static account?: WalletAccount;
-
   public static isUnlocked = (): boolean => {
-    return !!this.account;
+    return AccountLifecycleService.isUnlocked();
   };
 
   public static getSeed = (): string => {
-    return this.account?.seed || DEFAULT_DUMMY_SEED;
+    return AccountLifecycleService.getSeed();
   };
 
-  public static unlock = async (password: string | undefined): Promise<void> => {
-    const [encryptedAccount] = (await LocalStorageService.getData('@accountData')) || [];
-
-    if (!encryptedAccount?.seed?.length) {
-      throw new Error('Account not found');
-    }
-
-    if (encryptedAccount.password && password && encryptedAccount.password !== password) {
-      throw new Error('Wrong password');
-    }
-
-    const seed = encryptedAccount.seed[1] || encryptedAccount.seed[0] || DEFAULT_DUMMY_SEED;
-    this.account = buildAccountFromSeed(seed);
+  public static unlock = async (password?: string, biometricSignature?: string): Promise<void> => {
+    await AccountLifecycleService.unlock(password, biometricSignature);
   };
 
   public static lock = () => {
-    delete this.account;
+    AccountLifecycleService.lock();
   };
 
   public static getAccount = async (): Promise<WalletAccount> => {
-    if (!this.account) {
-      throw new Error('Not logged in');
-    }
-
-    return this.account;
+    return AccountLifecycleService.getAccount();
   };
 
   public static storeAccount = async (nickname: string, password: string): Promise<void> => {
-    if (!this.account) {
-      throw new Error('Account not created');
-    }
-
-    await LocalStorageService.storeData('@accountData', [
-      {
-        nickname,
-        address: this.account.address,
-        seed: [this.account.seed, this.account.seed],
-        password,
-      },
-    ]);
+    await AccountLifecycleService.storeAccount(nickname, password);
   };
 
   public static createAccount = async (): Promise<WalletAccount> => {
-    const seed = DEFAULT_DUMMY_SEED;
-    this.account = buildAccountFromSeed(seed);
-    return this.account;
+    return AccountLifecycleService.createAccount();
   };
 
-  public static importAccount = async (seed: string): Promise<void> => {
-    if (!seed?.trim()) {
-      throw new Error('Error importing account from seeds');
-    }
-
-    this.account = buildAccountFromSeed(seed.trim());
+  public static importAccount = async (mnemonic: string): Promise<void> => {
+    await AccountLifecycleService.importAccount(mnemonic);
   };
 
   public static deleteAccount = async (): Promise<void> => {
-    await Promise.all([
-      LocalStorageService.removeData('@accountData'),
-      LocalStorageService.removeData('@userAlias'),
-    ]);
-    this.lock();
+    await AccountLifecycleService.deleteAccount();
+  };
+
+  public static hasStoredAccount = async (): Promise<boolean> => {
+    return AccountLifecycleService.hasStoredAccount();
   };
 
   public static getBalance = async (_address: string) => {
@@ -131,7 +79,7 @@ export default class LTOService {
         version: '3',
         fee: 8000000,
         timestamp: now - 60 * 60 * 1000,
-        sender: '3JexternalDummySender111111111111111111111',
+        sender: '0x14A3958f7a3144f7Df0B9fB8F4eCa4Aee6BCce80',
         recipient: address,
         amount: 5 * LTO_DECIMALS,
       },
@@ -142,7 +90,7 @@ export default class LTOService {
         fee: 8000000,
         timestamp: now - 3 * 60 * 60 * 1000,
         sender: address,
-        recipient: '3JdummyRecipient111111111111111111111111',
+        recipient: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
         amount: 2 * LTO_DECIMALS,
       },
     ];
@@ -169,8 +117,7 @@ export default class LTOService {
   };
 
   public static isValidAddress = (address: string): boolean => {
-    if (!address) return false;
-    return /^[A-Za-z0-9]{26,60}$/.test(address);
+    return isValidEvmAddress(address);
   };
 
   public static switchNetwork = (_network: Network): void => {
@@ -191,3 +138,5 @@ export interface AirdropResponse {
   code?: string;
   success?: boolean;
 }
+
+export type { WalletAccount };
