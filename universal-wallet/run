@@ -32,6 +32,83 @@ check_environment() {
   fi
 }
 
+# Android build in this repository is currently pinned to JDK 17.
+java_major_version() {
+  JAVA_BIN="$1"
+  if [ ! -x "$JAVA_BIN" ]; then
+    echo ""
+    return 1
+  fi
+  "$JAVA_BIN" -version 2>&1 | awk -F[\".] '/version/ { if ($2 == "1") print $3; else print $2; exit }'
+}
+
+try_use_java_home_17() {
+  CANDIDATE_HOME="$1"
+  if [ -z "$CANDIDATE_HOME" ] || [ ! -d "$CANDIDATE_HOME" ]; then
+    return 1
+  fi
+  CANDIDATE_JAVA="$CANDIDATE_HOME/bin/java"
+  CANDIDATE_MAJOR=$(java_major_version "$CANDIDATE_JAVA")
+  if [ "$CANDIDATE_MAJOR" = "17" ]; then
+    export JAVA_HOME="$CANDIDATE_HOME"
+    export PATH="$JAVA_HOME/bin:$PATH"
+    return 0
+  fi
+  return 1
+}
+
+java_home_from_bin() {
+  JAVA_BIN_PATH="$1"
+  if command -v readlink >/dev/null 2>&1; then
+    RESOLVED_BIN=$(readlink -f "$JAVA_BIN_PATH" 2>/dev/null || echo "$JAVA_BIN_PATH")
+  else
+    RESOLVED_BIN="$JAVA_BIN_PATH"
+  fi
+  dirname "$(dirname "$RESOLVED_BIN")"
+}
+
+require_java17() {
+  # 1) Respect JAVA_HOME if it already points to JDK 17
+  if try_use_java_home_17 "$JAVA_HOME"; then
+    return 0
+  fi
+
+  # 2) If java in PATH is already 17, use it
+  if command -v java >/dev/null 2>&1; then
+    PATH_JAVA_BIN=$(command -v java)
+    PATH_JAVA_MAJOR=$(java_major_version "$PATH_JAVA_BIN")
+    if [ "$PATH_JAVA_MAJOR" = "17" ]; then
+      PATH_JAVA_HOME=$(java_home_from_bin "$PATH_JAVA_BIN")
+      if try_use_java_home_17 "$PATH_JAVA_HOME"; then
+        return 0
+      fi
+      # Fall back to PATH java if it's 17 even if JAVA_HOME couldn't be resolved
+      unset JAVA_HOME
+      return 0
+    fi
+  fi
+
+  # 3) Search common JDK install locations
+  for CANDIDATE in \
+    /usr/lib/jvm/java-17* \
+    /usr/lib/jvm/jdk-17* \
+    /usr/lib/jvm/temurin-17* \
+    /usr/lib/jvm/zulu-17* \
+    "$HOME"/.sdkman/candidates/java/17* \
+    /Library/Java/JavaVirtualMachines/*17*/Contents/Home
+  do
+    if [ -d "$CANDIDATE" ] && try_use_java_home_17 "$CANDIDATE"; then
+      return 0
+    fi
+  done
+
+  echo "ERROR: JDK 17 is required for Android commands in ./run."
+  echo "Install Java 17 and set JAVA_HOME, e.g.:"
+  echo "  export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
+  echo "  export PATH=\$JAVA_HOME/bin:\$PATH"
+  exit 1
+}
+
 code_check_format() {
   if [ "$1" = "fix" ]; then
     ./node_modules/.bin/prettier --write --list-different ./src
@@ -959,6 +1036,10 @@ app_patch() {
 
 app_prebuild() {
   echo "Prebuild tasks"
+  if [ ! -f "../ownables_sdk/package.json" ]; then
+    echo "Initializing ownables_sdk submodule"
+    cd .. && git submodule update --init ownables_sdk && cd universal-wallet
+  fi
   # generate ownables sdk
   cd ../ownables_sdk && npm run build 
   cd ../universal-wallet
@@ -1065,6 +1146,13 @@ if [ "$1" = "rename-appname" ]; then app_change_app_name "$2"; exit; fi
 if [ "$1" = "relink-githook" ]; then app_hook_link; exit; fi
 
 if [ "$1" = "build-common" ]; then app_build_common $2 ; exit $? ; fi
+
+# Ensure Java 17 is available for Android-related commands
+case "$1" in
+  android|build-apk|build-aab|upload-aab|android-version|clean)
+    require_java17
+    ;;
+esac
 
 # IOS management scripts
 if [ "$1" = "ios" ]; then ./node_modules/.bin/react-native run-ios ; exit $?; fi # --simulator "iPhone 11"
