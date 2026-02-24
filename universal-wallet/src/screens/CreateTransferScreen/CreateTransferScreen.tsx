@@ -5,10 +5,6 @@ import LTOService from '../../services/LTO.service';
 import {LTO_REPRESENTATION} from '../../constants/Quantities';
 import {TypedDetails} from '../../interfaces/TypedDetails';
 import {formatNumber} from '../../utils/formatNumber';
-import {confirmationMessage} from '../../utils/confirmationMessage';
-import ConfirmationDialog from '../../components/ConfirmationDialog';
-import {TypedTransaction} from '../../interfaces/TypedTransaction';
-import {Transfer as TransferTx} from '@ltonetwork/lto';
 import {StyledButton} from '../../components/StyledButton';
 import {Card} from '../../components/Card';
 import {ScreenContainer} from '../../components/ScreenContainer';
@@ -27,14 +23,9 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
   const [amount, setAmount] = useState<number | null>(null);
   const [attachment, setAttachment] = useState('');
 
-  const [tx, setTx] = useState<TransferTx | undefined>();
-
   const {setShowMessage, setMessageInfo} = useContext(MessageContext);
-  const [dialogVisible, setDialogVisible] = useState(false);
 
   const {available} = details;
-  const sendButtonDisabled =
-    amount === null || amount <= 0 || amount > available || recipient === '' || !LTOService.isValidAddress(recipient);
 
   const availableLTOText = formatNumber(Math.max(available - LTO_REPRESENTATION, 0));
 
@@ -77,42 +68,9 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
     }
   }, [amountText]);
 
-  const sendTx = async () => {
-    try {
-      if (!tx) {
-        throw new Error('Transaction is not defined');
-      }
-      const account = await LTOService.getAccount();
-      const signedTx = tx.signWith(account);
-      await LTOService.broadcast(signedTx);
-      setMessageInfo('Transaction sent successfully!');
-      setShowMessage(true);
-      navigation.goBack();
-    } catch (error) {
-      if (error instanceof Error) console.error(`Error sending transaction: ${error.message}`);
-      setShowMessage(true);
-      setMessageInfo(`Failed to send transaction. Please try again later`);
-    }
-  };
-
-  //F-2024-4554 - Lack of Input Validation for Recipient Address
   const handleSend = () => {
-    if (!LTOService.isValidAddress(recipient)) {
-      setMessageInfo('Invalid recipient address');
-      setShowMessage(true);
-      return;
-    }
-    if (amount === null) {
-      setMessageInfo('Amount must be a valid value');
-      setShowMessage(true);
-      return;
-    }
-    setTx(new TransferTx(recipient, amount, attachment));
-    setDialogVisible(true);
-  };
-  const handleCancel = () => {
-    setTx(undefined);
-    setDialogVisible(false);
+    setMessageInfo('Transfers are temporarily unavailable in this migration phase.');
+    setShowMessage(true);
   };
 
   return (
@@ -147,14 +105,8 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
         />
 
         <Card label="0.08 LTO" subLabel="Fee" />
-        <StyledButton text="Send" onPress={handleSend} disabled={sendButtonDisabled} />
+        <StyledButton text="Send" onPress={handleSend} disabled={false} />
       </FormContainer>
-      <ConfirmationDialog
-        visible={dialogVisible}
-        message={tx ? confirmationMessage(tx.toJSON() as TypedTransaction) : ''}
-        onPress={sendTx}
-        onCancel={handleCancel}
-      />
     </ScreenContainer>
   );
 }

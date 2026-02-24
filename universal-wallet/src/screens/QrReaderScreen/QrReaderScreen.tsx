@@ -12,11 +12,7 @@ import { Input } from 'react-native-elements';
 import { MessageContext } from '../../context/UserMessage.context';
 import { LTO_REPRESENTATION } from '../../constants/Quantities';
 import { TypedDetails } from '../../interfaces/TypedDetails';
-import { Transfer as TransferTx } from '@ltonetwork/lto';
 import { formatNumber } from '../../utils/formatNumber';
-import ConfirmationDialog from '../../components/ConfirmationDialog';
-import { confirmationMessage } from '../../utils/confirmationMessage';
-import { TypedTransaction } from '../../interfaces/TypedTransaction';
 import { TransferModal } from '../../components/TransferModal';
 import { BottomModal } from '../../components/BottomModal';
 import DeviceInfo from 'react-native-device-info';
@@ -34,8 +30,6 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     const [amount, setAmount] = useState<number | null>(null);
     const [attachment, setAttachment] = useState('');
     const [details, setDetails] = useState<TypedDetails>({} as TypedDetails);
-    const [tx, setTx] = useState<TransferTx | undefined>();
-    const [dialogVisible, setDialogVisible] = useState(false);
     const { setShowMessage, setMessageInfo } = useContext(MessageContext);
     const isEmulator = DeviceInfo.isEmulatorSync();
     const [pendingPromoCode, setPendingPromoCode] = useState('');
@@ -124,53 +118,9 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     };
 
     const handleSend = () => {
-        const errorMessage = getErrorMessage();
-        if (errorMessage !== '') {
-            setMessageInfo(errorMessage);
-            setShowMessage(true);
-            return;
-        }
-        if (amount === null || amount <= 0) {
-            setMessageInfo('Amount must be a valid value');
-            setShowMessage(true);
-            return;
-        }
-        if (amount > details.available) {
-            setMessageInfo('Insufficient balance');
-            setShowMessage(true);
-            return;
-        }
-        if (!LTOService.isValidAddress(recipientAddress)) {
-            setMessageInfo('Invalid recipient address');
-            setShowMessage(true);
-            return;
-        }
-        console.log('amount', amount);
-        setTx(new TransferTx(recipientAddress, amount, attachment));
-        setDialogVisible(true);
         setShowTransferModal(false);
-    };
-
-    const sendTx = async () => {
-        try {
-            if (!tx) throw new Error('Transaction is not defined');
-            const account = await LTOService.getAccount();
-            const signedTx = tx.signWith(account);
-            await LTOService.broadcast(signedTx);
-            setMessageInfo('Transaction sent successfully!');
-            setShowMessage(true);
-            navigation.goBack();
-        } catch (error) {
-            console.error(error);
-            setMessageInfo('Failed to send transaction. Please try again later');
-            setShowMessage(true);
-        }
-    };
-
-    const handleCancel = () => {
-        setTx(undefined);
-        setDialogVisible(false);
-        navigation.goBack();
+        setMessageInfo('Transfers are temporarily unavailable in this migration phase.');
+        setShowMessage(true);
     };
 
     const availableLTOText = formatNumber(Math.max(details.available - LTO_REPRESENTATION, 0));
@@ -310,13 +260,6 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                 isValid={getErrorMessage() === ''}
                 errorMessage={getErrorMessage()}
                 recipientAddress={recipientAddress}
-            />
-
-            <ConfirmationDialog
-                visible={dialogVisible}
-                message={tx ? confirmationMessage(tx.toJSON() as TypedTransaction) : ''}
-                onPress={sendTx}
-                onCancel={handleCancel}
             />
 
             <BottomModal

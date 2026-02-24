@@ -5,7 +5,7 @@
 # react-native-screens react-native-safe-area-context required by @react-navigation/native
 # react-native-gesture-handler required by @react-navigation/stack
 
-yarn add @ltonetwork/lto @react-native-async-storage/async-storage @react-native-clipboard/clipboard \
+yarn add @react-native-async-storage/async-storage @react-native-clipboard/clipboard \
     @react-navigation/bottom-tabs @react-navigation/material-top-tabs @react-navigation/native \
     @react-navigation/native-stack @testing-library/jest-native @tradle/react-native-http @types/styled-components-react-native \
     axios browserify browserify-global browserify-zlib buffer dns.js events https-browserify path-browserify \

@@ -5,7 +5,6 @@ import {
   AppStateStatus,
   BackHandler,
   ImageBackground,
-  Linking,
   Text,
   useColorScheme,
   useWindowDimensions,
@@ -36,14 +35,10 @@ import {
 } from './WalletTabScreen.styles';
 import {useInterval} from '../../utils/useInterval';
 import {formatDate} from '../../utils/formatDate';
-import {shortAddress} from '../../utils/shortAddress';
 import If from '../../components/If';
-import {TypedLease} from '../../interfaces/TypedLease';
-import CommunityNodesService from '../../services/CommunityNodes.service';
 import WalletFAB from '../../components/WalletFAB';
 import Collapsible from 'react-native-collapsible';
 import ShortSectionList from '../../components/ShortSectionList';
-import ShortList from '../../components/ShortList';
 import ScrollContainer from '../../components/ScrollContainer';
 import TransactionListItem from '../../components/TransactionListItem';
 import Loader from '../../components/Loader';
@@ -86,12 +81,11 @@ const MainTab = ({children, navigation}) => {
   const [accountAddress, setAccountAddress] = useState('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showBalanceDetails, setShowBalanceDetails] = useState<boolean>(false);
-  const [leases, setLeases] = useState<{address: string; name?: string; amount: number}[]>([]);
   const [transactions, setTransactions] = useState<{date: string; data: TypedTransaction[]}[]>([]);
   const [details, setDetails] = useState<TypedDetails>({} as TypedDetails);
   const [coinData, setCoinData] = useState<TypedCoinData>({} as TypedCoinData);
 
-  const {available, effective, leasing, regular, unbonding} = details;
+  const {available, effective, regular, unbonding} = details;
   const {price, percent_change_24h} = coinData;
 
   const isFocused = useIsFocused();
@@ -137,13 +131,12 @@ const MainTab = ({children, navigation}) => {
 
   useFocusEffect(
     React.useCallback(() => {
-      Promise.all([loadAccountDetails(), loadLeases(), loadTransactions()]).then(() => setIsLoading(false));
+      Promise.all([loadAccountDetails(), loadTransactions()]).then(() => setIsLoading(false));
     }, [accountAddress]),
   );
 
   useInterval(() => {
     loadAccountDetails();
-    loadLeases();
     loadTransactions();
   }, null);
 
@@ -168,49 +161,6 @@ const MainTab = ({children, navigation}) => {
       setDetails(accountDetails);
     }else{
       setDetails({} as TypedDetails);
-    }
-  };
-
-  const loadLeases = async () => {
-    // TODO: DC, uncomment this section to view the design of the component when empty data.
-    /*setLeases(
-      [
-        {
-          address: '3123123213123',
-          amount: 15,
-          name: 'sss'
-        },
-        {
-          address: '3123123213123',
-          amount: 15,
-          name: 'sss'
-        }
-      ]
-    )*/
-
-    if (accountAddress === '') {
-      setLeases([]);
-      return;
-    }
-
-    try {
-      const leases: TypedLease[] = await LTOService.getLeases(accountAddress);
-      const groupedLeases: Map<string, number> = new Map();
-
-      for (const lease of leases) {
-        if (lease.sender !== accountAddress) continue;
-        groupedLeases.set(lease.recipient, lease.amount + (groupedLeases.get(lease.recipient) || 0));
-      }
-
-      const activeLeases: {address: string; name?: string; amount: number}[] = [];
-      for (const [address, amount] of groupedLeases.entries()) {
-        const node = await CommunityNodesService.info(address);
-        activeLeases.push({address, name: node?.name, amount});
-      }
-
-      setLeases(activeLeases.sort((a, b) => b.amount - a.amount));
-    } catch (error) {
-      throw new Error(`Error retrieving active leases. ${error}`);
     }
   };
 
@@ -345,25 +295,6 @@ const MainTab = ({children, navigation}) => {
     }
   };
 
-  const renderLease = (lease: {address: string; name?: string; amount: number}) => {
-    const color = Colors[colorScheme];
-    return (
-      <List.Item
-        key={`lease:${lease.address}`}
-        title={lease.name ?? shortAddress(lease.address)}
-        titleStyle={{fontSize: 14, color: color.white[100], textTransform: 'uppercase'}}
-        description={lease.name || true ? shortAddress(lease.address) : ''}
-        descriptionStyle={{fontSize: 12, marginBottom: 0, color: color.white[200]}}
-        right={({style}) => (
-          <Text style={{...style, alignSelf: 'center', color: color.white[100]}}>
-            {formatNumber(lease.amount)} <Text style={{color: color.white[200]}}>LTO</Text>
-          </Text>
-        )}
-        onPress={() => navigation.navigate('Lease', {address: lease.address})}
-      />
-    );
-  };
-
   const handleAppStateChange = (nextAppState: AppStateStatus): void => {
     if (nextAppState?.match(/background/) && isSignOutForced) {
       console.log('>>> Locking screen');
@@ -468,8 +399,6 @@ const MainTab = ({children, navigation}) => {
                   alignItems: 'center',
                 }}>
                 <BottomCardsContainer>
-                  <BottomTile title={WALLET.LEASING} value={formatNumber(leasing, 0)} suffix={WALLET.LTO} />
-                  <Spacer size={25} />
                   <BottomTile title={WALLET.UNBONDING} value={formatNumber(unbonding, 0)} suffix={WALLET.LTO} />
                   <Spacer size={25} />
                   <BottomTile title={WALLET.AVAILABLE} value={formatNumber(available, 0)} suffix={WALLET.LTO} />
@@ -477,17 +406,6 @@ const MainTab = ({children, navigation}) => {
                   <BottomTile title={WALLET.EFFECTIVE} value={formatNumber(effective, 0)} suffix={WALLET.LTO} />
                 </BottomCardsContainer>
               </Collapsible>
-
-              <If condition={leases.length > 0}>
-                <ActivityCard>
-                  <ActivityCardTitle>
-                    <Typography size={6} color={Colors[colorScheme ?? 'dark'].white[100]} bold>
-                      {WALLET.ACTIVE_LEASES}
-                    </Typography>
-                  </ActivityCardTitle>
-                  <ShortList data={leases} renderItem={({item}) => renderLease(item)} />
-                </ActivityCard>
-              </If>
 
               <If condition={transactions.length > 0}>
                 <ActivityCard>
@@ -532,10 +450,7 @@ export default function WalletTabScreen({navigation}: RootTabScreenProps<'Wallet
   return (
     <React.Fragment>
       <MainTab navigation={navigation}>
-        <WalletFAB
-          transfer={() => navigation.navigate('CreateTransfer')}
-          lease={() => navigation.navigate('CreateLease')}
-        />
+        <WalletFAB transfer={() => navigation.navigate('CreateTransfer')} />
       </MainTab>
     </React.Fragment>
   );

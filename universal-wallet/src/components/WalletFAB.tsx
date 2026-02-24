@@ -1,7 +1,6 @@
 import * as React from 'react';
 import {FAB, Portal, Provider} from 'react-native-paper';
 import {useState} from 'react';
-import {WALLET} from '../constants/Text';
 import Icon from './Icon';
 import {useColorScheme} from 'react-native';
 import Colors from '../constants/Colors';
@@ -9,7 +8,6 @@ import styled from 'styled-components/native';
 import Typography from './Typography';
 import Spacer from './Spacer';
 import {FabContext} from '../context/Fab.context';
-import { Icon as RneIcons } from 'react-native-elements'
 
 interface StyledFabProps {
   width: number;
@@ -44,10 +42,9 @@ const StyledIcon = styled(Icon)`
 const openIconColor = 'rgba(252,252,247,0.85)';
 interface FabProps {
   transfer: () => void;
-  lease: () => void;
 }
 
-const WalletFAB = ({transfer, lease}: FabProps): JSX.Element => {
+const WalletFAB = ({transfer}: FabProps): JSX.Element => {
   const [state, setState] = useState({open: false});
   const {open} = state;
   const colorScheme = useColorScheme();
@@ -89,27 +86,6 @@ const WalletFAB = ({transfer, lease}: FabProps): JSX.Element => {
               label: '',
               onPress: transfer,
               style: {backgroundColor: '#212227', justifyContent: 'center', width: 140, height: 60, right: -8},
-              color: '#212227',
-            },
-            {
-              icon: () => (
-                <StyledFabItem width={112} height={40} top={8}>
-                  <RneIcons
-                    name="bank"
-                    type='font-awesome'
-                    color={Colors[colorScheme].white[100]}
-                    size={24}
-                    style={{backgroundColor: '#35363b', borderRadius: 100, width: 40, height: 40, alignItems: 'center', justifyContent: 'center'}}
-                  />
-                  <Spacer size={15} />
-                  <Typography family="Satoshi" size={4} color={Colors[colorScheme].white[100]}>
-                    {WALLET.LEASE}
-                  </Typography>
-                </StyledFabItem>
-              ),
-              label: '',
-              onPress: lease,
-              style: {backgroundColor: '#212227', justifyContent: 'center', width: 125, height: 60, right: -8},
               color: '#212227',
             },
           ]}
