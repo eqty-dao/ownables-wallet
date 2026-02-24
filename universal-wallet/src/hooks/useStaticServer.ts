@@ -1,9 +1,6 @@
-import { useUserSettings } from './../context/User.context';
 import StaticServer from '@dr.pogodin/react-native-static-server';
 import { useState, useEffect } from 'react';
 import RNFS from 'react-native-fs';
-import LTOService from '../services/LTO.service';
-import { useNavigation } from '@react-navigation/native';
 import { Platform } from 'react-native';
 import CryptoJS from 'crypto-js';
 // import { SECURE_KEY } from '@env';
@@ -32,8 +29,6 @@ const useStaticServer = () => {
   const [url, setUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [server, setServer] = useState<StaticServer | null>(null);
-  const navigation = useNavigation();
-  const { network, env } = useUserSettings();
 
   const restartServer = async () => {
     if (server) {
@@ -59,16 +54,9 @@ const useStaticServer = () => {
     const _server = new StaticServer(9090, path, { localOnly: true, keepAlive: true });
     setServer(_server);
     try {
-      const seed = LTOService.getSeed();
-      console.log('seed:', seed);
-      // const encryptedSeed = encryptData(seed);
-      if (!seed) {
-        navigation.navigate('Root');
-        return;
-      }
       const serverUrl = debugUrl ? debugUrl : await _server.start();
       console.log('Server started at:', serverUrl);
-      setUrl(`${serverUrl}?seed=${seed}&network=${network}&env=${env}`);
+      setUrl(serverUrl);
     } catch (error) {
       console.error('Failed to start server:', error);
     } finally {

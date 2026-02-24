@@ -14,7 +14,6 @@ import ImportSeedScreen from '../screens/ImportWithSeedScreen/ImportWithSeedScre
 import MenuScreen from '../screens/MenuScreen/MenuScreen';
 import LockedScreen from '../screens/LockedScreen/LockedScreen';
 import OnboardingScreen from '../screens/OnBoardingScreen/OnBoardingScreen';
-import OwnablesTabScreen from '../screens/OwnablesTabScreen/OwnablesTabScreen';
 import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
 import SignInScreen from '../screens/SignInScreen/SignInScreen';
 import WalletTabScreen from '../screens/WalletTabScreen/WalletTabScreen';

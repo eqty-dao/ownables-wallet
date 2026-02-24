@@ -13,7 +13,6 @@ import RNFS from 'react-native-fs';
 import { Modal } from 'react-native';
 import { check, request, PERMISSIONS, RESULTS, Permission, PermissionStatus } from 'react-native-permissions';
 import { MessageContext } from '../../context/UserMessage.context';
-import LTOService from '../../services/LTO.service';
 import { CameraRoll } from "@react-native-camera-roll/camera-roll";
 
 interface DownloadOwnableData {
@@ -416,14 +415,6 @@ const NewOwnablesTabScreen = () => {
                         }}
                         onLoadEnd={() => {
                             setWebViewLoading(false);
-                            const seed = LTOService.getSeed();
-                            if (!seed) {
-                                navigation.navigate('Root' as never);
-                                return;
-                            }
-                            if (webViewRef.current) {
-                                webViewRef.current.injectJavaScript(`window.localStorage.setItem('@seed', '${seed}')`);
-                            }
                         }}
                         onError={(syntheticEvent: { nativeEvent: WebViewError }) => {
                             const { nativeEvent } = syntheticEvent;
