@@ -42,7 +42,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
     LTOService.getAccount()
       .then(account => {
         setAccountAddress(account.address);
-        setSeedPhrase(account.seed || '');
+        setSeedPhrase(account.mnemonic || account.seed || '');
       })
       .catch(() => {
         setShowMessage(true);
@@ -127,7 +127,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
 
       await LocalStorageService.storeData('@userAlias', { nickname: loginForm.nickname });
 
-      await LTOService.storeAccount(loginForm.nickname, loginForm.password, signature);
+      await LTOService.storeAccount(loginForm.nickname, loginForm.password);
 
       const message =
         route.params.data === 'created' ? 'Account created successfully!' : 'Account imported successfully!';

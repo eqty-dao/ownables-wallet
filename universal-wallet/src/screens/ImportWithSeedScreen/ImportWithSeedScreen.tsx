@@ -26,6 +26,11 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
     return regExp.test(seed);
   };
 
+  const isValidMnemonicLength = (value: string): boolean => {
+    const count = value.split(' ').length;
+    return [12, 15, 18, 21, 24].includes(count);
+  };
+
   const handleWordChange = (text: string, index: number) => {
     const newWords = [...words];
     newWords[index] = text.toLowerCase().trim();
@@ -34,10 +39,10 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
 
   const handlePaste = (pasted: string) => {
     const seedPhrase = pasted.trim().toLowerCase().split(' ');
-    if (seedPhrase.length < 12) {
+    if (![12, 15, 18, 21, 24].includes(seedPhrase.length)) {
       setWords(Array(15).fill(''));
       setShowMessage(true);
-      setMessageInfo('Seed phrase space reset.');
+      setMessageInfo('Invalid recovery phrase length.');
       return;
     }
     setWords(seedPhrase);
@@ -52,7 +57,12 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
     }
 
     if (!validateSeedPhrase(seedPhrase)) {
-      showMessage('Invalid seed phrase, seed phrase contains invalid characters.');
+      showMessage('Invalid recovery phrase, it contains invalid characters.');
+      return;
+    }
+
+    if (!isValidMnemonicLength(seedPhrase)) {
+      showMessage('Recovery phrase must be 12, 15, 18, 21, or 24 words.');
       return;
     }
 

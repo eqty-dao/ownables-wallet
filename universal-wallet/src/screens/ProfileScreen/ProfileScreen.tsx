@@ -27,7 +27,8 @@ export default function ProfileScreen({ navigation }: RootStackScreenProps<'Prof
   const [isSeedBlur, setIsSeedBlur] = useState<boolean>(true);
   const [accountNickname, setAccountNickname] = useState<string>('');
   const [showConfirmDelete, setShowConfirmDelete] = useState<boolean>(false);
-  const { address, publicKey, privateKey, seed } = accountInformation;
+  const { address, publicKey, privateKey, mnemonic, seed } = accountInformation as any;
+  const backupPhrase = mnemonic || seed || '';
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showSeedPhrase, setShowSeedPhrase] = useState(false);
   const [showInputModal, setShowInputModal] = useState<boolean>(false);
@@ -143,7 +144,7 @@ export default function ProfileScreen({ navigation }: RootStackScreenProps<'Prof
           content={
             showSeedPhrase ? (
               <SeedPhraseInput
-                words={seed.split(' ')}
+                words={backupPhrase.split(' ')}
                 onWordChange={() => { }}
                 showCopyButton={true}
                 onPaste={() => { }}

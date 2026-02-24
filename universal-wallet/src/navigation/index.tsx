@@ -30,6 +30,7 @@ import NewOwnablesTabScreen from '../screens/OwnablesTabScreen/NewOwnablesTabScr
 import { useUserSettings } from '../context/User.context';
 import TestNetBanner from '../components/TestNetBanner';
 import QrReaderScreen from '../screens/QrReaderScreen/QrReaderScreen';
+import LTOService from '../services/LTO.service';
 
 const navTheme = {
   ...DefaultTheme,
@@ -60,32 +61,41 @@ function RootNavigator(): any {
   const { network } = useUserSettings();
 
   const appState = useRef(AppState.currentState);
+  const lockOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigator = useNavigation();
   const { currentAction } = useAppContext();
 
   const handleAppStateChange = useCallback((nextAppState: any) => {
-    let lockOutTimer: any;
     if (appState.current.match(/active/) && nextAppState === 'background') {
-      lockOutTimer = setTimeout(() => {
-        console.log('Inactivity detected', currentAction);
-        console.log('App has come to the background!', appState.current);
+      if (lockOutTimerRef.current) {
+        clearTimeout(lockOutTimerRef.current);
+      }
+
+      lockOutTimerRef.current = setTimeout(() => {
         if (!currentAction && !appState.current.match(/active/) && userAlias) {
-          navigator.navigate('SignIn');
+          LTOService.lock();
+          navigator.navigate('LockedScreen');
         }
       }, 30 * 1000);
     }
+
     if (appState.current.match(/background/) && nextAppState === 'active') {
-      console.log('App has come to the foreground!', appState.current, nextAppState, currentAction, lockOutTimer);
-      clearTimeout(lockOutTimer);
+      if (lockOutTimerRef.current) {
+        clearTimeout(lockOutTimerRef.current);
+        lockOutTimerRef.current = null;
+      }
     }
 
     appState.current = nextAppState;
     setState((prevState) => ({ ...prevState, appStateVisible: appState.current }));
-  }, [currentAction, navigator]);
+  }, [currentAction, navigator, userAlias]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => {
+      if (lockOutTimerRef.current) {
+        clearTimeout(lockOutTimerRef.current);
+      }
       subscription.remove();
     };
   }, [handleAppStateChange]);
@@ -113,8 +123,8 @@ function RootNavigator(): any {
   useEffect(() => {
     const fetchUserAlias = async () => {
       try {
-        const data = await LocalStorageService.getData('@userAlias');
-        setState((prevState) => ({ ...prevState, userAlias: data !== null }));
+        const hasStoredAccount = await LTOService.hasStoredAccount();
+        setState((prevState) => ({ ...prevState, userAlias: hasStoredAccount }));
       } catch (error) {
         throw new Error(`Error retrieving data. ${error}`);
       }

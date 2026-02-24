@@ -15,9 +15,9 @@ export const ONBOARDING = {
 
 export const SIGNUP = {
   TITLE: 'Sign Up',
-  SUBTITLE: 'Create an account or import one with your seed phrase',
+  SUBTITLE: 'Create an account or import one with your recovery phrase',
   BUTTON_CREATE: 'Create new account',
-  BUTTON_IMPORT: 'Import account with your seeds',
+  BUTTON_IMPORT: 'Import account with your recovery phrase',
 };
 
 export const SIGNIN = {
@@ -37,15 +37,15 @@ export const SIGNIN = {
 export const IMPORT_WITHSEEDS = {
   IMPORT_TITLE: 'Import Account',
   INPUT_SEEDPHRASE: {
-    LABEL: 'Your seed phrase',
-    PLACEHOLDER: 'Type your seed phrase separated by a space',
+    LABEL: 'Your recovery phrase',
+    PLACEHOLDER: 'Type your recovery phrase separated by a space',
   },
   BUTTON_IMPORT: 'Import account',
 };
 
 export const REGISTER = {
   CREATE_TITLE: 'Create Account',
-  CREATE_SUBTITLE: 'Create an account or import one with your seed phrase',
+  CREATE_SUBTITLE: 'Create an account or import one with your recovery phrase',
   IMPORT_TITLE: 'Import Account',
   INPUT_ADDRESS: 'Wallet address',
   INPUT_NICKNAME: {
@@ -145,14 +145,14 @@ export const PROFILE = {
   WALLET: 'Wallet Address',
   PUBLIC_KEY: 'Public Key',
   PRIVATE_KEY: 'Private Key',
-  PHRASE: 'Backup Phrase (Seed)',
+  PHRASE: 'Backup Recovery Phrase',
   DISCOVER_PRIVATEKEY: 'Show private key',
   DISCOVER_PHRASE: 'Show backup phrase',
   DELETE_ACCOUNT: 'Remove Account',
   DELETE_ACCOUNT_LABEL: 'Delete Account',
   DELETE_ACCOUNT_MESSAGE:
     "You're about to delete your account. This action is irreversible and may result in a loss of funds.",
-  DELETE_ACCOUNT_MESSAGE_2: 'Make sure you have a backup of your seed phrase before proceeding.',
+  DELETE_ACCOUNT_MESSAGE_2: 'Make sure you have a backup of your recovery phrase before proceeding.',
 };
 
 export const LOCKED_SCREEN = {
