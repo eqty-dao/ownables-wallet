@@ -1180,7 +1180,11 @@ if [ "$1" = "slack-send" ]; then slack_send "$2" "$3" "$4"; exit; fi
 if [ "$1" = "clean" ]; then
   rm -rf build/
   cd android; ./gradlew clean; cd ..
-  cd ios; rm -rf build/; xcodebuild clean; cd ..
+  if command -v xcodebuild >/dev/null 2>&1; then
+    cd ios; rm -rf build/; xcodebuild clean; cd ..
+  else
+    echo "Skipping iOS clean: xcodebuild not found"
+  fi
   exit
 fi
 
