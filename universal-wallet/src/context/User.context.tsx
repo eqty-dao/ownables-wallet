@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import LocalStorageService from '../services/LocalStorage.service';
 import LTOService from '../services/LTO.service';
-import { ENABLE_NETWORK_SWITCH, ENABLE_ENV_SWITCH } from '@env';
+import { ENABLE_ENV_SWITCH } from '@env';
 
 export enum Network {
   MAINNET = 'L',
@@ -49,11 +49,7 @@ export const UserProvider = ({ children }: Props) => {
   }, []);
 
   useEffect(() => {
-    if (ENABLE_NETWORK_SWITCH === 'true') {
-      LTOService.switchNetwork(network);
-    } else {
-      LTOService.switchNetwork(Network.MAINNET);
-    }
+    LTOService.switchNetwork(network);
   }, [network]);
 
   const getNetwork = () => {

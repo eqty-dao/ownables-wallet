@@ -17,8 +17,8 @@ export default function NetworkSelector({ showNetworkSelector, setShowNetworkSel
                 }}
                 value={network}
             >
-                <RadioButton.Item label="Mainnet" value={Network.MAINNET} color='white' labelStyle={{ color: 'white' }} />
-                <RadioButton.Item label="Testnet" value={Network.TESTNET} color='white' labelStyle={{ color: 'white' }} />
+                <RadioButton.Item label="Base Mainnet" value={Network.MAINNET} color='white' labelStyle={{ color: 'white' }} />
+                <RadioButton.Item label="Base Sepolia" value={Network.TESTNET} color='white' labelStyle={{ color: 'white' }} />
             </RadioButton.Group>
         </Modal>
     );

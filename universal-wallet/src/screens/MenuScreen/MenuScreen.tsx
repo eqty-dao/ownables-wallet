@@ -22,6 +22,8 @@ import { AirdropResponse } from '../../services/LTO.service';
 import { StyledLabel } from '../../components/styles/InputField.styles';
 import { BottomModal } from '../../components/BottomModal';
 import valid_decoded_values from './valid_decoded_values.json';
+import NetworkSelector from '../../components/NetworkSelector';
+import { Network, useUserSettings } from '../../context/User.context';
 
 export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>) {
   const [accountAddress, setAccountAddress] = useState('');
@@ -38,6 +40,8 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   const [airdropModalMessage, setAirdropModalMessage] = useState('');
   const [airdropModalCode, setAirdropModalCode] = useState('');
   const [appVersion, setAppVersion] = useState('');
+  const [showNetworkSelector, setShowNetworkSelector] = useState(false);
+  const { network } = useUserSettings();
 
   useEffect(() => {
     const getInitialData = async () => {
@@ -241,6 +245,12 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             textStyle={{ fontWeight: '600' }}
           />
           <StyledButton
+            text={`Network: ${network === Network.MAINNET ? 'Base Mainnet' : 'Base Sepolia'}`}
+            onPress={() => setShowNetworkSelector(true)}
+            type="textOnly"
+            textStyle={{ fontWeight: '600' }}
+          />
+          <StyledButton
             text={'More Info'}
             onPress={navigateToWebsite}
             type="textOnly"
@@ -265,6 +275,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             textStyle={{ fontWeight: '600', color: '#9D8EE6' }}
           />
         </MainScreenMinorContainer>
+        <NetworkSelector showNetworkSelector={showNetworkSelector} setShowNetworkSelector={setShowNetworkSelector} />
         <SocialsCard />
         <View style={{
           position: 'absolute',
