@@ -1,4 +1,4 @@
-import { generateMnemonic, mnemonicToAccount } from 'viem/accounts';
+import { mnemonicToAccount } from 'viem/accounts';
 import * as bip39 from 'bip39';
 import LocalStorageService from './LocalStorage.service';
 import SecureStorageService from './SecureStorage.service';
@@ -57,7 +57,7 @@ export default class AccountLifecycleService {
   };
 
   public static createAccount = async (): Promise<EvmAccount> => {
-    const mnemonic = normalizeMnemonic(generateMnemonic());
+    const mnemonic = normalizeMnemonic(bip39.generateMnemonic());
     this.account = toEvmAccount(mnemonic);
     return this.account;
   };
