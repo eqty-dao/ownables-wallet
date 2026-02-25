@@ -1,76 +1,142 @@
-import React, {useContext, useEffect, useState} from 'react';
-import {RootStackScreenProps} from '../../../types';
-import {MessageContext} from '../../context/UserMessage.context';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { RootStackScreenProps } from '../../../types';
+import { MessageContext } from '../../context/UserMessage.context';
 import LTOService from '../../services/LTO.service';
-import {LTO_REPRESENTATION} from '../../constants/Quantities';
-import {TypedDetails} from '../../interfaces/TypedDetails';
-import {formatNumber} from '../../utils/formatNumber';
-import {StyledButton} from '../../components/StyledButton';
-import {Card} from '../../components/Card';
-import {ScreenContainer} from '../../components/ScreenContainer';
-import {InputField} from '../../components/InputField';
-import {StyledTitle} from '../../components/styles/Title.styles';
-import {FormContainer} from '../../components/styles/FormContainer.styles';
-import {WALLET} from '../../constants/Text';
-import {BackButton} from '../../components/BackButton';
+import { StyledButton } from '../../components/StyledButton';
+import { Card } from '../../components/Card';
+import { ScreenContainer } from '../../components/ScreenContainer';
+import { InputField } from '../../components/InputField';
+import { StyledTitle } from '../../components/styles/Title.styles';
+import { FormContainer } from '../../components/styles/FormContainer.styles';
+import { WALLET } from '../../constants/Text';
+import { BackButton } from '../../components/BackButton';
 
-export default function CreateTransferScreen({navigation}: RootStackScreenProps<'CreateTransfer'>) {
+const LEGACY_DISPLAY_FACTOR = 100000000;
+
+const toEth = (legacyAmount: number): string => {
+  return (legacyAmount / LEGACY_DISPLAY_FACTOR).toFixed(8).replace(/\.?0+$/, '');
+};
+
+export default function CreateTransferScreen({ navigation }: RootStackScreenProps<'CreateTransfer'>) {
   const [accountAddress, setAccountAddress] = useState('');
-  const [details, setDetails] = useState<TypedDetails>({} as TypedDetails);
+  const [availableEth, setAvailableEth] = useState('0');
 
   const [recipient, setRecipient] = useState('');
-  const [amountText, setAmountText] = useState('');
-  const [amount, setAmount] = useState<number | null>(null);
-  const [attachment, setAttachment] = useState('');
+  const [amountEth, setAmountEth] = useState('');
 
-  const {setShowMessage, setMessageInfo} = useContext(MessageContext);
+  const [estimatedFeeEth, setEstimatedFeeEth] = useState('');
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
-  const {available} = details;
-
-  const availableLTOText = formatNumber(Math.max(available - LTO_REPRESENTATION, 0));
+  const { setShowMessage, setMessageInfo } = useContext(MessageContext);
 
   useEffect(() => {
-    getAccountAddress();
-  }, []);
-
-  const getAccountAddress = () => {
     LTOService.getAccount()
       .then(account => setAccountAddress(account.address))
       .catch(error => {
         throw new Error(`Error retrieving data. ${error}`);
       });
-  };
+  }, []);
 
   useEffect(() => {
-    loadAccountDetails();
-  }, [accountAddress]);
-
-  const loadAccountDetails = async () => {
-    if (accountAddress === '') {
-      setDetails({} as TypedDetails);
+    if (!accountAddress) {
       return;
     }
 
-    return LTOService.getBalance(accountAddress)
-      .then(accountDetails => setDetails(accountDetails))
+    LTOService.getBalance(accountAddress)
+      .then(accountDetails => {
+        setAvailableEth(toEth(accountDetails.available));
+      })
       .catch(error => {
         throw new Error(`Error retrieving account data. ${error}`);
       });
-  };
+  }, [accountAddress]);
+
+  const isAmountValid = useMemo(() => /^\d+(\.\d+)?$/.test(amountEth) && Number.parseFloat(amountEth) > 0, [amountEth]);
+  const isRecipientValid = useMemo(() => LTOService.isValidAddress(recipient), [recipient]);
 
   useEffect(() => {
-    if (amountText === '') {
-      setAmount(0);
-    } else if (!amountText.match(/^\d+(\.\d+)?$/)) {
-      setAmount(null);
-    } else {
-      setAmount(Math.floor(parseFloat(amountText) * LTO_REPRESENTATION));
-    }
-  }, [amountText]);
+    let active = true;
 
-  const handleSend = () => {
-    setMessageInfo('Transfers are temporarily unavailable in this migration phase.');
-    setShowMessage(true);
+    if (!isRecipientValid || !isAmountValid) {
+      setEstimatedFeeEth('');
+      return;
+    }
+
+    const run = async () => {
+      try {
+        setIsEstimating(true);
+        const estimate = await LTOService.estimateTransfer(recipient, amountEth);
+        if (active) {
+          setEstimatedFeeEth(estimate.estimatedFeeEth);
+        }
+      } catch (_error) {
+        if (active) {
+          setEstimatedFeeEth('');
+        }
+      } finally {
+        if (active) {
+          setIsEstimating(false);
+        }
+      }
+    };
+
+    run();
+
+    return () => {
+      active = false;
+    };
+  }, [recipient, amountEth, isRecipientValid, isAmountValid]);
+
+  const insufficientFunds = useMemo(() => {
+    if (!isAmountValid || !estimatedFeeEth) return false;
+
+    const amount = Number.parseFloat(amountEth);
+    const fee = Number.parseFloat(estimatedFeeEth);
+    const available = Number.parseFloat(availableEth || '0');
+
+    return amount + fee > available;
+  }, [amountEth, estimatedFeeEth, availableEth, isAmountValid]);
+
+  const handleSend = async () => {
+    if (isSending) return;
+
+    if (!isRecipientValid) {
+      setShowMessage(true);
+      setMessageInfo('Recipient address is not a valid EVM address.');
+      return;
+    }
+
+    if (!isAmountValid) {
+      setShowMessage(true);
+      setMessageInfo('Enter a valid ETH amount.');
+      return;
+    }
+
+    if (insufficientFunds) {
+      setShowMessage(true);
+      setMessageInfo('Insufficient funds for amount and network fee.');
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const result = await LTOService.sendTransfer(recipient, amountEth);
+
+      if (result.status === 'success') {
+        setShowMessage(true);
+        setMessageInfo('Transfer confirmed on-chain.');
+        navigation.goBack();
+      } else {
+        setShowMessage(true);
+        setMessageInfo('Transfer reverted on-chain.');
+      }
+    } catch (error) {
+      setShowMessage(true);
+      setMessageInfo(`Transfer failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -82,30 +148,26 @@ export default function CreateTransferScreen({navigation}: RootStackScreenProps<
         <InputField
           label="Recipient"
           value={recipient}
-          error={recipient !== '' && !LTOService.isValidAddress(recipient)}
+          error={recipient !== '' && !isRecipientValid}
           onChangeText={setRecipient}
-          placeholder="Enter address"
+          placeholder="Enter EVM address"
         />
         <InputField
           label="Amount"
-          value={amountText}
-          error={amount === null || amount < 0 || amount > available}
-          onChangeText={setAmountText}
-          subLabel={`Available: ${availableLTOText} LTO`}
-          placeholder="Enter amount"
+          value={amountEth}
+          error={amountEth !== '' && (!isAmountValid || insufficientFunds)}
+          onChangeText={setAmountEth}
+          subLabel={`Available: ${availableEth} ETH`}
+          placeholder="Enter amount in ETH"
           numeric={true}
         />
-        <InputField
-          label="Note (optional)"
-          value={attachment}
-          error={attachment.length > 100}
-          onChangeText={setAttachment}
-          multiline={true}
-          placeholder="Write your note here..."
-        />
 
-        <Card label="0.08 LTO" subLabel="Fee" />
-        <StyledButton text="Send" onPress={handleSend} disabled={false} />
+        <Card label={isEstimating ? 'Estimating...' : `${estimatedFeeEth || '0'} ETH`} subLabel="Estimated Fee" />
+        <StyledButton
+          text={isSending ? 'Sending...' : 'Send ETH'}
+          onPress={handleSend}
+          disabled={isSending || !isRecipientValid || !isAmountValid || !estimatedFeeEth || insufficientFunds}
+        />
       </FormContainer>
     </ScreenContainer>
   );

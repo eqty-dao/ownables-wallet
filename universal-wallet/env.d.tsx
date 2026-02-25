@@ -7,4 +7,8 @@ declare module '@env' {
     export const SECURE_KEY: string;
     export const ENABLE_NETWORK_SWITCH: string;
     export const ENABLE_ENV_SWITCH: string;
+    export const BASE_RPC_URL_MAINNET: string;
+    export const BASE_RPC_URL_SEPOLIA: string;
+    export const BASESCAN_API_URL_MAINNET: string;
+    export const BASESCAN_API_URL_SEPOLIA: string;
 }

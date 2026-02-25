@@ -10,8 +10,6 @@ interface TransferModalProps {
     onSubmit: () => void;
     amount: string;
     onAmountChange: (text: string) => void;
-    note: string;
-    onNoteChange: (text: string) => void;
     balance: string;
     isValid: boolean;
     errorMessage?: string;
@@ -23,8 +21,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
     onSubmit,
     amount,
     onAmountChange,
-    note,
-    onNoteChange,
     balance,
     isValid,
     errorMessage,
@@ -40,13 +36,13 @@ export const TransferModal: React.FC<TransferModalProps> = ({
             <KeyboardAvoidingView style={styles.modalOverlay} behavior="padding">
                 <View style={styles.modalContent}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Send LTO</Text>
+                        <Text style={styles.title}>Send ETH</Text>
                         <TouchableOpacity onPress={onClose}>
                             <FontAwesome6 name="xmark" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.balanceText}>Available Balance: {balance} LTO</Text>
+                    <Text style={styles.balanceText}>Available Balance: {balance} ETH</Text>
                     <Text style={styles.balanceText}>Recipient Address: {recipientAddress}</Text>
 
                     <Input
@@ -61,21 +57,9 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                         containerStyle={styles.inputContainer}
                     />
 
-                    <Input
-                        label="Note (optional)"
-                        placeholder="Add a note"
-                        value={note}
-                        onChangeText={onNoteChange}
-                        multiline
-                        maxLength={100}
-                        labelStyle={styles.label}
-                        inputStyle={styles.input}
-                        containerStyle={styles.inputContainer}
-                    />
-
                     <View style={styles.feeContainer}>
                         <Text style={styles.feeText}>Network Fee:</Text>
-                        <Text style={styles.feeAmount}>0.08 LTO</Text>
+                        <Text style={styles.feeAmount}>Estimated at send</Text>
                     </View>
 
                     <Button
@@ -88,7 +72,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                             justifyContent: 'center',
                         }}
                     >
-                        <Text style={styles.buttonText}>Send LTO</Text>
+                        <Text style={styles.buttonText}>Send ETH</Text>
                     </Button>
                 </View>
             </KeyboardAvoidingView>

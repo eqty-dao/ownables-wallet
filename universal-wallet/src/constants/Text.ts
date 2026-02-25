@@ -106,7 +106,7 @@ export const WALLET = {
   AVAILABLE: 'Available',
   EFFECTIVE: 'Effective',
   UNBONDING: 'Unbonding',
-  LTO: 'LTO',
+  LTO: 'ETH',
   EQUIVALENT: 'Equivalent to',
   DOLLAR_SYMBOL: '$',
   ACTIVE_LEASES: 'Active Leases',

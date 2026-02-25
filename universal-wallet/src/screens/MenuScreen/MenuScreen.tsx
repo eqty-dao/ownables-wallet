@@ -257,7 +257,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             textStyle={{ fontWeight: '600' }}
           />
           <StyledButton
-            text={'LTO Explorer'}
+            text={'Base Explorer'}
             onPress={navigateToExplorer}
             type="textOnly"
             textStyle={{ fontWeight: '600' }}

@@ -28,12 +28,15 @@ export default function TransactionListItem(params: {direction: 'in' | 'out'; tx
   }
 
   const amount = tx.amount ?? tx.lease?.amount;
+  const displayAmount = tx.valueEth ?? (amount !== undefined ? formatNumber(amount / 100000000) : '');
+  const symbol = tx.symbol || 'ETH';
+  const title = tx.failed ? 'Failed Transfer' : txTypes[tx.type]?.description || 'Transfer';
 
   return (
     <List.Item
       key={`transaction:${tx.id}`}
       style={{padding: 0}}
-      title={txTypes[tx.type].description}
+      title={title}
       titleStyle={{fontSize: 14, color: color.white[100]}}
       description={description}
       descriptionStyle={{fontSize: 12, marginBottom: 0, color: color.white[200]}}
@@ -52,9 +55,9 @@ export default function TransactionListItem(params: {direction: 'in' | 'out'; tx
       }
       right={({style}) => (
         <Text style={{...style, alignSelf: 'center'}}>
-          {amount ? (
+          {displayAmount ? (
             <Text style={{color: color.white[100]}}>
-              {formatNumber(amount)} <Text style={{color: color.white[200]}}>LTO</Text>
+              {displayAmount} <Text style={{color: color.white[200]}}>{symbol}</Text>
             </Text>
           ) : (
             ''

@@ -50,8 +50,7 @@ import BottomTile from './BottomTile';
 import styled from 'styled-components/native';
 import {useUserSettings} from '../../context/User.context';
 import InAppBrowser from 'react-native-inappbrowser-reborn';
-import {LTO_EXPLORER_URL} from '@env';
-const WALLET_URL = LTO_EXPLORER_URL;
+const LEGACY_DISPLAY_FACTOR = 100000000;
 
 const ExitPopup = styled.View`
   position: absolute;
@@ -259,10 +258,14 @@ const MainTab = ({children, navigation}) => {
   };
 
   const effectiveAmount = () => {
-    return regular * price;
+    return (regular / LEGACY_DISPLAY_FACTOR) * price;
   };
 
   const change = effectiveAmount();
+  const regularEth = regular / LEGACY_DISPLAY_FACTOR;
+  const unbondingEth = unbonding / LEGACY_DISPLAY_FACTOR;
+  const availableEth = available / LEGACY_DISPLAY_FACTOR;
+  const effectiveEth = effective / LEGACY_DISPLAY_FACTOR;
 
   const checkPositiveNegative = (value: number) => {
     if (value > 0) {
@@ -311,8 +314,7 @@ const MainTab = ({children, navigation}) => {
   }, [isSignOutForced]);
 
   const handleMoreTransactionPressed = () => {
-    //open external link
-    const url = `${WALLET_URL}/address/${accountAddress}`;
+    const url = LTOService.getExplorerAddressUrl(accountAddress);
     InAppBrowser.open(url);
   };
 
@@ -354,11 +356,11 @@ const MainTab = ({children, navigation}) => {
                       </Typography>
                       <AmountContainer>
                         <Typography color={Colors[colorScheme].white[100]} size={12} bold>
-                          {formatNumber(regular)}
+                          {formatNumber(regularEth)}
                         </Typography>
                         <Spacer size={4} />
                         <Typography color={Colors[colorScheme].white[100]} size={5} bold>
-                          LTO
+                          ETH
                         </Typography>
                       </AmountContainer>
                       <Typography color={Colors[colorScheme].white[100]} size={4}>
@@ -399,11 +401,11 @@ const MainTab = ({children, navigation}) => {
                   alignItems: 'center',
                 }}>
                 <BottomCardsContainer>
-                  <BottomTile title={WALLET.UNBONDING} value={formatNumber(unbonding, 0)} suffix={WALLET.LTO} />
+                  <BottomTile title={WALLET.UNBONDING} value={formatNumber(unbondingEth)} suffix={WALLET.LTO} />
                   <Spacer size={25} />
-                  <BottomTile title={WALLET.AVAILABLE} value={formatNumber(available, 0)} suffix={WALLET.LTO} />
+                  <BottomTile title={WALLET.AVAILABLE} value={formatNumber(availableEth)} suffix={WALLET.LTO} />
                   <Spacer size={25} />
-                  <BottomTile title={WALLET.EFFECTIVE} value={formatNumber(effective, 0)} suffix={WALLET.LTO} />
+                  <BottomTile title={WALLET.EFFECTIVE} value={formatNumber(effectiveEth)} suffix={WALLET.LTO} />
                 </BottomCardsContainer>
               </Collapsible>
 

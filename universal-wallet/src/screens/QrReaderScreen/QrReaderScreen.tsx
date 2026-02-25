@@ -10,12 +10,13 @@ import LTOService from '../../services/LTO.service';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import { Input } from 'react-native-elements';
 import { MessageContext } from '../../context/UserMessage.context';
-import { LTO_REPRESENTATION } from '../../constants/Quantities';
 import { TypedDetails } from '../../interfaces/TypedDetails';
 import { formatNumber } from '../../utils/formatNumber';
 import { TransferModal } from '../../components/TransferModal';
 import { BottomModal } from '../../components/BottomModal';
 import DeviceInfo from 'react-native-device-info';
+
+const LEGACY_DISPLAY_FACTOR = 100000000;
 
 const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>) => {
     const [showCamera, setShowCamera] = useState(false);
@@ -28,7 +29,6 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     const [recipientAddress, setRecipientAddress] = useState('');
     const [amountText, setAmountText] = useState('');
     const [amount, setAmount] = useState<number | null>(null);
-    const [attachment, setAttachment] = useState('');
     const [details, setDetails] = useState<TypedDetails>({} as TypedDetails);
     const { setShowMessage, setMessageInfo } = useContext(MessageContext);
     const isEmulator = DeviceInfo.isEmulatorSync();
@@ -72,7 +72,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
             setRecipientAddress(value);
             setShowTransferModal(true);
         } else {
-            setMessageInfo('Invalid wallet address scanned');
+            setMessageInfo('Invalid EVM wallet address scanned');
             setShowMessage(true);
             return;
         }
@@ -84,7 +84,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         } else if (!amountText.match(/^\d+(\.\d+)?$/)) {
             setAmount(null);
         } else {
-            setAmount(Math.floor(parseFloat(amountText) * LTO_REPRESENTATION));
+            setAmount(Math.floor(parseFloat(amountText) * LEGACY_DISPLAY_FACTOR));
         }
     }, [amountText]);
 
@@ -110,7 +110,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         try {
             const result = await Share.share({
                 message: address,
-                title: 'Share LTO Wallet Address',
+                title: 'Share Wallet Address',
             });
         } catch (error) {
             console.error(error);
@@ -123,7 +123,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         setShowMessage(true);
     };
 
-    const availableLTOText = formatNumber(Math.max(details.available - LTO_REPRESENTATION, 0));
+    const availableLTOText = formatNumber(Math.max(details.available / LEGACY_DISPLAY_FACTOR, 0));
     const getErrorMessage = () => {
         if (amount === null || amount < 0) return 'Invalid amount';
         if (amount > details.available) return 'Insufficient balance';
@@ -254,8 +254,6 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
                 onSubmit={handleSend}
                 amount={amountText}
                 onAmountChange={setAmountText}
-                note={attachment}
-                onNoteChange={setAttachment}
                 balance={availableLTOText}
                 isValid={getErrorMessage() === ''}
                 errorMessage={getErrorMessage()}
