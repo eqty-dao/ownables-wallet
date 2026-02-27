@@ -3,12 +3,12 @@ export const ONBOARDING = {
   HEADER_RIGHT: 'Next',
   FIRST_SCREEN: {
     TITLE: 'First screen title',
-    SUBTITLE: 'LTO Network is a hybrid blockchain for securing, verifying and exchanging business critical information',
+    SUBTITLE: 'Ownables Wallet is a secure wallet for managing your assets on Base.',
   },
   SECOND_SCREEN: {
     TITLE: 'Second screen title',
     SUBTITLE:
-      'Use the LTO Universal wallet to store your coins and complete transactions quickly and easy from your mobile phone',
+      'Use Ownables Wallet to manage your assets and transactions directly from your mobile device.',
   },
   BUTTON: 'Start',
 };
@@ -47,7 +47,7 @@ export const REGISTER = {
   CREATE_TITLE: 'Create Account',
   CREATE_SUBTITLE: 'Create an account or import one with your recovery phrase',
   IMPORT_TITLE: 'Import Account',
-  INPUT_ADDRESS: 'Wallet address',
+  INPUT_ADDRESS: 'EVM address',
   INPUT_NICKNAME: {
     LABEL: 'Nickname',
     PLACEHOLDER: 'Enter your nickname',
@@ -131,7 +131,7 @@ export const OWNABLES = {
 
 export const QR_READER = {
   TITLE: 'QR Scanner',
-  SUBTITLE: "Scan the QR code from LTO's web application to log in to your account or confirm your transactions",
+  SUBTITLE: 'Scan the QR code to log in to your account or confirm your transactions',
   DENIED: 'Permission for the camera are needed!',
 };
 

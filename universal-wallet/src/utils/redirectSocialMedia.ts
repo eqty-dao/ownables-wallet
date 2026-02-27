@@ -4,8 +4,8 @@ import {LTO_EXPLORER_URL, LTO_WALLET_URL} from '@env';
 import {sanitizeUrl} from './validateUrl';
 import LTOService from '../services/LTO.service';
 
-const EXPLORER_URL = LTO_EXPLORER_URL || 'https://explorer.lto.network';
-const WALLET_URL = LTO_WALLET_URL || 'https://wallet.lto.network';
+const EXPLORER_URL = LTO_EXPLORER_URL || 'https://basescan.org';
+const WALLET_URL = LTO_WALLET_URL || 'https://ownables.info';
 
 export const navigateTo = async (url: string) => {
   const sanitized = sanitizeUrl(url);
@@ -17,7 +17,7 @@ export const navigateTo = async (url: string) => {
 };
 
 export const navigateToWebsite = async () => {
-  const sanitized = sanitizeUrl('https://ltonetwork.com');
+  const sanitized = sanitizeUrl('https://ownables.info');
   if (sanitized) {
     await InAppBrowser.open(sanitized);
   }
@@ -44,35 +44,35 @@ export const navigateToWebWallet = async () => {
 };
 
 export const navigateToTwitter = async () => {
-  const sanitized = sanitizeUrl('https://twitter.com/TheLTONetwork');
+  const sanitized = sanitizeUrl('https://x.com/base');
   if (sanitized) {
     await InAppBrowser.open(sanitized);
   }
 };
 
 export const navigateToFacebook = async () => {
-  const sanitized = sanitizeUrl('https://facebook.com/TheLTONetwork/');
+  const sanitized = sanitizeUrl('https://www.facebook.com/coinbase');
   if (sanitized) {
     await InAppBrowser.open(sanitized);
   }
 };
 
 export const navigateToTelegram = async () => {
-  const sanitized = sanitizeUrl('https://t.me/ltonetwork');
+  const sanitized = sanitizeUrl('https://t.me/base');
   if (sanitized) {
     await InAppBrowser.open(sanitized);
   }
 };
 
 export const navigateToLinkedin = async () => {
-  const sanitized = sanitizeUrl('https://linkedin.com/company/ltonetwork/');
+  const sanitized = sanitizeUrl('https://www.linkedin.com/company/coinbase/');
   if (sanitized) {
     await InAppBrowser.open(sanitized);
   }
 };
 
 export const navigateToGithub = async () => {
-  const sanitized = sanitizeUrl('https://github.com/ltonetwork/');
+  const sanitized = sanitizeUrl('https://github.com/base');
   if (sanitized) {
     await InAppBrowser.open(sanitized);
   }

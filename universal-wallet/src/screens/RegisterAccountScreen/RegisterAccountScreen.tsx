@@ -15,6 +15,7 @@ import { CheckBoxCard } from '../../components/CheckBoxCard';
 import { BottomModal } from '../../components/BottomModal';
 import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
 import { List } from 'react-native-paper';
+import { isValidEvmAddress } from '../../utils/evmAddress';
 
 
 export default function RegisterAccountScreen({ navigation, route }: RootStackScreenProps<'RegisterAccount'>) {
@@ -36,11 +37,14 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
 
   useEffect(() => {
     getAccountAddress();
-  }, [accountAddress]);
+  }, []);
 
   const getAccountAddress = () => {
     LTOService.getAccount()
       .then(account => {
+        if (!isValidEvmAddress(account.address)) {
+          throw new Error('Generated account is not an EVM address');
+        }
         setAccountAddress(account.address);
         setSeedPhrase(account.mnemonic || account.seed || '');
       })

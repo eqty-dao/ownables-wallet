@@ -263,7 +263,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             textStyle={{ fontWeight: '600' }}
           />
           <StyledButton
-            text={'LTO Web Wallet'}
+            text={'Ownables Website'}
             onPress={navigateToWebWallet}
             type="textOnly"
             textStyle={{ fontWeight: '600' }}
