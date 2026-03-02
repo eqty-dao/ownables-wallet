@@ -1,15 +1,12 @@
 import axios from 'axios';
-import { createPublicClient, createWalletClient, formatEther, http, parseEther } from 'viem';
-import { base, baseSepolia } from 'viem/chains';
+import { formatEther, parseEther } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
-import { BASE_RPC_URL_MAINNET, BASE_RPC_URL_SEPOLIA, BASESCAN_API_URL_MAINNET, BASESCAN_API_URL_SEPOLIA } from '@env';
 import { Network } from '../context/User.context';
 import AccountLifecycleService from './AccountLifecycle.service';
+import EvmService from './Evm.service';
+import { normalizeEvmError } from './EvmError.service';
+import { EvmExplorerTx, EvmNetwork, EvmReceiptResult, EvmTransferEstimate, EvmTransferResult } from '../types/evm';
 
-const DEFAULT_MAINNET_RPC = 'https://mainnet.base.org';
-const DEFAULT_SEPOLIA_RPC = 'https://sepolia.base.org';
-const DEFAULT_MAINNET_EXPLORER_API = 'https://api.basescan.org/api';
-const DEFAULT_SEPOLIA_EXPLORER_API = 'https://api-sepolia.basescan.org/api';
 const MAX_HISTORY_ITEMS = 50;
 
 interface ExplorerTxResponse<T> {
@@ -42,17 +39,9 @@ interface ExplorerTokenTx {
   gasUsed?: string;
 }
 
-export interface EvmExplorerTx {
-  hash: string;
-  timestamp: number;
-  from: string;
-  to: string;
-  amount: number;
-  symbol: string;
-  feeEth?: string;
-  pending: boolean;
-  failed: boolean;
-}
+const toEvmNetwork = (network: Network): EvmNetwork => {
+  return network === Network.MAINNET ? EvmNetwork.BASE_MAINNET : EvmNetwork.BASE_SEPOLIA;
+};
 
 const toFloatAmount = (value: string, decimals: number): number => {
   if (!value) return 0;
@@ -67,41 +56,32 @@ const toFloatAmount = (value: string, decimals: number): number => {
   return Number.parseFloat(text);
 };
 
-const getNetworkConfig = (network: Network) => {
-  const isMainnet = network === Network.MAINNET;
-
-  return {
-    chain: isMainnet ? base : baseSepolia,
-    rpcUrl: isMainnet ? BASE_RPC_URL_MAINNET || DEFAULT_MAINNET_RPC : BASE_RPC_URL_SEPOLIA || DEFAULT_SEPOLIA_RPC,
-    explorerApiUrl: isMainnet
-      ? BASESCAN_API_URL_MAINNET || DEFAULT_MAINNET_EXPLORER_API
-      : BASESCAN_API_URL_SEPOLIA || DEFAULT_SEPOLIA_EXPLORER_API,
-    explorerTxUrl: isMainnet ? 'https://basescan.org/tx' : 'https://sepolia.basescan.org/tx',
-  };
-};
-
 export default class EvmTransactionService {
-  public static getExplorerTxBaseUrl = (network: Network): string => {
-    return getNetworkConfig(network).explorerTxUrl;
+  private static assertEnabled = (): void => {
+    if (!EvmService.isEnabled()) {
+      throw new Error('EVM service path is disabled by feature flag');
+    }
   };
 
-  private static getPublicClient = (network: Network) => {
-    const { chain, rpcUrl } = getNetworkConfig(network);
-
-    return createPublicClient({
-      chain,
-      transport: http(rpcUrl),
-    });
+  public static getExplorerTxBaseUrl = (network: Network): string => {
+    this.assertEnabled();
+    return EvmService.getExplorerTxBaseUrl(toEvmNetwork(network));
   };
 
   public static getNativeBalance = async (address: `0x${string}`, network: Network): Promise<{ balanceWei: bigint; balanceEth: string }> => {
-    const publicClient = this.getPublicClient(network);
-    const balanceWei = await publicClient.getBalance({ address });
-
-    return {
-      balanceWei,
-      balanceEth: formatEther(balanceWei),
-    };
+    this.assertEnabled();
+    try {
+      return await EvmService.withPublicClientFallback(toEvmNetwork(network), async publicClient => {
+        const balanceWei = await publicClient.getBalance({ address });
+        return {
+          balanceWei,
+          balanceEth: formatEther(balanceWei),
+        };
+      });
+    } catch (error) {
+      const normalized = normalizeEvmError(error);
+      throw new Error(normalized.message);
+    }
   };
 
   public static estimateNativeTransfer = async ({
@@ -114,34 +94,33 @@ export default class EvmTransactionService {
     to: `0x${string}`;
     amountEth: string;
     network: Network;
-  }): Promise<{
-    amountWei: bigint;
-    gasLimit: bigint;
-    maxFeePerGas: bigint;
-    maxPriorityFeePerGas: bigint;
-    estimatedFeeWei: bigint;
-    estimatedFeeEth: string;
-  }> => {
-    const publicClient = this.getPublicClient(network);
-    const amountWei = parseEther(amountEth || '0');
+  }): Promise<EvmTransferEstimate> => {
+    this.assertEnabled();
+    try {
+      return await EvmService.withPublicClientFallback(toEvmNetwork(network), async publicClient => {
+        const amountWei = parseEther(amountEth || '0');
+        const [gasLimit, fees] = await Promise.all([
+          publicClient.estimateGas({ account: from, to, value: amountWei }),
+          publicClient.estimateFeesPerGas(),
+        ]);
 
-    const [gasLimit, fees] = await Promise.all([
-      publicClient.estimateGas({ account: from, to, value: amountWei }),
-      publicClient.estimateFeesPerGas(),
-    ]);
+        const maxFeePerGas = fees.maxFeePerGas ?? fees.gasPrice ?? 0n;
+        const maxPriorityFeePerGas = fees.maxPriorityFeePerGas ?? 0n;
+        const estimatedFeeWei = gasLimit * maxFeePerGas;
 
-    const maxFeePerGas = fees.maxFeePerGas ?? fees.gasPrice ?? 0n;
-    const maxPriorityFeePerGas = fees.maxPriorityFeePerGas ?? 0n;
-    const estimatedFeeWei = gasLimit * maxFeePerGas;
-
-    return {
-      amountWei,
-      gasLimit,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
-      estimatedFeeWei,
-      estimatedFeeEth: formatEther(estimatedFeeWei),
-    };
+        return {
+          amountWei,
+          gasLimit,
+          maxFeePerGas,
+          maxPriorityFeePerGas,
+          estimatedFeeWei,
+          estimatedFeeEth: formatEther(estimatedFeeWei),
+        };
+      });
+    } catch (error) {
+      const normalized = normalizeEvmError(error);
+      throw new Error(normalized.message);
+    }
   };
 
   public static sendNativeTransfer = async ({
@@ -152,27 +131,28 @@ export default class EvmTransactionService {
     to: `0x${string}`;
     amountEth: string;
     network: Network;
-  }): Promise<{ hash: `0x${string}` }> => {
-    const currentAccount = await AccountLifecycleService.getAccount();
-    const { chain, rpcUrl } = getNetworkConfig(network);
-    const account = mnemonicToAccount(currentAccount.mnemonic, {
-      path: currentAccount.derivationPath,
-    });
+  }): Promise<EvmTransferResult> => {
+    this.assertEnabled();
+    try {
+      const currentAccount = await AccountLifecycleService.getAccount();
+      const account = mnemonicToAccount(currentAccount.mnemonic, {
+        path: currentAccount.derivationPath as `m/44'/60'/${string}`,
+      });
 
-    const walletClient = createWalletClient({
-      account,
-      chain,
-      transport: http(rpcUrl),
-    });
+      return EvmService.withWalletClientFallback(account, toEvmNetwork(network), async (walletClient, chain) => {
+        const hash = await walletClient.sendTransaction({
+          account,
+          to,
+          value: parseEther(amountEth || '0'),
+          chain,
+        });
 
-    const hash = await walletClient.sendTransaction({
-      account,
-      to,
-      value: parseEther(amountEth || '0'),
-      chain,
-    });
-
-    return { hash };
+        return { hash };
+      });
+    } catch (error) {
+      const normalized = normalizeEvmError(error);
+      throw new Error(normalized.message);
+    }
   };
 
   public static waitForReceipt = async ({
@@ -183,16 +163,23 @@ export default class EvmTransactionService {
     hash: `0x${string}`;
     network: Network;
     timeoutMs?: number;
-  }): Promise<{ status: 'success' | 'reverted'; feeEth?: string }> => {
-    const publicClient = this.getPublicClient(network);
-    const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: timeoutMs });
-    const gasUsed = receipt.gasUsed || 0n;
-    const effectiveGasPrice = receipt.effectiveGasPrice || 0n;
+  }): Promise<EvmReceiptResult> => {
+    this.assertEnabled();
+    try {
+      return await EvmService.withPublicClientFallback(toEvmNetwork(network), async publicClient => {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: timeoutMs });
+        const gasUsed = receipt.gasUsed || 0n;
+        const effectiveGasPrice = receipt.effectiveGasPrice || 0n;
 
-    return {
-      status: receipt.status === 'success' ? 'success' : 'reverted',
-      feeEth: formatEther(gasUsed * effectiveGasPrice),
-    };
+        return {
+          status: receipt.status === 'success' ? 'success' : 'reverted',
+          feeEth: formatEther(gasUsed * effectiveGasPrice),
+        };
+      });
+    } catch (error) {
+      const normalized = normalizeEvmError(error);
+      throw new Error(normalized.message);
+    }
   };
 
   public static getAddressTransactions = async ({
@@ -202,9 +189,9 @@ export default class EvmTransactionService {
     address: string;
     network: Network;
   }): Promise<EvmExplorerTx[]> => {
-    const { explorerApiUrl } = getNetworkConfig(network);
-
-    const normalTxRequest = axios.get<ExplorerTxResponse<ExplorerNormalTx>>(explorerApiUrl, {
+    this.assertEnabled();
+    const config = EvmService.getChainConfig(toEvmNetwork(network));
+    const normalTxRequest = axios.get<ExplorerTxResponse<ExplorerNormalTx>>(config.explorerApiUrl, {
       params: {
         module: 'account',
         action: 'txlist',
@@ -215,7 +202,7 @@ export default class EvmTransactionService {
       },
     });
 
-    const tokenTxRequest = axios.get<ExplorerTxResponse<ExplorerTokenTx>>(explorerApiUrl, {
+    const tokenTxRequest = axios.get<ExplorerTxResponse<ExplorerTokenTx>>(config.explorerApiUrl, {
       params: {
         module: 'account',
         action: 'tokentx',

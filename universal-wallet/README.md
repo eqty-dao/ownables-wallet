@@ -77,3 +77,21 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+## EVM Foundation
+
+- Supported chains:
+  - Base Mainnet (`8453`)
+  - Base Sepolia (`84532`)
+- Core services:
+  - `src/services/Evm.service.ts` for chain registry, RPC fallback, and client creation.
+  - `src/services/EvmTransaction.service.ts` for balances, transfers, receipts, and history.
+  - `src/services/EvmError.service.ts` for normalized RPC/signing errors.
+- Shared EVM types:
+  - `src/types/evm/*`
+- Relevant env vars:
+  - `BASE_RPC_URL_MAINNET`
+  - `BASE_RPC_URL_SEPOLIA`
+  - `BASESCAN_API_URL_MAINNET`
+  - `BASESCAN_API_URL_SEPOLIA`
+  - `ENABLE_EVM_PATHS` (`false` disables EVM-path services)

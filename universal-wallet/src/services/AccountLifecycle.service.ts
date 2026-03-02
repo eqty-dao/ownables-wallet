@@ -3,6 +3,7 @@ import * as bip39 from 'bip39';
 import LocalStorageService from './LocalStorage.service';
 import SecureStorageService from './SecureStorage.service';
 import { normalizeEvmAddress } from '../utils/evmAddress';
+import { EvmAddress, EvmStoredAccountMeta } from '../types/evm';
 
 const ACCOUNT_META_KEY = '@accountMeta';
 const USER_ALIAS_KEY = '@userAlias';
@@ -20,7 +21,7 @@ export interface EvmAccount {
 
 interface StoredAccountMeta {
   nickname: string;
-  address: string;
+  address: EvmAddress;
   derivationPath: string;
   accountVersion: number;
   createdAt: string;
@@ -113,9 +114,9 @@ export default class AccountLifecycleService {
       throw new Error('Account not created');
     }
 
-    const accountMeta: StoredAccountMeta = {
+    const accountMeta: EvmStoredAccountMeta = {
       nickname,
-      address: normalizeEvmAddress(this.account.address),
+      address: normalizeEvmAddress(this.account.address) as EvmAddress,
       derivationPath: this.account.derivationPath,
       accountVersion: ACCOUNT_VERSION,
       createdAt: new Date().toISOString(),

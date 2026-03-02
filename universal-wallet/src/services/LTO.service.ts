@@ -3,6 +3,8 @@ import { Network } from '../context/User.context';
 import AccountLifecycleService, { EvmAccount as WalletAccount } from './AccountLifecycle.service';
 import EvmTransactionService from './EvmTransaction.service';
 import { isValidEvmAddress } from '../utils/evmAddress';
+import EvmService from './Evm.service';
+import { EvmNetwork } from '../types/evm';
 
 const LEGACY_DISPLAY_FACTOR = 100000000;
 
@@ -32,10 +34,8 @@ const toLegacyAmount = (assetAmount: number): number => {
 };
 
 export default class LTOService {
-  private static network: Network = Network.MAINNET;
-
   public static getCurrentNetwork = (): Network => {
-    return this.network;
+    return EvmService.getActiveNetwork() === EvmNetwork.BASE_SEPOLIA ? Network.TESTNET : Network.MAINNET;
   };
 
   public static isUnlocked = (): boolean => {
@@ -79,7 +79,7 @@ export default class LTOService {
   };
 
   public static getBalance = async (address: string) => {
-    const { balanceEth } = await EvmTransactionService.getNativeBalance(address as `0x${string}`, this.network);
+    const { balanceEth } = await EvmTransactionService.getNativeBalance(address as `0x${string}`, this.getCurrentNetwork());
     const displayAmount = toLegacyAmount(Number.parseFloat(balanceEth));
 
     return {
@@ -98,7 +98,7 @@ export default class LTOService {
       from: account.address as `0x${string}`,
       to: recipient as `0x${string}`,
       amountEth,
-      network: this.network,
+      network: this.getCurrentNetwork(),
     });
   };
 
@@ -106,10 +106,10 @@ export default class LTOService {
     const { hash } = await EvmTransactionService.sendNativeTransfer({
       to: recipient as `0x${string}`,
       amountEth,
-      network: this.network,
+      network: this.getCurrentNetwork(),
     });
 
-    const receipt = await EvmTransactionService.waitForReceipt({ hash, network: this.network });
+    const receipt = await EvmTransactionService.waitForReceipt({ hash, network: this.getCurrentNetwork() });
 
     return {
       hash,
@@ -119,11 +119,11 @@ export default class LTOService {
   };
 
   public static getExplorerTxUrl = (hash: string): string => {
-    return `${EvmTransactionService.getExplorerTxBaseUrl(this.network)}/${hash}`;
+    return `${EvmTransactionService.getExplorerTxBaseUrl(this.getCurrentNetwork())}/${hash}`;
   };
 
   public static getExplorerBaseUrl = (): string => {
-    const txBase = EvmTransactionService.getExplorerTxBaseUrl(this.network);
+    const txBase = EvmTransactionService.getExplorerTxBaseUrl(this.getCurrentNetwork());
     return txBase.slice(0, txBase.lastIndexOf('/tx'));
   };
 
@@ -134,7 +134,7 @@ export default class LTOService {
   public static getTransactions = async (_address: string, limit = 20, page = 1): Promise<TypedTransaction[]> => {
     const explorerTxs = await EvmTransactionService.getAddressTransactions({
       address: _address,
-      network: this.network,
+      network: this.getCurrentNetwork(),
     });
 
     const start = Math.max((page - 1) * limit, 0);
@@ -184,7 +184,7 @@ export default class LTOService {
   };
 
   public static switchNetwork = (network: Network): void => {
-    this.network = network;
+    EvmService.setActiveNetwork(network === Network.TESTNET ? EvmNetwork.BASE_SEPOLIA : EvmNetwork.BASE_MAINNET);
   };
 
   public static validateAirdrop = async (_installationId: string, _accountAddress: string): Promise<AirdropResponse> => {

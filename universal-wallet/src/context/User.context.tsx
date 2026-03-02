@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import LocalStorageService from '../services/LocalStorage.service';
-import LTOService from '../services/LTO.service';
 import { ENABLE_ENV_SWITCH } from '@env';
+import EvmService from '../services/Evm.service';
+import { EvmNetwork, normalizeNetwork } from '../types/evm';
 
 export enum Network {
-  MAINNET = 'L',
-  TESTNET = 'T',
+  MAINNET = EvmNetwork.BASE_MAINNET,
+  TESTNET = EvmNetwork.BASE_SEPOLIA,
 }
 
 export enum Env {
@@ -49,23 +50,16 @@ export const UserProvider = ({ children }: Props) => {
   }, []);
 
   useEffect(() => {
-    LTOService.switchNetwork(network);
+    EvmService.setActiveNetwork(network === Network.TESTNET ? EvmNetwork.BASE_SEPOLIA : EvmNetwork.BASE_MAINNET);
   }, [network]);
 
   const getNetwork = () => {
     LocalStorageService.getData('@network')
       .then(data => {
-        if (!data) {
-          _setNetwork(Network.MAINNET);
-          setNetwork(Network.MAINNET);
-          return;
-        }
-        if (data === 'M') {
-          _setNetwork(Network.MAINNET);
-          setNetwork(Network.MAINNET);
-          return;
-        }
-        setNetwork(data);
+        const normalized = normalizeNetwork(data);
+        const resolved = normalized === EvmNetwork.BASE_SEPOLIA ? Network.TESTNET : Network.MAINNET;
+        _setNetwork(resolved);
+        setNetwork(resolved);
       })
       .catch(error => {
         throw new Error(`Error retrieving network data. ${error}`);
@@ -73,9 +67,12 @@ export const UserProvider = ({ children }: Props) => {
   }
 
   const _setNetwork = (network: Network) => {
-    LocalStorageService.storeData('@network', network)
+    const allowedNetworks = new Set([Network.MAINNET, Network.TESTNET]);
+    const normalized = allowedNetworks.has(network) ? network : Network.MAINNET;
+
+    LocalStorageService.storeData('@network', normalized)
       .then(() => {
-        setNetwork(network);
+        setNetwork(normalized);
       })
       .catch(error => {
         throw new Error(`Error storing network data. ${error}`);
