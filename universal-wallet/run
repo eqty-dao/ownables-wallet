@@ -1017,6 +1017,24 @@ check_file_watchers() {
   fi
 }
 
+start_metro_reset_cache() {
+  METRO_PORT=8081
+  METRO_LOG=/tmp/universal-wallet-metro.log
+
+  if command -v lsof >/dev/null 2>&1; then
+    EXISTING_METRO_PIDS=$(lsof -ti tcp:$METRO_PORT 2>/dev/null)
+    if [ -n "$EXISTING_METRO_PIDS" ]; then
+      echo "Stopping existing Metro on port $METRO_PORT"
+      echo "$EXISTING_METRO_PIDS" | xargs kill >/dev/null 2>&1
+      sleep 1
+    fi
+  fi
+
+  echo "Starting Metro with --reset-cache (port $METRO_PORT)"
+  ./node_modules/.bin/react-native start --reset-cache --port $METRO_PORT >"$METRO_LOG" 2>&1 &
+  sleep 2
+}
+
 app_test() {
   HEXCOLOR=$1
   # convert hex to decimal
@@ -1163,7 +1181,11 @@ if [ "$1" = "ios-upload-ipa" ]; then ios_upload_ipa; exit; fi
 if [ "$1" = "ios-version" ]; then ios_get_version "$2" $3; exit; fi
 
 # Android management scripts
-if [ "$1" = "android" ]; then ./node_modules/.bin/react-native run-android --active-arch-only ; exit $?; fi # --deviceId "emulator-5554"
+if [ "$1" = "android" ]; then
+  start_metro_reset_cache
+  ./node_modules/.bin/react-native run-android --active-arch-only --no-packager
+  exit $?
+fi # --deviceId "emulator-5554"
 if [ "$1" = "build-apk" ]; then android_build_apk; exit; fi
 if [ "$1" = "build-aab" ]; then android_build_aab; exit; fi
 if [ "$1" = "upload-aab" ]; then android_upload_aab "$2"; exit; fi
