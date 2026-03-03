@@ -27,10 +27,9 @@ import Icon from '../components/Icon';
 import { FabContext } from '../context/Fab.context';
 import { CurrentState, useAppContext } from '../../providers/AppContext';
 import NewOwnablesTabScreen from '../screens/OwnablesTabScreen/NewOwnablesTabScreen';
-import { useUserSettings } from '../context/User.context';
 import TestNetBanner from '../components/TestNetBanner';
 import QrReaderScreen from '../screens/QrReaderScreen/QrReaderScreen';
-import LTOService from '../services/LTO.service';
+import AccountLifecycleService from '../services/AccountLifecycle.service';
 
 const navTheme = {
   ...DefaultTheme,
@@ -58,8 +57,6 @@ function RootNavigator(): any {
     userAlias: null as boolean | null,
     appStateVisible: AppState.currentState,
   });
-  const { network } = useUserSettings();
-
   const appState = useRef(AppState.currentState);
   const lockOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigator = useNavigation();
@@ -73,7 +70,7 @@ function RootNavigator(): any {
 
       lockOutTimerRef.current = setTimeout(() => {
         if (!currentAction && !appState.current.match(/active/) && userAlias) {
-          LTOService.lock();
+          AccountLifecycleService.lock();
           navigator.navigate('LockedScreen');
         }
       }, 30 * 1000);
@@ -123,7 +120,7 @@ function RootNavigator(): any {
   useEffect(() => {
     const fetchUserAlias = async () => {
       try {
-        const hasStoredAccount = await LTOService.hasStoredAccount();
+        const hasStoredAccount = await AccountLifecycleService.hasStoredAccount();
         setState((prevState) => ({ ...prevState, userAlias: hasStoredAccount }));
       } catch (error) {
         throw new Error(`Error retrieving data. ${error}`);

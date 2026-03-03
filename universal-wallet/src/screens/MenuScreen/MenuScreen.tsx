@@ -6,7 +6,7 @@ import { MessageContext } from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
 import { logoTitle } from '../../utils/images';
 import { navigateToExplorer, navigateToWebsite, navigateToWebWallet } from '../../utils/redirectSocialMedia';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { MainScreenContainer } from '../../components/MainScreenContainer';
 import { MainScreenMinorContainer, MainScreenSubContainer } from '../../components/styles/MainScreenContainer.styles';
 import { StyledButton } from '../../components/StyledButton';
@@ -18,7 +18,6 @@ import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import { useClipboard } from '@react-native-clipboard/clipboard';
 import DeviceInfo from 'react-native-device-info';
 import { encryptData } from '../../hooks/useStaticServer';
-import { AirdropResponse } from '../../services/LTO.service';
 import { StyledLabel } from '../../components/styles/InputField.styles';
 import { BottomModal } from '../../components/BottomModal';
 import valid_decoded_values from './valid_decoded_values.json';
@@ -83,7 +82,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   };
 
   const getAccountAddress = () => {
-    LTOService.getAccount()
+    AccountLifecycleService.getAccount()
       .then(account => setAccountAddress(account.address))
       .catch(error => {
         throw new Error(`Error retrieving data. ${error}`);
@@ -91,36 +90,15 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   };
 
   const validateAirdrop = async () => {
-    try {
-      const _installationId = installationId + "-652" + (isEmulator ? "1" : "0");
-      const response = await LTOService.validateAirdrop(
-        _installationId,
-        accountAddress
-      ) as AirdropResponse;
-      if (response.success) {
-        if (response.code) {
-          setAirdropModalCode(response.code);
-        }
-        setAirdropModalMessage("Success!");
-        setAirdropModalVisible(true);
-      } else {
-        setAirdropModalCode('');
-        setAirdropModalMessage('Something went wrong, please try again later');
-        setAirdropModalVisible(true);
-      }
-    } catch (error) {
-      console.log(error);
-      setShowMessage(true);
-      setMessageInfo('Airdrop claim failed');
-      setHasNotClaimed(false);
-    }
+    setAirdropModalCode('');
+    setAirdropModalMessage('Airdrop is currently unavailable in migration mode');
+    setAirdropModalVisible(true);
   };
 
   const checkClaimStatus = async () => {
-    setIsLoadingClaimStatus(true); // Set loading state to true
-    const status = await LTOService.checkIfAlreadyClaimed(accountAddress);
-    setHasNotClaimed(status);
-    setIsLoadingClaimStatus(false); // Set loading state to false
+    setIsLoadingClaimStatus(true);
+    setHasNotClaimed(true);
+    setIsLoadingClaimStatus(false);
   };
 
   useEffect(() => {
@@ -130,7 +108,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
   }, [accountAddress]);
 
   const logOut = () => {
-    LTOService.lock();
+    AccountLifecycleService.lock();
     navigation.reset({
       index: 0,
       routes: [{ name: 'SignIn' }],

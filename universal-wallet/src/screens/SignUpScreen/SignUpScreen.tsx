@@ -1,7 +1,7 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { RootStackScreenProps } from '../../../types';
 import { SIGNUP } from '../../constants/Text';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { Title } from '../../components/Title';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Separator } from '../../components/styles/Separator.styles';
@@ -15,7 +15,7 @@ export default function SignUpScreen({ navigation }: RootStackScreenProps<'SignU
 
   const handleCreateAccount = async () => {
     try {
-      const account = await LTOService.createAccount();
+      const account = await AccountLifecycleService.createAccount();
       if (account) {
         navigation.navigate('RegisterAccount', { data: 'created' })
       } else {

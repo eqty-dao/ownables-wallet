@@ -18,7 +18,9 @@ import {WALLET} from '../../constants/Text';
 import {TypedCoinData} from '../../interfaces/TypedCoinData';
 import {TypedDetails} from '../../interfaces/TypedDetails';
 import {TypedTransaction} from '../../interfaces/TypedTransaction';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
+import EvmTransactionService from '../../services/EvmTransaction.service';
+import WalletNetworkService from '../../services/WalletNetwork.service';
 import {formatNumber} from '../../utils/formatNumber';
 import {backgroundImage, logoTitle} from '../../utils/images';
 import {
@@ -50,6 +52,7 @@ import BottomTile from './BottomTile';
 import styled from 'styled-components/native';
 import {useUserSettings} from '../../context/User.context';
 import InAppBrowser from 'react-native-inappbrowser-reborn';
+import { toLegacyDetails, toLegacyTransactions } from '../../utils/legacyWalletAdapters';
 const LEGACY_DISPLAY_FACTOR = 100000000;
 
 const ExitPopup = styled.View`
@@ -91,7 +94,7 @@ const MainTab = ({children, navigation}) => {
 
   const colorScheme = useColorScheme() ?? 'dark';
 
-  const {isSignOutForced} = useUserSettings();
+  const {isSignOutForced, network} = useUserSettings();
 
   const [isExitPopupVisible, setExitPopupVisible] = useState(false);
 
@@ -142,7 +145,7 @@ const MainTab = ({children, navigation}) => {
   //F-2024-4601 - Exposed Sensitive Information in Console Logs
   const loadAccount = async () => {
     try {
-      const account = await LTOService.getAccount();
+      const account = await AccountLifecycleService.getAccount();
       setAccountAddress(account.address);
     } catch (error) {
       console.error('Error loading account:', error);
@@ -154,11 +157,10 @@ const MainTab = ({children, navigation}) => {
       setDetails({} as TypedDetails);
       return;
     }
-    const accountDetails = await LTOService.getBalance(accountAddress);
-    // console.log('accountDetails', accountDetails);
-    if(accountDetails) {
-      setDetails(accountDetails);
-    }else{
+    const accountDetails = await EvmTransactionService.getNativeBalance(accountAddress as `0x${string}`, network);
+    if (accountDetails) {
+      setDetails(toLegacyDetails(accountDetails.balanceEth));
+    } else {
       setDetails({} as TypedDetails);
     }
   };
@@ -217,7 +219,11 @@ const MainTab = ({children, navigation}) => {
     }
 
     try {
-      const txs: TypedTransaction[] = await LTOService.getTransactions(accountAddress, LATEST_TRANSACTIONS);
+      const explorerTxs = await EvmTransactionService.getAddressTransactions({
+        address: accountAddress,
+        network,
+      });
+      const txs: TypedTransaction[] = toLegacyTransactions(explorerTxs).slice(0, LATEST_TRANSACTIONS);
       // console.log('txs', txs);
       const txsByDate = new Map();
 
@@ -314,7 +320,7 @@ const MainTab = ({children, navigation}) => {
   }, [isSignOutForced]);
 
   const handleMoreTransactionPressed = () => {
-    const url = LTOService.getExplorerAddressUrl(accountAddress);
+    const url = WalletNetworkService.getExplorerAddressUrl(accountAddress, network);
     InAppBrowser.open(url);
   };
 

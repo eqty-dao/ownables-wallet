@@ -3,7 +3,7 @@ import { RootStackScreenProps } from '../../../types';
 import { MessageContext } from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
 import { REGISTER, TERMS_AND_CONDITIONS_CONTENT } from '../../constants/Text';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import ReactNativeBiometrics from 'react-native-biometrics';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Title } from '../../components/Title';
@@ -40,7 +40,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
   }, []);
 
   const getAccountAddress = () => {
-    LTOService.getAccount()
+    AccountLifecycleService.getAccount()
       .then(account => {
         if (!isValidEvmAddress(account.address)) {
           throw new Error('Generated account is not an EVM address');
@@ -131,7 +131,7 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
 
       await LocalStorageService.storeData('@userAlias', { nickname: loginForm.nickname });
 
-      await LTOService.storeAccount(loginForm.nickname, loginForm.password);
+      await AccountLifecycleService.storeAccount(loginForm.nickname, loginForm.password);
 
       const message =
         route.params.data === 'created' ? 'Account created successfully!' : 'Account imported successfully!';

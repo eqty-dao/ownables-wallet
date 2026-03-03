@@ -3,7 +3,8 @@ import {RootStackScreenProps} from '../../../types';
 import OverviewHeader from '../../components/OverviewHeader';
 import {Container} from './TransactionsScreen.styles';
 import {MainTitle} from '../../components/styles/NextFunctionality.styles';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
+import EvmTransactionService from '../../services/EvmTransaction.service';
 import {List} from 'react-native-paper';
 import {TypedTransaction} from '../../interfaces/TypedTransaction';
 import {SectionList} from 'react-native';
@@ -11,17 +12,20 @@ import {formatDate} from '../../utils/formatDate';
 import {useInterval} from '../../utils/useInterval';
 import TransactionListItem from '../../components/TransactionListItem';
 import {WALLET} from '../../constants/Text';
+import {useUserSettings} from '../../context/User.context';
+import {toLegacyTransactions} from '../../utils/legacyWalletAdapters';
 
 export default function TransactionsScreen({navigation}: RootStackScreenProps<'Transactions'>) {
   const [accountAddress, setAccountAddress] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<{date: string; data: TypedTransaction[]}[]>([]);
+  const {network} = useUserSettings();
 
   useEffect(() => {
     getAccountAddress();
   }, []);
 
   const getAccountAddress = () => {
-    LTOService.getAccount()
+    AccountLifecycleService.getAccount()
       .then(account => setAccountAddress(account.address))
       .catch(error => {
         throw new Error(`Error retrieving data. ${error}`);
@@ -46,7 +50,11 @@ export default function TransactionsScreen({navigation}: RootStackScreenProps<'T
     }
 
     try {
-      const txs: TypedTransaction[] = await LTOService.getTransactions(accountAddress);
+      const explorerTxs = await EvmTransactionService.getAddressTransactions({
+        address: accountAddress,
+        network,
+      });
+      const txs: TypedTransaction[] = toLegacyTransactions(explorerTxs);
       const txsByDate = new Map();
 
       for (const tx of txs.sort((a, b) => b.timestamp! - a.timestamp!)) {

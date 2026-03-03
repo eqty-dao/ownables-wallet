@@ -3,18 +3,16 @@ import { Text } from 'react-native';
 import { RootStackScreenProps } from '../../../types';
 import { IMPORT_WITHSEEDS } from '../../constants/Text';
 import { MessageContext } from '../../context/UserMessage.context';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { Title } from '../../components/Title';
 import { BackButton } from '../../components/BackButton';
 import { StyledButton } from '../../components/StyledButton';
 import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
-import { useClipboard } from '@react-native-clipboard/clipboard';
 
 export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
   const [words, setWords] = useState<string[]>(Array(15).fill(''));
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
-  const [data, setString] = useClipboard();
 
   const showMessage = (message: string) => {
     setShowMessage(true);
@@ -67,7 +65,7 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
     }
 
     try {
-      await LTOService.importAccount(seedPhrase);
+      await AccountLifecycleService.importAccount(seedPhrase);
       navigation.navigate('RegisterAccount', { data: 'seed' });
     } catch (error) {
       console.error('Error importing account:', error);

@@ -1,7 +1,7 @@
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../types';
 import ReactNativeBiometrics from 'react-native-biometrics';
-import LTOService from '../services/LTO.service';
+import AccountLifecycleService from '../services/AccountLifecycle.service';
 
 interface Props {
   navigation: NativeStackNavigationProp<RootStackParamList, 'LockedScreen' | 'SignIn'>;
@@ -28,7 +28,7 @@ export const authenticateWithBiometrics = async ({navigation, goBack}: Props): P
     if (!success) return;
 
     if (success && signature) {
-      await LTOService.unlock(undefined, signature);
+      await AccountLifecycleService.unlock(undefined, signature);
       setTimeout(() => {
         goBack ? navigation.goBack() : navigation.navigate('Root');
       }, 1000);

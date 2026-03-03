@@ -6,7 +6,8 @@ import { QRCodeScanner } from '../../components/QRCodeScanner';
 import { Button, Text } from 'react-native-paper';
 import QRCode from 'react-native-qrcode-svg';
 import Spinner from '../../components/Spinner';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
+import EvmTransactionService from '../../services/EvmTransaction.service';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import { Input } from 'react-native-elements';
 import { MessageContext } from '../../context/UserMessage.context';
@@ -15,6 +16,9 @@ import { formatNumber } from '../../utils/formatNumber';
 import { TransferModal } from '../../components/TransferModal';
 import { BottomModal } from '../../components/BottomModal';
 import DeviceInfo from 'react-native-device-info';
+import { isValidEvmAddress } from '../../utils/evmAddress';
+import { toLegacyDetails } from '../../utils/legacyWalletAdapters';
+import { useUserSettings } from '../../context/User.context';
 
 const LEGACY_DISPLAY_FACTOR = 100000000;
 
@@ -34,6 +38,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
     const isEmulator = DeviceInfo.isEmulatorSync();
     const [pendingPromoCode, setPendingPromoCode] = useState('');
     const [pendingApiBody, setPendingApiBody] = useState<any>(null);
+    const { network } = useUserSettings();
 
     // $LARRY
     const larryRegex = /\$LARRY$/;
@@ -67,7 +72,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
         }
 
         // Handle regular wallet address scanning
-        const isValid = await LTOService.isValidAddress(value);
+        const isValid = isValidEvmAddress(value);
         if (isValid) {
             setRecipientAddress(value);
             setShowTransferModal(true);
@@ -90,10 +95,10 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
 
     const getAccountAddress = async () => {
         try {
-            const account = await LTOService.getAccount();
+            const account = await AccountLifecycleService.getAccount();
             setAddress(account.address);
-            const accountDetails = await LTOService.getBalance(account.address);
-            setDetails(accountDetails);
+            const accountDetails = await EvmTransactionService.getNativeBalance(account.address as `0x${string}`, network);
+            setDetails(toLegacyDetails(accountDetails.balanceEth));
         } catch (error) {
             console.error(error);
             setMessageInfo('Error retrieving account data');
@@ -104,7 +109,7 @@ const QrReaderScreen = ({ navigation, route }: RootStackScreenProps<'QrReader'>)
 
     useEffect(() => {
         getAccountAddress();
-    }, []);
+    }, [network]);
 
     const handleShare = async () => {
         try {

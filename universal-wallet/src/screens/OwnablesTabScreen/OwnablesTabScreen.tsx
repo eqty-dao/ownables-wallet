@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Platform } from 'react-native';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { RootTabScreenProps } from '../../../types';
 import OverviewHeader from '../../components/OverviewHeader';
 import { WebView, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
@@ -52,7 +52,7 @@ export default function OwnablesTabScreen({ navigation }: RootTabScreenProps<'Ow
   }, []);
 
   const readStorage = async () => {
-    return await LTOService.getAccount()
+    return await AccountLifecycleService.getAccount()
       .then(account => {
         setAccountInfo(account);
         return account;

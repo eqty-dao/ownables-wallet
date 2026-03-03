@@ -1,7 +1,8 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { RootStackScreenProps } from '../../../types';
 import { MessageContext } from '../../context/UserMessage.context';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
+import EvmTransactionService from '../../services/EvmTransaction.service';
 import { StyledButton } from '../../components/StyledButton';
 import { Card } from '../../components/Card';
 import { ScreenContainer } from '../../components/ScreenContainer';
@@ -10,6 +11,8 @@ import { StyledTitle } from '../../components/styles/Title.styles';
 import { FormContainer } from '../../components/styles/FormContainer.styles';
 import { WALLET } from '../../constants/Text';
 import { BackButton } from '../../components/BackButton';
+import { isValidEvmAddress } from '../../utils/evmAddress';
+import { useUserSettings } from '../../context/User.context';
 
 const LEGACY_DISPLAY_FACTOR = 100000000;
 
@@ -27,11 +30,12 @@ export default function CreateTransferScreen({ navigation }: RootStackScreenProp
   const [estimatedFeeEth, setEstimatedFeeEth] = useState('');
   const [isEstimating, setIsEstimating] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const { network } = useUserSettings();
 
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
 
   useEffect(() => {
-    LTOService.getAccount()
+    AccountLifecycleService.getAccount()
       .then(account => setAccountAddress(account.address))
       .catch(error => {
         throw new Error(`Error retrieving data. ${error}`);
@@ -43,17 +47,17 @@ export default function CreateTransferScreen({ navigation }: RootStackScreenProp
       return;
     }
 
-    LTOService.getBalance(accountAddress)
+    EvmTransactionService.getNativeBalance(accountAddress as `0x${string}`, network)
       .then(accountDetails => {
-        setAvailableEth(toEth(accountDetails.available));
+        setAvailableEth(accountDetails.balanceEth);
       })
       .catch(error => {
         throw new Error(`Error retrieving account data. ${error}`);
       });
-  }, [accountAddress]);
+  }, [accountAddress, network]);
 
   const isAmountValid = useMemo(() => /^\d+(\.\d+)?$/.test(amountEth) && Number.parseFloat(amountEth) > 0, [amountEth]);
-  const isRecipientValid = useMemo(() => LTOService.isValidAddress(recipient), [recipient]);
+  const isRecipientValid = useMemo(() => isValidEvmAddress(recipient), [recipient]);
 
   useEffect(() => {
     let active = true;
@@ -66,7 +70,12 @@ export default function CreateTransferScreen({ navigation }: RootStackScreenProp
     const run = async () => {
       try {
         setIsEstimating(true);
-        const estimate = await LTOService.estimateTransfer(recipient, amountEth);
+        const estimate = await EvmTransactionService.estimateNativeTransfer({
+          from: accountAddress as `0x${string}`,
+          to: recipient as `0x${string}`,
+          amountEth,
+          network,
+        });
         if (active) {
           setEstimatedFeeEth(estimate.estimatedFeeEth);
         }
@@ -86,7 +95,7 @@ export default function CreateTransferScreen({ navigation }: RootStackScreenProp
     return () => {
       active = false;
     };
-  }, [recipient, amountEth, isRecipientValid, isAmountValid]);
+  }, [recipient, amountEth, isRecipientValid, isAmountValid, accountAddress, network]);
 
   const insufficientFunds = useMemo(() => {
     if (!isAmountValid || !estimatedFeeEth) return false;
@@ -121,7 +130,15 @@ export default function CreateTransferScreen({ navigation }: RootStackScreenProp
 
     try {
       setIsSending(true);
-      const result = await LTOService.sendTransfer(recipient, amountEth);
+      const transfer = await EvmTransactionService.sendNativeTransfer({
+        to: recipient as `0x${string}`,
+        amountEth,
+        network,
+      });
+      const result = await EvmTransactionService.waitForReceipt({
+        hash: transfer.hash,
+        network,
+      });
 
       if (result.status === 'success') {
         setShowMessage(true);

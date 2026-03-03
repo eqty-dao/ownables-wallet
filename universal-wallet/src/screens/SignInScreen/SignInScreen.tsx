@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { RootStackScreenProps } from '../../../types';
 import { MessageContext } from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { SIGNIN } from '../../constants/Text';
 import { authenticateWithBiometrics } from '../../utils/authenticateWithBiometrics';
 import ReactNativeBiometrics from 'react-native-biometrics';
@@ -63,7 +63,7 @@ export default function SignInScreen({ navigation }: RootStackScreenProps<'SignI
       return;
     }
 
-    LTOService.unlock(password)
+    AccountLifecycleService.unlock(password)
       .then(() => {
         setLoading(false);
         navigation.replace('Root');

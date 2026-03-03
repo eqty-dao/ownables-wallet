@@ -2,7 +2,7 @@ import React, { useEffect, useContext, useState } from 'react';
 import { PROFILE } from '../../constants/Text';
 import { MessageContext } from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { RootStackScreenProps } from '../../../types';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { StyledTitle } from '../../components/styles/Title.styles';
@@ -14,10 +14,8 @@ import { ScreenSubView } from '../../components/styles/ScreenContainer.styles';
 import { BottomModal } from '../../components/BottomModal';
 import { InputModal } from '../../components/InputModal';
 import { InputField } from '../../components/InputField';
-import { useWindowDimensions, View } from 'react-native';
-import Icon from '../../components/Icon';
+import { useWindowDimensions } from 'react-native';
 import PressToCopy from '../../components/PressToCopy';
-import { StyledInputWithCopy } from '../../components/styles/InputField.styles';
 import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
 
 export default function ProfileScreen({ navigation }: RootStackScreenProps<'Profile'>) {
@@ -52,7 +50,7 @@ export default function ProfileScreen({ navigation }: RootStackScreenProps<'Prof
 
   const deleteAccount = () => {
     setShowConfirmDelete(false);
-    LTOService.deleteAccount().then(() => {
+    AccountLifecycleService.deleteAccount().then(() => {
       navigation.reset({
         index: 0,
         routes: [{ name: 'SignUp' }],
@@ -61,7 +59,7 @@ export default function ProfileScreen({ navigation }: RootStackScreenProps<'Prof
   };
 
   const readStorage = () => {
-    LTOService.getAccount()
+    AccountLifecycleService.getAccount()
       .then(account => {
         setAccountInformation(account);
         setIsLoading(false);
@@ -94,7 +92,7 @@ export default function ProfileScreen({ navigation }: RootStackScreenProps<'Prof
       return;
     }
 
-    LTOService.unlock(password)
+    AccountLifecycleService.unlock(password)
       .then(() => {
         if (currentReveal === 'privateKey') {
           setShowPrivateKey(true);

@@ -1,6 +1,6 @@
 import React, {useContext, useEffect, useState} from 'react';
 import {RootStackScreenProps} from '../../../types';
-import LTOService from '../../services/LTO.service';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import {MessageContext} from '../../context/UserMessage.context';
 import {StyledInput} from '../../components/styles/StyledInput.styles';
 import {StyledButton} from '../../components/styles/StyledButton.styles';
@@ -31,7 +31,7 @@ export default function LockedScreen({navigation}: RootStackScreenProps<'LockedS
       return;
     }
 
-    LTOService.unlock(password)
+    AccountLifecycleService.unlock(password)
       .then(() => {
         setPassword('');
         navigation.goBack();
