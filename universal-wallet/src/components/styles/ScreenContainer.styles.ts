@@ -6,9 +6,9 @@ export const ScreenSafeAreaView = styled.SafeAreaView`
   background: #0d0d0d;
 `;
 
-export const ScreenView = styled.View<{spaceBetween: boolean}>`
-  padding: ${Platform.OS === 'ios' ? '8' : '49'}px 16px;
-  gap: ${({spaceBetween}) => (spaceBetween ? 0 : 32)}px;
+export const ScreenView = styled.View<{spaceBetween: boolean; topPadding?: number; gapSize?: number}>`
+  padding: ${({topPadding}) => (topPadding ?? (Platform.OS === 'ios' ? 8 : 49))}px 16px;
+  gap: ${({spaceBetween, gapSize}) => (spaceBetween ? 0 : (gapSize ?? 32))}px;
   justifycontent: ${({spaceBetween}) => (spaceBetween ? 'space-between' : 'flex-start')};
 `;
 

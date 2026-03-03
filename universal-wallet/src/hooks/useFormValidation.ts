@@ -24,11 +24,11 @@ export const useFormValidation = () => {
 
   const validateForm = (form: LoginForm): { err?: string } => {
     if (!form.nickname.trim()) {
-      return { err: 'Nickname is required!' };
+      return { err: 'Account name is required!' };
     }
 
     if (form.nickname.length < 3 || form.nickname.length > 15) {
-      return { err: 'Nickname must be between 3 and 15 characters!' };
+      return { err: 'Account name must be between 3 and 15 characters!' };
     }
 
     if (!form.password) {

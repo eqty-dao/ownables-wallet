@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { RootStackScreenProps } from '../../../types';
 import { MessageContext } from '../../context/UserMessage.context';
 import LocalStorageService from '../../services/LocalStorage.service';
@@ -13,9 +14,8 @@ import { StyledButton } from '../../components/StyledButton';
 import { FormContainer } from '../../components/styles/FormContainer.styles';
 import { CheckBoxCard } from '../../components/CheckBoxCard';
 import { BottomModal } from '../../components/BottomModal';
-import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
-import { List } from 'react-native-paper';
 import { isValidEvmAddress } from '../../utils/evmAddress';
+import { StyledCreateSubtitle, StyledCreateTitle } from './RegisterAccountScreen.styles';
 
 
 export default function RegisterAccountScreen({ navigation, route }: RootStackScreenProps<'RegisterAccount'>) {
@@ -31,7 +31,6 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [accountAddress, setAccountAddress] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [seedPhrase, setSeedPhrase] = useState('');
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
   const rnBiometrics = new ReactNativeBiometrics();
 
@@ -46,7 +45,6 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
           throw new Error('Generated account is not an EVM address');
         }
         setAccountAddress(account.address);
-        setSeedPhrase(account.mnemonic || account.seed || '');
       })
       .catch(() => {
         setShowMessage(true);
@@ -79,11 +77,11 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
 
   const validateForm = (): { err?: string } => {
     if (loginForm.nickname === '') {
-      return { err: 'Nickname is required!' };
+      return { err: 'Account name is required!' };
     }
 
     if (loginForm.nickname.length < 3 || loginForm.nickname.length > 15) {
-      return { err: 'Nickname must be more than 3 or less than 15 character!' };
+      return { err: 'Account name must be between 3 and 15 characters!' };
     }
 
     if (loginForm.password === '') {
@@ -198,25 +196,31 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
 
     handleAccount();
   };
-  const [expanded, setExpanded] = useState(false);
+  const truncateAddressMiddle = (address: string) => {
+    if (!address) return '';
+    if (address.length <= 18) return address;
+    return `${address.slice(0, 10)}...${address.slice(-8)}`;
+  };
+
   return (
     <ScreenContainer>
-      <BackButton onPress={() => navigation.goBack()} />
       {route.params.data === 'created' ? (
         <>
-          <Title title={REGISTER.CREATE_TITLE} subtitle={REGISTER.CREATE_SUBTITLE} />
-          {seedPhrase &&
-            <List.Accordion title="Seed Phrase" expanded={expanded} onPress={() => setExpanded(!expanded)} style={{ backgroundColor: '#1a1a1a' }} titleStyle={{ color: '#ffffff' }}>
-              <SeedPhraseInput words={seedPhrase.split(' ')} onWordChange={() => { }} showCopyButton={true} onPaste={() => { }} showPasteButton={false} />
-            </List.Accordion>
-          }
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <BackButton onPress={() => navigation.goBack()} />
+            <StyledCreateTitle>{REGISTER.CREATE_TITLE}</StyledCreateTitle>
+          </View>
+          <StyledCreateSubtitle>{REGISTER.CREATE_SUBTITLE}</StyledCreateSubtitle>
         </>
       ) : (
-        <Title title={REGISTER.IMPORT_TITLE} />
+        <>
+          <BackButton onPress={() => navigation.goBack()} />
+          <Title title={REGISTER.IMPORT_TITLE} />
+        </>
       )
       }
       <FormContainer>
-        <InputField label={REGISTER.INPUT_ADDRESS} value={accountAddress} disabled={true} />
+        <InputField label={REGISTER.INPUT_ADDRESS} value={truncateAddressMiddle(accountAddress)} disabled={true} />
         <InputField
           label={REGISTER.INPUT_NICKNAME.LABEL}
           value={loginForm.nickname}

@@ -29,3 +29,17 @@ export const ButtonContainer = styled.View<{marginBottom?: number}>`
   justify-content: flex-end;
   align-items: center;
 `;
+
+export const StyledCreateTitle = styled.Text`
+  color: #fcfcf7;
+  font-family: Inter;
+  font-size: 32px;
+  font-weight: 600;
+`;
+
+export const StyledCreateSubtitle = styled.Text`
+  color: #909092;
+  font-family: Inter;
+  font-weight: 500;
+  width: 281px;
+`;

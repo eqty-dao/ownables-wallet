@@ -1,9 +1,8 @@
 import React, { useContext } from 'react';
 import styled from 'styled-components/native';
-import { TouchableOpacity, Clipboard } from 'react-native';
+import { Clipboard } from 'react-native';
 import { useClipboard } from '@react-native-clipboard/clipboard';
 import { MessageContext } from '../../context/UserMessage.context';
-import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 
 
 
@@ -18,7 +17,7 @@ const HeaderContainer = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 18px;
 `;
 
 const ButtonsContainer = styled.View`
@@ -40,12 +39,6 @@ const ActionButton = styled.TouchableOpacity`
 const ActionButtonText = styled.Text`
   color: #4a9eff;
   font-size: 14px;
-`;
-
-const SeedPhraseDescription = styled.Text`
-  color: #888888;
-  font-size: 14px;
-  margin-bottom: 20px;
 `;
 
 const WordsGrid = styled.View`
@@ -84,7 +77,7 @@ export const SeedPhraseInput: React.FC<SeedPhraseInputProps> = ({
     onPaste,
     showPasteButton = false
 }) => {
-    const [clipboardData, setString] = useClipboard();
+    const [, setString] = useClipboard();
     const { setShowMessage, setMessageInfo } = useContext(MessageContext);
 
     const handleCopy = () => {
@@ -94,16 +87,9 @@ export const SeedPhraseInput: React.FC<SeedPhraseInputProps> = ({
         setMessageInfo('Seed phrase copied to clipboard!');
     };
 
-  const handleReset = () => {
-        const emptySeedPhrase = Array(words.length).fill('').join(' ');
-        onPaste(emptySeedPhrase);
-    };
-
     const handlePaste = () => {
         Clipboard.getString().then((text) => {
-            console.log('text', text);
             const length = text.split(' ').length;
-            console.log('length', length);
             if (!text || text === '' || text === 'showCopyButton' || text === 'onCopy' || text === 'onPaste' || text === 'showPasteButton') {
                 setShowMessage(true);
                 setMessageInfo('No seed phrase found in clipboard.');
@@ -139,10 +125,6 @@ export const SeedPhraseInput: React.FC<SeedPhraseInputProps> = ({
                     )}
                 </ButtonsContainer>
             </HeaderContainer>
-            <SeedPhraseDescription>
-                This is the only way you will be able to recover your account. Please store it somewhere safe!
-            </SeedPhraseDescription>
-
             <WordsGrid>
                 {words.map((word, index) => (
                     <WordContainer key={index}>
@@ -158,7 +140,6 @@ export const SeedPhraseInput: React.FC<SeedPhraseInputProps> = ({
                     </WordContainer>
                 ))}
             </WordsGrid>
-            {showPasteButton && <FontAwesome6 name="arrow-rotate-left" size={24} color="#ffffff" onPress={handleReset} />}
         </SeedPhraseContainer>
     );
 }; 

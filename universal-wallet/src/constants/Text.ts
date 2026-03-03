@@ -24,7 +24,7 @@ export const SIGNIN = {
   TITLE: 'Sign in',
   SUBTITLE: 'Sign in with your account name and password',
   INPUT_NICKNAME: {
-    LABEL: 'Nickname',
+    LABEL: 'Account name',
   },
   INPUT_PASSWORD: {
     LABEL: 'Wallet password',
@@ -35,22 +35,24 @@ export const SIGNIN = {
 };
 
 export const IMPORT_WITHSEEDS = {
-  IMPORT_TITLE: 'Import Account',
+  IMPORT_TITLE: 'Import Recovery Phrase',
+  IMPORT_SUBTITLE: 'Enter your wallet recovery phrase to restore access.',
   INPUT_SEEDPHRASE: {
     LABEL: 'Your recovery phrase',
     PLACEHOLDER: 'Type your recovery phrase separated by a space',
   },
-  BUTTON_IMPORT: 'Import account',
+  BUTTON_IMPORT: 'Continue',
+  WORD_COUNT_NOTE: 'Use 12 words by default. Switch to 24 words if needed.',
 };
 
 export const REGISTER = {
   CREATE_TITLE: 'Create Account',
   CREATE_SUBTITLE: 'Create an account or import one with your recovery phrase',
   IMPORT_TITLE: 'Import Account',
-  INPUT_ADDRESS: 'EVM address',
+  INPUT_ADDRESS: 'Address',
   INPUT_NICKNAME: {
-    LABEL: 'Nickname',
-    PLACEHOLDER: 'Enter your nickname',
+    LABEL: 'Account name',
+    PLACEHOLDER: 'Enter account name',
   },
   INPUT_PASSWORD: {
     LABEL: 'Password',
