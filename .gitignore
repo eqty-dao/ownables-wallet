@@ -131,3 +131,5 @@ universal-wallet/android/app/src/main/assets/www/
 ownables_sdk/.vscode/
 
 test_ci/
+/.agents
+
