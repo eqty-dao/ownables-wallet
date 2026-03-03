@@ -9,9 +9,10 @@ import { Title } from '../../components/Title';
 import { BackButton } from '../../components/BackButton';
 import { StyledButton } from '../../components/StyledButton';
 import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
+import { extractEnteredWords, isValidMnemonicLength, normalizeMnemonicWords } from './mnemonicInput';
 
 export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
-  const [words, setWords] = useState<string[]>(Array(15).fill(''));
+  const [words, setWords] = useState<string[]>(Array(24).fill(''));
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
 
   const showMessage = (message: string) => {
@@ -24,11 +25,6 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
     return regExp.test(seed);
   };
 
-  const isValidMnemonicLength = (value: string): boolean => {
-    const count = value.split(' ').length;
-    return [12, 15, 18, 21, 24].includes(count);
-  };
-
   const handleWordChange = (text: string, index: number) => {
     const newWords = [...words];
     newWords[index] = text.toLowerCase().trim();
@@ -36,20 +32,25 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
   };
 
   const handlePaste = (pasted: string) => {
-    const seedPhrase = pasted.trim().toLowerCase().split(' ');
-    if (![12, 15, 18, 21, 24].includes(seedPhrase.length)) {
-      setWords(Array(15).fill(''));
+    const pastedWords = normalizeMnemonicWords(pasted);
+    if (!isValidMnemonicLength(pastedWords.length)) {
+      setWords(Array(24).fill(''));
       setShowMessage(true);
       setMessageInfo('Invalid recovery phrase length.');
       return;
     }
-    setWords(seedPhrase);
+    const paddedWords = Array(24).fill('');
+    pastedWords.forEach((word, idx) => {
+      paddedWords[idx] = word;
+    });
+    setWords(paddedWords);
   };
 
   const handleImportFromSeed = async () => {
-    const seedPhrase = words.join(' ').trim();
+    const enteredWords = extractEnteredWords(words);
+    const seedPhrase = enteredWords.join(' ');
 
-    if (!seedPhrase || words.some(word => !word)) {
+    if (!seedPhrase) {
       showMessage('Please fill in all seed phrase words.');
       return;
     }
@@ -59,7 +60,7 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
       return;
     }
 
-    if (!isValidMnemonicLength(seedPhrase)) {
+    if (!isValidMnemonicLength(enteredWords.length)) {
       showMessage('Recovery phrase must be 12, 15, 18, 21, or 24 words.');
       return;
     }
@@ -71,7 +72,7 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
       console.error('Error importing account:', error);
       showMessage('Failed to import account. Please try again.');
     } finally {
-      setWords(Array(15).fill('')); // Clear the seed phrase from memory
+      setWords(Array(24).fill('')); // Clear the seed phrase from memory
     }
   };
 

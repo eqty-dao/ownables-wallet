@@ -94,8 +94,8 @@ export const SeedPhraseInput: React.FC<SeedPhraseInputProps> = ({
         setMessageInfo('Seed phrase copied to clipboard!');
     };
 
-    const handleReset = () => {
-        const emptySeedPhrase = Array(15).fill('').join(' ');
+  const handleReset = () => {
+        const emptySeedPhrase = Array(words.length).fill('').join(' ');
         onPaste(emptySeedPhrase);
     };
 
