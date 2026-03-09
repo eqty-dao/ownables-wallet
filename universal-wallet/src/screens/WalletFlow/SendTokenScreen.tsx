@@ -5,9 +5,10 @@ import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import EvmTransactionService from '../../services/EvmTransaction.service';
 import { useUserSettings } from '../../context/User.context';
 import { isValidEvmAddress } from '../../utils/evmAddress';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 export default function SendTokenScreen({ navigation, route }: WalletStackScreenProps<'SendToken'>) {
+  const styles = useWalletFlowStyles();
   const { network } = useUserSettings();
   const [sender, setSender] = useState('');
   const [recipient, setRecipient] = useState(route.params.recipient || '');

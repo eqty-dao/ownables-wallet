@@ -8,13 +8,14 @@ import WalletPreferencesService, {
   WalletCurrency,
   WalletPreferences,
 } from '../../services/WalletPreferences.service';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 const APPEARANCE_OPTIONS: WalletAppearance[] = ['light', 'dark', 'system'];
 const CURRENCY_OPTIONS: WalletCurrency[] = ['USD', 'EUR', 'GBP', 'JPY'];
 
 export default function WalletSettingsScreen({ navigation }: WalletStackScreenProps<'WalletSettings'>) {
-  const { network, setNetwork } = useUserSettings();
+  const styles = useWalletFlowStyles();
+  const { network, setNetwork, setAppearance } = useUserSettings();
   const [preferences, setPreferences] = useState<WalletPreferences>({
     appearance: 'system',
     currency: 'USD',
@@ -32,8 +33,11 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
   );
 
   const updateAppearance = async (appearance: WalletAppearance) => {
-    const next = await WalletPreferencesService.updatePreferences({ appearance });
-    setPreferences(next);
+    setAppearance(appearance);
+    setPreferences(current => ({
+      ...current,
+      appearance,
+    }));
   };
 
   const updateCurrency = async (currency: WalletCurrency) => {

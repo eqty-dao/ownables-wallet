@@ -6,7 +6,7 @@ import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import WalletPortfolioService from '../../services/WalletPortfolio.service';
 import { useUserSettings } from '../../context/User.context';
 import { EvmExplorerTx } from '../../types/evm';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 const formatDate = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString();
@@ -18,6 +18,7 @@ const truncateHash = (value: string): string => {
 };
 
 export default function TokenDetailsScreen({ navigation, route }: WalletStackScreenProps<'TokenDetails'>) {
+  const styles = useWalletFlowStyles();
   const { network } = useUserSettings();
   const token = route.params.token;
   const [transactions, setTransactions] = useState<EvmExplorerTx[]>([]);

@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 export default function RecoveryPhraseScreen({ navigation }: WalletStackScreenProps<'RecoveryPhrase'>) {
+  const styles = useWalletFlowStyles();
   const [words, setWords] = useState<string[]>([]);
 
   useEffect(() => {

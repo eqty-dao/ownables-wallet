@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput } from 'react-native';
 import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 export default function AddAccountScreen({ navigation }: WalletStackScreenProps<'AddAccount'>) {
+  const styles = useWalletFlowStyles();
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [mnemonic, setMnemonic] = useState('');

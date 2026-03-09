@@ -3,6 +3,7 @@ import LocalStorageService from '../services/LocalStorage.service';
 import { ENABLE_ENV_SWITCH } from '@env';
 import EvmService from '../services/Evm.service';
 import { EvmNetwork, normalizeNetwork } from '../types/evm';
+import WalletPreferencesService, { WalletAppearance } from '../services/WalletPreferences.service';
 
 export enum Network {
   MAINNET = EvmNetwork.BASE_MAINNET,
@@ -19,6 +20,8 @@ interface UserContextType {
   setForceSignOut: (value: boolean) => void;
   network: Network;
   setNetwork: (network: Network) => void;
+  appearance: WalletAppearance;
+  setAppearance: (appearance: WalletAppearance) => void;
   env: Env;
   setEnv: (env: Env) => void;
 }
@@ -32,6 +35,8 @@ const UserContext = createContext<UserContextType>({
   setForceSignOut: () => { },
   network: Network.MAINNET,
   setNetwork: () => { },
+  appearance: 'system',
+  setAppearance: () => { },
   env: Env.PROD,
   setEnv: () => { },
 });
@@ -39,6 +44,7 @@ const UserContext = createContext<UserContextType>({
 export const UserProvider = ({ children }: Props) => {
   const [forceSignout, setForceSignout] = useState<boolean>(false);
   const [network, setNetwork] = useState<Network>(Network.MAINNET);
+  const [appearance, setAppearance] = useState<WalletAppearance>('system');
   const [env, setEnv] = useState<Env>(Env.PROD);
 
 
@@ -46,6 +52,7 @@ export const UserProvider = ({ children }: Props) => {
 
   useEffect(() => {
     getNetwork();
+    getAppearance();
     getEnv();
   }, []);
 
@@ -97,6 +104,26 @@ export const UserProvider = ({ children }: Props) => {
     }
   }
 
+  const getAppearance = () => {
+    WalletPreferencesService.getPreferences()
+      .then(data => {
+        setAppearance(data.appearance);
+      })
+      .catch(() => {
+        setAppearance('system');
+      });
+  }
+
+  const _setAppearance = (nextAppearance: WalletAppearance) => {
+    WalletPreferencesService.updatePreferences({ appearance: nextAppearance })
+      .then(data => {
+        setAppearance(data.appearance);
+      })
+      .catch(() => {
+        setAppearance(nextAppearance);
+      });
+  }
+
   const _setEnv = (env: Env) => {
     if (ENABLE_ENV_SWITCH === 'true') {
       LocalStorageService.storeData('@env', env)
@@ -117,6 +144,8 @@ export const UserProvider = ({ children }: Props) => {
     setForceSignOut,
     network,
     setNetwork: _setNetwork,
+    appearance,
+    setAppearance: _setAppearance,
     env,
     setEnv: _setEnv,
   };

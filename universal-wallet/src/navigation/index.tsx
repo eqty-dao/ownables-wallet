@@ -7,7 +7,7 @@ import { AppState, ColorSchemeName, Dimensions } from 'react-native';
 import { RootStackParamList, RootStackScreenProps, RootTabParamList, RootTabScreenProps } from '../../types';
 import SnackbarMessage from '../components/Snackbar';
 import Colors from '../constants/Colors';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 import SignUpScreen from '../screens/SignUpScreen/SignUpScreen';
 import RegisterAccountScreen from '../screens/RegisterAccountScreen/RegisterAccountScreen';
 import ImportSeedScreen from '../screens/ImportWithSeedScreen/ImportWithSeedScreen';
@@ -159,7 +159,7 @@ function RootNavigator(): any {
 const Tab = createMaterialTopTabNavigator<RootTabParamList>();
 
 function BottomTabNavigator() {
-  const colorScheme = useColorScheme();
+  const colorScheme = useEffectiveColorScheme();
   const { isOpen } = React.useContext(FabContext);
 
   const handleTabPress = (e: any) => {

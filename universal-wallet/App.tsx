@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import useCachedResources from './src/hooks/useCachedResources';
-import useColorScheme from './src/hooks/useColorScheme';
 import Navigation from './src/navigation';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { MessageProviderWrapper } from './src/context/UserMessage.context';
@@ -12,10 +11,11 @@ import { AppProvider } from './providers/AppContext';
 import { UpdateRequiredModal } from './src/components/UpdateRequiredModal';
 import { checkAppVersion } from './src/services/versionCheckService';
 import DeviceInfo from 'react-native-device-info';
+import useEffectiveColorScheme from './src/hooks/useEffectiveColorScheme';
 
-export default function App() {
+function AppContainer() {
   const isLoadingComplete = useCachedResources();
-  const colorScheme = useColorScheme();
+  const colorScheme = useEffectiveColorScheme();
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [minVersion, setMinVersion] = useState('');
 
@@ -35,22 +35,28 @@ export default function App() {
 
   return (
     <SafeAreaProvider style={{ backgroundColor: '#0D0D0D' }}>
-      <AppProvider>
-        <UserProvider>
-          <FabProviderWrapper>
-            <MessageProviderWrapper>
-              <PaperProvider>
-                <StatusBar barStyle={"light-content"} />
-                {isLoadingComplete && <Navigation colorScheme={colorScheme} />}
-                <UpdateRequiredModal 
-                  visible={showUpdateModal} 
-                  minVersion={minVersion} 
-                />
-              </PaperProvider>
-            </MessageProviderWrapper>
-          </FabProviderWrapper>
-        </UserProvider>
-      </AppProvider>
+      <FabProviderWrapper>
+        <MessageProviderWrapper>
+          <PaperProvider>
+            <StatusBar barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'} />
+            {isLoadingComplete && <Navigation colorScheme={colorScheme} />}
+            <UpdateRequiredModal
+              visible={showUpdateModal}
+              minVersion={minVersion}
+            />
+          </PaperProvider>
+        </MessageProviderWrapper>
+      </FabProviderWrapper>
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <UserProvider>
+        <AppContainer />
+      </UserProvider>
+    </AppProvider>
   );
 }

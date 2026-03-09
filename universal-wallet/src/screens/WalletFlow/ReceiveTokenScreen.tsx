@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text } from 'react-native';
 import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 export default function ReceiveTokenScreen({ navigation, route }: WalletStackScreenProps<'ReceiveToken'>) {
+  const styles = useWalletFlowStyles();
   const [address, setAddress] = useState('');
 
   useEffect(() => {

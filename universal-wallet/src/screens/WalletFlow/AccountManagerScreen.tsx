@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { EvmStoredAccountMeta } from '../../types/evm';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 const truncateAddress = (value: string): string => {
   if (!value) return '';
@@ -12,6 +12,7 @@ const truncateAddress = (value: string): string => {
 };
 
 export default function AccountManagerScreen({ navigation }: WalletStackScreenProps<'AccountManager'>) {
+  const styles = useWalletFlowStyles();
   const [accounts, setAccounts] = useState<EvmStoredAccountMeta[]>([]);
   const [activeAddress, setActiveAddress] = useState('');
   const [message, setMessage] = useState('');

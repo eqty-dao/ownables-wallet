@@ -6,7 +6,7 @@ import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import WalletPortfolioService, { WalletOverview } from '../../services/WalletPortfolio.service';
 import WalletPreferencesService, { WalletCurrency } from '../../services/WalletPreferences.service';
 import { Network, useUserSettings } from '../../context/User.context';
-import { styles } from './common';
+import { useWalletFlowStyles } from './common';
 
 const formatCurrency = (value: number, currency: WalletCurrency): string => {
   return new Intl.NumberFormat('en-US', {
@@ -23,6 +23,7 @@ const truncateAddress = (value: string): string => {
 };
 
 export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<'WalletHome'>) {
+  const styles = useWalletFlowStyles();
   const { network } = useUserSettings();
   const [nickname, setNickname] = useState('My Wallet');
   const [address, setAddress] = useState('');
