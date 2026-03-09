@@ -1,21 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { WalletStackScreenProps } from '../../../types';
+import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { styles } from './common';
 
-const WORDS = ['abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident'];
-
 export default function RecoveryPhraseScreen({ navigation }: WalletStackScreenProps<'RecoveryPhrase'>) {
-  return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={styles.screen}>
-      <Text style={styles.title}>Recovery Phrase</Text>
-      <Text style={styles.subtitle}>Never share this phrase with anyone.</Text>
+  const [words, setWords] = useState<string[]>([]);
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 12 }}>
-        {WORDS.map((word, index) => (
-          <View key={word} style={[styles.row, { width: '48%', marginBottom: 8 }]}> 
-            <Text style={styles.rowSubTitle}>{index + 1}.</Text>
-            <Text style={styles.rowTitle}>{word}</Text>
+  useEffect(() => {
+    const seed = AccountLifecycleService.getSeed();
+    setWords(seed.split(' ').filter(Boolean));
+  }, []);
+
+  return (
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Recovery Phrase</Text>
+      <Text style={styles.subtitle}>Never share this phrase with anyone. Store it offline.</Text>
+
+      <View style={styles.twoColumnWrap}>
+        {words.map((word, index) => (
+          <View key={`${word}-${index}`} style={styles.chip}>
+            <Text style={styles.chipIndex}>{index + 1}</Text>
+            <Text style={styles.chipWord}>{word}</Text>
           </View>
         ))}
       </View>

@@ -9,7 +9,14 @@ const linking: LinkingOptions<RootStackParamList> = {
         screens: {
           Wallet: {
             screens: {
-              WalletTabScreen: 'one',
+              WalletHome: 'one',
+              AccountManager: 'one/accounts',
+              AddAccount: 'one/accounts/add',
+              WalletSettings: 'one/settings',
+              RecoveryPhrase: 'one/settings/recovery',
+              TokenDetails: 'one/token/:token',
+              SendToken: 'one/token/:token/send',
+              ReceiveToken: 'one/token/:token/receive',
             },
           },
           Credentials: {
