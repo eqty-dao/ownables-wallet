@@ -34,11 +34,15 @@ function AppContainer() {
   }, []);
 
   return (
-    <SafeAreaProvider style={{ backgroundColor: '#0D0D0D' }}>
+    <SafeAreaProvider style={{ backgroundColor: colorScheme === 'dark' ? '#0D0D0D' : '#FFFFFF' }}>
       <FabProviderWrapper>
         <MessageProviderWrapper>
           <PaperProvider>
-            <StatusBar barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'} />
+            <StatusBar
+              barStyle={colorScheme === 'light' ? 'dark-content' : 'light-content'}
+              backgroundColor={colorScheme === 'dark' ? '#0D0D0D' : '#FFFFFF'}
+              translucent={false}
+            />
             {isLoadingComplete && <Navigation colorScheme={colorScheme} />}
             <UpdateRequiredModal
               visible={showUpdateModal}

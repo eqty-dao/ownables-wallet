@@ -28,17 +28,33 @@ import QrReaderScreen from '../screens/QrReaderScreen/QrReaderScreen';
 import AccountLifecycleService from '../services/AccountLifecycle.service';
 import WalletStackNavigator from './WalletStackNavigator';
 
-const navTheme = {
+const lightNavTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
+    background: '#FFFFFF',
+    card: '#FFFFFF',
+    text: '#141414',
+    primary: '#615fff',
+    border: '#E7E7EF',
+  },
+};
+
+const darkNavTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
     background: '#0D0D0D',
+    card: '#141414',
+    text: '#FFFFFF',
+    primary: '#615fff',
+    border: '#1E1E1E',
   },
 };
 
 export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeName }) {
   return (
-    <NavigationContainer linking={LinkingConfiguration} theme={colorScheme === 'dark' ? DarkTheme : navTheme}>
+    <NavigationContainer linking={LinkingConfiguration} theme={colorScheme === 'dark' ? darkNavTheme : lightNavTheme}>
       <SnackbarMessage />
       <TestNetBanner />
       <RootNavigator />
@@ -49,6 +65,7 @@ export default function Navigation({ colorScheme }: { colorScheme: ColorSchemeNa
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function RootNavigator(): any {
+  const colorScheme = useEffectiveColorScheme();
   const [state, setState] = useState({
     appFirstLaunch: false,
     userAlias: null as boolean | null,
@@ -137,7 +154,10 @@ function RootNavigator(): any {
           headerTitleStyle: { color: '#615fff', fontWeight: '400', fontSize: 16 },
           headerTintColor: '#615fff',
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: '#ffffff' },
+          headerStyle: { backgroundColor: colorScheme === 'dark' ? '#0D0D0D' : '#FFFFFF' },
+          statusBarStyle: colorScheme === 'dark' ? 'light' : 'dark',
+          statusBarColor: colorScheme === 'dark' ? '#0D0D0D' : '#FFFFFF',
+          navigationBarColor: colorScheme === 'dark' ? '#141414' : '#FFFFFF',
           presentation: 'card',
         }}>
         <Stack.Screen name="OnBoarding" component={OnboardingScreen} options={{ headerShown: false }} />
@@ -180,17 +200,17 @@ function BottomTabNavigator() {
         swipeEnabled: false,
         animationEnabled: false,
         tabBarIndicator: () => <></>,
-        tabBarActiveTintColor: Colors[colorScheme].white[100],
-        tabBarInactiveTintColor: Colors[colorScheme].white[200],
+        tabBarActiveTintColor: colorScheme === 'dark' ? Colors.dark.white[100] : '#141414',
+        tabBarInactiveTintColor: colorScheme === 'dark' ? Colors.dark.white[200] : '#707070',
         tabBarStyle: {
           height: 80,
-          backgroundColor: isOpen ? '#050505' : '#141414',
+          backgroundColor: colorScheme === 'dark' ? (isOpen ? '#050505' : '#141414') : '#FFFFFF',
           justifyContent: 'center',
-          borderTopColor: isOpen ? '#060606' : '#1E1E1E',
+          borderTopColor: colorScheme === 'dark' ? (isOpen ? '#060606' : '#1E1E1E') : '#E7E7EF',
           borderTopWidth: 1,
         },
         tabBarContentContainerStyle: {
-          backgroundColor: isOpen ? '#050505' : '#141414',
+          backgroundColor: colorScheme === 'dark' ? (isOpen ? '#050505' : '#141414') : '#FFFFFF',
           opacity: isOpen ? 0.35 : 1,
         },
       }}>
@@ -200,7 +220,17 @@ function BottomTabNavigator() {
         options={{
           tabBarShowIcon: true,
           tabBarIcon: ({ focused }) => (
-            <Icon icon="wallet" size={26} color={Colors[colorScheme].white[focused ? 100 : 200]} />
+            <Icon
+              icon="wallet"
+              size={26}
+              color={
+                colorScheme === 'dark'
+                  ? Colors.dark.white[focused ? 100 : 200]
+                  : focused
+                    ? '#141414'
+                    : '#707070'
+              }
+            />
           ),
           tabBarLabelStyle: { fontSize: 10, textTransform: 'capitalize', fontFamily: 'Urbanist' },
           tabBarIndicatorStyle: { backgroundColor: Colors[colorScheme].tint, top: 0, height: 3 },
@@ -215,7 +245,17 @@ function BottomTabNavigator() {
           headerTitleStyle: { fontWeight: '800', marginLeft: 20 },
           headerTitleAllowFontScaling: true,
           tabBarIcon: ({ focused }) => (
-            <Icon icon="ownables" size={26} color={Colors[colorScheme].white[focused ? 100 : 200]} />
+            <Icon
+              icon="ownables"
+              size={26}
+              color={
+                colorScheme === 'dark'
+                  ? Colors.dark.white[focused ? 100 : 200]
+                  : focused
+                    ? '#141414'
+                    : '#707070'
+              }
+            />
           ),
           tabBarLabelStyle: { fontSize: 10, textTransform: 'capitalize', fontFamily: 'Urbanist' },
           tabBarIndicatorStyle: { backgroundColor: Colors[colorScheme].tint, top: 0, height: 3 },
