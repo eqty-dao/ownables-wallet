@@ -6,7 +6,6 @@ import {
   BackHandler,
   ImageBackground,
   Text,
-  useColorScheme,
   useWindowDimensions,
 } from 'react-native';
 import {Button, Card, List} from 'react-native-paper';
@@ -53,6 +52,7 @@ import styled from 'styled-components/native';
 import {useUserSettings} from '../../context/User.context';
 import InAppBrowser from 'react-native-inappbrowser-reborn';
 import { toLegacyDetails, toLegacyTransactions } from '../../utils/legacyWalletAdapters';
+import useColorScheme from '../../hooks/useColorScheme';
 const LEGACY_DISPLAY_FACTOR = 100000000;
 
 const ExitPopup = styled.View`
@@ -92,7 +92,7 @@ const MainTab = ({children, navigation}) => {
 
   const isFocused = useIsFocused();
 
-  const colorScheme = useColorScheme() ?? 'dark';
+  const colorScheme = useColorScheme();
 
   const {isSignOutForced, network} = useUserSettings();
 
@@ -418,7 +418,7 @@ const MainTab = ({children, navigation}) => {
               <If condition={transactions.length > 0}>
                 <ActivityCard>
                   <ActivityCardTitle>
-                    <Typography size={6} color={Colors[colorScheme ?? 'dark'].white[100]} bold>
+                    <Typography size={6} color={Colors[colorScheme].white[100]} bold>
                       {WALLET.RECENT_ACTIVITY}
                     </Typography>
                   </ActivityCardTitle>
@@ -428,7 +428,7 @@ const MainTab = ({children, navigation}) => {
                       renderSectionHeader={({section: {date}}) => (
                         <List.Subheader
                           key={`transaction.section:${date}`}
-                          style={{color: Colors[colorScheme ?? 'dark'].white[200]}}>
+                          style={{color: Colors[colorScheme].white[200]}}>
                           {date}
                         </List.Subheader>
                       )}

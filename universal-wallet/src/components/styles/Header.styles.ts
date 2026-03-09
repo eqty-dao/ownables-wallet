@@ -11,7 +11,7 @@ export const HeaderView = styled.View`
 
 export const HeaderBtn = styled(Button)`
   font-size: 15px;
-  color: #a017b7;
+  color: #615fff;
   height: 35px;
   width: 130px;
 `;

@@ -2,8 +2,8 @@ import React from 'react';
 import {BottomCard, BottomAvatar, BottomAvatarContainer, AmountContainer} from './WalletTabScreen.styles';
 import Spacer from '../../components/Spacer';
 import Typography from '../../components/Typography';
-import {useColorScheme} from 'react-native';
 import Colors from '../../constants/Colors';
+import useColorScheme from '../../hooks/useColorScheme';
 
 interface Props {
   title: string;

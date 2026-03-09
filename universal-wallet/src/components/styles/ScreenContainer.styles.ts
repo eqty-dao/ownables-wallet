@@ -1,9 +1,9 @@
 import {Platform} from 'react-native';
 import styled from 'styled-components/native';
 
-export const ScreenSafeAreaView = styled.SafeAreaView`
+export const ScreenSafeAreaView = styled.SafeAreaView<{isDark: boolean}>`
   flex: 1;
-  background: #0d0d0d;
+  background: ${({isDark}) => (isDark ? '#0d0d0d' : '#ffffff')};
 `;
 
 export const ScreenView = styled.View<{spaceBetween: boolean; topPadding?: number; gapSize?: number}>`

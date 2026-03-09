@@ -7,8 +7,10 @@ import {StyledButton} from '../../components/styles/StyledButton.styles';
 import {ButtonContainer, Container, InputContainer, StyledText, StyledTitle} from './LockedScreen.styles';
 import {LOCKED_SCREEN} from '../../constants/Text';
 import {authenticateWithBiometrics} from '../../utils/authenticateWithBiometrics';
+import useColorScheme from '../../hooks/useColorScheme';
 
 export default function LockedScreen({navigation}: RootStackScreenProps<'LockedScreen'>) {
+  const isDark = useColorScheme() === 'dark';
   const [password, setPassword] = useState<string>('');
   const [passwordVisible, setPasswordVisible] = useState<boolean>(true);
 
@@ -47,18 +49,22 @@ export default function LockedScreen({navigation}: RootStackScreenProps<'LockedS
   }, []);
 
   return (
-    <Container>
-      <StyledTitle>{LOCKED_SCREEN.TITLE}</StyledTitle>
-      <StyledText>{LOCKED_SCREEN.SUBTITLE}</StyledText>
+    <Container isDark={isDark}>
+      <StyledTitle isDark={isDark}>{LOCKED_SCREEN.TITLE}</StyledTitle>
+      <StyledText isDark={isDark}>{LOCKED_SCREEN.SUBTITLE}</StyledText>
 
       <InputContainer>
         <StyledInput
-          style={{width: 'auto'}}
+          style={{width: 'auto', backgroundColor: isDark ? '#0d0d0d' : '#ffffff'}}
           label={LOCKED_SCREEN.INPUT_PASSWORD.LABEL}
           value={password}
           onChangeText={password => setPassword(password)}
           secureTextEntry={passwordVisible}
           placeholder={LOCKED_SCREEN.INPUT_PASSWORD.PLACEHOLDER}
+          textColor={isDark ? '#FCFCF7' : '#141414'}
+          outlineColor={isDark ? '#3A3A3C' : '#D9DADE'}
+          activeOutlineColor="#615fff"
+          theme={{colors: {onSurfaceVariant: isDark ? '#909092' : '#8A8B92'}}}
           right={
             <StyledInput.Icon
               name={passwordVisible ? 'eye' : 'eye-off'}

@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import {StyledSubLabel, StyledInput, StyledLabel, InputContainer, FieldContainer} from './styles/InputField.styles';
 import {TouchableIcon} from './TouchableIcon';
+import useColorScheme from '../hooks/useColorScheme';
 
 export const InputField = ({
   label,
@@ -28,15 +29,19 @@ export const InputField = ({
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }) => {
   const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
+  const isDark = useColorScheme() === 'dark';
 
   return (
     <FieldContainer>
-      <StyledLabel disabled={disabled}>{label}</StyledLabel>
-      <InputContainer disabled={disabled} error={value !== '' && error} multiline={multiline}>
+      <StyledLabel disabled={disabled} isDark={isDark}>
+        {label}
+      </StyledLabel>
+      <InputContainer disabled={disabled} error={value !== '' && error} multiline={multiline} isDark={isDark}>
         <StyledInput
           value={value}
           editable={!disabled}
           disabled={disabled}
+          isDark={isDark}
           onChangeText={text => onChangeText(numeric ? text.replace(/[^0-9\.]/g, '') : text)}
           placeholder={placeholder}
           secureTextEntry={secureTextEntry && !passwordVisible}
@@ -45,13 +50,13 @@ export const InputField = ({
         {secureTextEntry && (
           <TouchableIcon
             icon={passwordVisible ? 'eye' : 'eyeCross'}
-            color="#FCFCF7"
+            color={isDark ? '#FCFCF7' : '#212227'}
             size={24}
             onPress={() => setPasswordVisible(!passwordVisible)}
           />
         )}
       </InputContainer>
-      {subLabel && <StyledSubLabel>{subLabel}</StyledSubLabel>}
+      {subLabel && <StyledSubLabel isDark={isDark}>{subLabel}</StyledSubLabel>}
     </FieldContainer>
   );
 };

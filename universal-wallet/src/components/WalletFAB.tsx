@@ -2,12 +2,12 @@ import * as React from 'react';
 import {FAB, Portal, Provider} from 'react-native-paper';
 import {useState} from 'react';
 import Icon from './Icon';
-import {useColorScheme} from 'react-native';
 import Colors from '../constants/Colors';
 import styled from 'styled-components/native';
 import Typography from './Typography';
 import Spacer from './Spacer';
 import {FabContext} from '../context/Fab.context';
+import useColorScheme from '../hooks/useColorScheme';
 
 interface StyledFabProps {
   width: number;

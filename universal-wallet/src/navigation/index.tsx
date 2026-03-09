@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as React from 'react';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { AppState, ColorSchemeName, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList, RootStackScreenProps, RootTabParamList, RootTabScreenProps } from '../../types';
 import SnackbarMessage from '../components/Snackbar';
 import Colors from '../constants/Colors';
@@ -180,7 +181,10 @@ const Tab = createMaterialTopTabNavigator<RootTabParamList>();
 
 function BottomTabNavigator() {
   const colorScheme = useEffectiveColorScheme();
+  const insets = useSafeAreaInsets();
   const { isOpen } = React.useContext(FabContext);
+  const tabBarBottomInset = Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + tabBarBottomInset + 8;
 
   const handleTabPress = (e: any) => {
     if (isOpen) {
@@ -203,11 +207,17 @@ function BottomTabNavigator() {
         tabBarActiveTintColor: colorScheme === 'dark' ? Colors.dark.white[100] : '#141414',
         tabBarInactiveTintColor: colorScheme === 'dark' ? Colors.dark.white[200] : '#707070',
         tabBarStyle: {
-          height: 80,
+          height: tabBarHeight,
+          paddingTop: 8,
+          paddingBottom: tabBarBottomInset,
           backgroundColor: colorScheme === 'dark' ? (isOpen ? '#050505' : '#141414') : '#FFFFFF',
           justifyContent: 'center',
           borderTopColor: colorScheme === 'dark' ? (isOpen ? '#060606' : '#1E1E1E') : '#E7E7EF',
           borderTopWidth: 1,
+        },
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
         },
         tabBarContentContainerStyle: {
           backgroundColor: colorScheme === 'dark' ? (isOpen ? '#050505' : '#141414') : '#FFFFFF',

@@ -2,17 +2,18 @@ import React from 'react';
 import {shortAddress} from '../utils/shortAddress';
 import {ActivityIndicator, List} from 'react-native-paper';
 import txTypes from '../constants/TransactionTypes';
-import {Text, useColorScheme} from 'react-native';
+import {Text} from 'react-native';
 import {formatNumber} from '../utils/formatNumber';
 import {TypedTransaction} from '../interfaces/TypedTransaction';
 import {navigateToTransaction} from '../utils/redirectSocialMedia';
 import Colors from '../constants/Colors';
+import useColorScheme from '../hooks/useColorScheme';
 
 export default function TransactionListItem(params: {direction: 'in' | 'out'; tx: TypedTransaction}): JSX.Element {
   const {direction, tx} = params;
   const colorScheme = useColorScheme();
 
-  const color = Colors[colorScheme ?? 'dark'];
+  const color = Colors[colorScheme];
 
   let description = '';
   if (direction === 'out') {

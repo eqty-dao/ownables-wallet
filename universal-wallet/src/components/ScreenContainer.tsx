@@ -1,6 +1,7 @@
 import React from 'react';
 import {ScreenView, ScreenSafeAreaView} from './styles/ScreenContainer.styles';
 import {KeyboardAvoidingView, Platform, ScrollView} from 'react-native';
+import useColorScheme from '../hooks/useColorScheme';
 
 export const ScreenContainer = ({
   children,
@@ -12,14 +13,21 @@ export const ScreenContainer = ({
   spaceBetween?: boolean;
   topPadding?: number;
   gapSize?: number;
-}) => (
-  <ScreenSafeAreaView>
-    <KeyboardAvoidingView {...(Platform.OS === 'ios' && {behavior: 'position'})}>
-      <ScrollView bounces={false}>
-        <ScreenView spaceBetween={spaceBetween} topPadding={topPadding} gapSize={gapSize}>
-          {children}
-        </ScreenView>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  </ScreenSafeAreaView>
-);
+}) => {
+  const isDark = useColorScheme() === 'dark';
+
+  return (
+    <ScreenSafeAreaView isDark={isDark}>
+      <KeyboardAvoidingView {...(Platform.OS === 'ios' && {behavior: 'position'})}>
+        <ScrollView
+          bounces={false}
+          style={{backgroundColor: isDark ? '#0d0d0d' : '#ffffff'}}
+          contentContainerStyle={{backgroundColor: isDark ? '#0d0d0d' : '#ffffff'}}>
+          <ScreenView spaceBetween={spaceBetween} topPadding={topPadding} gapSize={gapSize}>
+            {children}
+          </ScreenView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenSafeAreaView>
+  );
+};

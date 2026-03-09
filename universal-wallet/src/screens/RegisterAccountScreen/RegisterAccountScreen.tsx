@@ -16,9 +16,11 @@ import { CheckBoxCard } from '../../components/CheckBoxCard';
 import { BottomModal } from '../../components/BottomModal';
 import { isValidEvmAddress } from '../../utils/evmAddress';
 import { StyledCreateSubtitle, StyledCreateTitle } from './RegisterAccountScreen.styles';
+import useColorScheme from '../../hooks/useColorScheme';
 
 
 export default function RegisterAccountScreen({ navigation, route }: RootStackScreenProps<'RegisterAccount'>) {
+  const isDark = useColorScheme() === 'dark';
   const [dialogVisible, setDialogVisible] = useState(false);
 
   const [loginForm, setloginForm] = useState({
@@ -208,9 +210,9 @@ export default function RegisterAccountScreen({ navigation, route }: RootStackSc
         <>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <BackButton onPress={() => navigation.goBack()} />
-            <StyledCreateTitle>{REGISTER.CREATE_TITLE}</StyledCreateTitle>
+            <StyledCreateTitle isDark={isDark}>{REGISTER.CREATE_TITLE}</StyledCreateTitle>
           </View>
-          <StyledCreateSubtitle>{REGISTER.CREATE_SUBTITLE}</StyledCreateSubtitle>
+          <StyledCreateSubtitle isDark={isDark}>{REGISTER.CREATE_SUBTITLE}</StyledCreateSubtitle>
         </>
       ) : (
         <>

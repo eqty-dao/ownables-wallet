@@ -9,6 +9,6 @@ export default function useEffectiveColorScheme(): 'light' | 'dark' {
     return appearance;
   }
 
-  return nativeScheme === 'light' ? 'light' : 'dark';
+  // "system" preference: follow the system scheme, and fallback to light when unavailable.
+  return nativeScheme === 'dark' ? 'dark' : 'light';
 }
-

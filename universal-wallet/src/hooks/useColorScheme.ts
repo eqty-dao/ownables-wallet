@@ -1,5 +1,6 @@
-import {ColorSchemeName, useColorScheme as _useColorScheme} from 'react-native';
+import {ColorSchemeName} from 'react-native';
+import useEffectiveColorScheme from './useEffectiveColorScheme';
 
 export default function useColorScheme(): NonNullable<ColorSchemeName> {
-  return _useColorScheme() as NonNullable<ColorSchemeName>;
+  return useEffectiveColorScheme();
 }

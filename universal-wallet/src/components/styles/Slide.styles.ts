@@ -1,8 +1,8 @@
 import styled from 'styled-components/native';
 import {Dimensions} from 'react-native';
 
-export const Subtitle = styled.Text`
-  color: #303030;
+export const Subtitle = styled.Text<{isDark: boolean}>`
+  color: ${({isDark}) => (isDark ? '#D7D8DE' : '#303030')};
   font-size: 16px;
   margin-top: 35px;
   margin-left: -12px;
