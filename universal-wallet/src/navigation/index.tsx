@@ -11,15 +11,11 @@ import useColorScheme from '../hooks/useColorScheme';
 import SignUpScreen from '../screens/SignUpScreen/SignUpScreen';
 import RegisterAccountScreen from '../screens/RegisterAccountScreen/RegisterAccountScreen';
 import ImportSeedScreen from '../screens/ImportWithSeedScreen/ImportWithSeedScreen';
-import MenuScreen from '../screens/MenuScreen/MenuScreen';
 import LockedScreen from '../screens/LockedScreen/LockedScreen';
 import OnboardingScreen from '../screens/OnBoardingScreen/OnBoardingScreen';
-import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
 import SignInScreen from '../screens/SignInScreen/SignInScreen';
-import WalletTabScreen from '../screens/WalletTabScreen/WalletTabScreen';
 import LocalStorageService from '../services/LocalStorage.service';
 import LinkingConfiguration from './LinkingConfiguration';
-import CreateTransferScreen from '../screens/CreateTransferScreen/CreateTransferScreen';
 import CreateLeaseScreen from '../screens/CreateLeaseScreen/CreateLeaseScreen';
 import TransactionsScreen from '../screens/TransactionsScreen/TransactionsScreen';
 import LeaseScreen from '../screens/LeaseScreen/LeaseScreen';
@@ -30,6 +26,7 @@ import NewOwnablesTabScreen from '../screens/OwnablesTabScreen/NewOwnablesTabScr
 import TestNetBanner from '../components/TestNetBanner';
 import QrReaderScreen from '../screens/QrReaderScreen/QrReaderScreen';
 import AccountLifecycleService from '../services/AccountLifecycle.service';
+import WalletStackNavigator from './WalletStackNavigator';
 
 const navTheme = {
   ...DefaultTheme,
@@ -150,11 +147,6 @@ function RootNavigator(): any {
         <Stack.Screen name="RegisterAccount" component={RegisterAccountScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Root" component={BottomTabNavigator} options={{ headerShown: false }} />
         <Stack.Screen name="LockedScreen" component={LockedScreen} options={{ headerShown: false }} />
-        <Stack.Group>
-          <Stack.Screen name="Menu" component={MenuScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
-        </Stack.Group>
-        <Stack.Screen name="CreateTransfer" component={CreateTransferScreen} options={{ headerShown: false }} />
         <Stack.Screen name="CreateLease" component={CreateLeaseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Lease" component={LeaseScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Transactions" component={TransactionsScreen} options={{ headerShown: false }} />
@@ -204,7 +196,7 @@ function BottomTabNavigator() {
       }}>
       <Tab.Screen
         name="Wallet"
-        component={WalletTabScreen}
+        component={WalletStackNavigator}
         options={{
           tabBarShowIcon: true,
           tabBarIcon: ({ focused }) => (

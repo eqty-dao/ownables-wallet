@@ -2,6 +2,19 @@ import { MaterialTopTabScreenProps } from '@react-navigation/material-top-tabs';
 import { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+export type WalletTokenSymbol = 'ETH' | 'EQTY';
+
+export type WalletStackParamList = {
+  WalletHome: undefined;
+  AccountManager: undefined;
+  AddAccount: { suggestedName?: string } | undefined;
+  WalletSettings: undefined;
+  RecoveryPhrase: undefined;
+  TokenDetails: { token: WalletTokenSymbol };
+  SendToken: { token: WalletTokenSymbol; recipient?: string };
+  ReceiveToken: { token: WalletTokenSymbol };
+};
+
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList { }
@@ -35,10 +48,15 @@ export type RootStackScreenProps<Screen extends keyof RootStackParamList> = Nati
 >;
 
 export type RootTabParamList = {
-  Wallet: undefined;
+  Wallet: NavigatorScreenParams<WalletStackParamList> | undefined;
   Credentials: undefined;
   Ownables: undefined;
 };
+
+export type WalletStackScreenProps<Screen extends keyof WalletStackParamList> = NativeStackScreenProps<
+  WalletStackParamList,
+  Screen
+>;
 
 export type RootTabScreenProps<Screen extends keyof RootTabParamList> = CompositeScreenProps<
   MaterialTopTabScreenProps<RootTabParamList, Screen>,
