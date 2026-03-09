@@ -137,8 +137,8 @@ function RootNavigator(): any {
       <Stack.Navigator
         initialRouteName={appFirstLaunch ? 'OnBoarding' : userAlias ? 'SignIn' : 'SignUp'}
         screenOptions={{
-          headerTitleStyle: { color: '#A017B7', fontWeight: '400', fontSize: 16 },
-          headerTintColor: '#A017B7',
+          headerTitleStyle: { color: '#615fff', fontWeight: '400', fontSize: 16 },
+          headerTintColor: '#615fff',
           headerShadowVisible: false,
           headerStyle: { backgroundColor: '#ffffff' },
           presentation: 'card',
@@ -361,8 +361,8 @@ function BottomTabNavigator() {
 //       <Stack.Navigator
 //         initialRouteName={appFirstLaunch ? 'OnBoarding' : userAlias ? 'SignIn' : 'SignUp'}
 //         screenOptions={{
-//           headerTitleStyle: { color: '#A017B7', fontWeight: '400', fontSize: 16 },
-//           headerTintColor: '#A017B7',
+//           headerTitleStyle: { color: '#615fff', fontWeight: '400', fontSize: 16 },
+//           headerTintColor: '#615fff',
 //           headerShadowVisible: false,
 //           headerStyle: { backgroundColor: '#ffffff' },
 //           presentation: 'card',

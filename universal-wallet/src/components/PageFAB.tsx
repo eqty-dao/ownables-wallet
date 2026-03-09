@@ -9,7 +9,7 @@ export default function PageFAB(props: {icon?: string; onPress: () => void}): JS
       margin: 16,
       right: 0,
       bottom: 0,
-      backgroundColor: '#A017B7',
+      backgroundColor: '#615fff',
     },
   });
 

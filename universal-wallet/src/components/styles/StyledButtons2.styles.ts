@@ -1,7 +1,7 @@
 import styled from 'styled-components/native';
 
 const buttonBackgrounds = {
-  primary: '#510094',
+  primary: '#615fff',
   secondary: 'transparent',
   danger: 'transparent',
   textOnly: 'transparent',
@@ -10,15 +10,15 @@ const buttonBackgrounds = {
 
 const buttonColors = {
   primary: '#FCFCF7',
-  secondary: '#9D8EE6',
+  secondary: '#615fff',
   danger: '#FF3B30',
   textOnly: '#FCFCF7',
   disabled: '#909092',
 };
 
 const buttonBorders = {
-  primary: '#510094',
-  secondary: '#9D8EE6',
+  primary: '#615fff',
+  secondary: '#615fff',
   danger: '#FF3B30',
   textOnly: 'transparent',
   disabled: '#212227',

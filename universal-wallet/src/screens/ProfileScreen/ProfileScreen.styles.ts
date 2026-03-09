@@ -38,7 +38,7 @@ export const Content = styled(Paragraph)`
   margin-bottom: 15px;
 `;
 export const HiddenTitle = styled(Title)`
-  color: #9e1eb6;
+  color: #615fff;
   text-align: center;
   width: 200px;
 `;

@@ -438,7 +438,7 @@ const MainTab = ({children, navigation}) => {
                     />
                   </Card.Content>
                   <Card.Actions>
-                    <Button color="#9D8EE6" style={{width: '100%'}} onPress={() => handleMoreTransactionPressed()}>
+                    <Button color="#615fff" style={{width: '100%'}} onPress={() => handleMoreTransactionPressed()}>
                       {WALLET.MORE}
                     </Button>
                   </Card.Actions>

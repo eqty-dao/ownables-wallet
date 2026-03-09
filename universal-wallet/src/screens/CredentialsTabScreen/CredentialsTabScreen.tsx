@@ -21,7 +21,7 @@ export default function CredentialsTabScreen({navigation}: RootTabScreenProps<'C
       />
       <View>
         <StyledView>
-          <Icon icon="diamond" size={44} color="#9D8EE6" />
+          <Icon icon="diamond" size={44} color="#615fff" />
           <TitleContainer>
             <StyledTitle>{CREDENTIALS.TITLE}</StyledTitle>
             <StyledText>{CREDENTIALS.SUBTITLE}</StyledText>

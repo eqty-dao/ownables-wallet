@@ -250,7 +250,7 @@ export default function MenuScreen({ navigation }: RootStackScreenProps<'Menu'>)
             text={'Log out'}
             onPress={logOut}
             type="textOnly"
-            textStyle={{ fontWeight: '600', color: '#9D8EE6' }}
+            textStyle={{ fontWeight: '600', color: '#615fff' }}
           />
         </MainScreenMinorContainer>
         <NetworkSelector showNetworkSelector={showNetworkSelector} setShowNetworkSelector={setShowNetworkSelector} />

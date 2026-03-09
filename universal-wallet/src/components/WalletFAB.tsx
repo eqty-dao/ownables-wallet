@@ -68,7 +68,7 @@ const WalletFAB = ({transfer}: FabProps): JSX.Element => {
               <StyledIcon icon={'add'} size={21} color={openIconColor} />
             )
           }
-          fabStyle={{backgroundColor: open ? '#ffffff' : '#510094'}}
+          fabStyle={{backgroundColor: open ? '#ffffff' : '#615fff'}}
           color={open ? Colors[colorScheme].black[100] : Colors[colorScheme].white[100]}
           actions={[
             {

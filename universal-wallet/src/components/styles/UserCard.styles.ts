@@ -8,7 +8,7 @@ export const UserCardContainer = styled.View`
 `;
 
 export const UserCardImageContainer = styled.View`
-  background-color: #510094;
+  background-color: #615fff;
   border-radius: 10px;
   width: 48px;
   height: 48px;

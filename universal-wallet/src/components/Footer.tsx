@@ -29,7 +29,7 @@ export default function Footer({currentSlideIndex}: any): JSX.Element {
         {currentSlideIndex === slides.length - 1 && (
           <StyledButton
             mode="contained"
-            color="#A017B7"
+            color="#615fff"
             uppercase={false}
             labelStyle={{fontWeight: '400', fontSize: 16, width: '100%'}}
             onPress={() => navigation.navigate('SignUp')}>

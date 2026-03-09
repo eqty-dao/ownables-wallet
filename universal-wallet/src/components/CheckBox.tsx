@@ -11,7 +11,7 @@ export default function CheckBox(props: {
 }): JSX.Element {
   return (
     <CheckBoxContainer>
-      <Checkbox.Android onPress={() => props.onCheck()} color={'#A017B7'} status={props.status} />
+      <Checkbox.Android onPress={() => props.onCheck()} color={'#615fff'} status={props.status} />
       <TouchableOpacity onPress={() => props.onPressText()}>
         <CheckBoxLabel>{REGISTER.CHECKBOX}</CheckBoxLabel>
       </TouchableOpacity>

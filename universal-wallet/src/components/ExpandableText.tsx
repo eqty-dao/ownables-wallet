@@ -13,7 +13,7 @@ export const ExpandableText = ({text, content}: {text: string; content: React.Re
     <ExpandableTextContainer>
       <ExpandableTextHeadingContainer onPress={() => setIsExpanded(!isExpanded)}>
         <ExpandableTextHeading>{text}</ExpandableTextHeading>
-        <Icon icon={isExpanded ? 'chevronUp' : 'chevronDown'} color="#9D8EE6" size={20} />
+        <Icon icon={isExpanded ? 'chevronUp' : 'chevronDown'} color="#615fff" size={20} />
       </ExpandableTextHeadingContainer>
       {isExpanded && content}
     </ExpandableTextContainer>

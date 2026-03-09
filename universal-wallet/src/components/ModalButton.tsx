@@ -5,7 +5,7 @@ export default function ModalButton(props: {onPress: () => void; text: string; b
   return (
     <Button
       mode={'text'}
-      color={'#A017B7'}
+      color={'#615fff'}
       uppercase={false}
       labelStyle={{fontWeight: '400', fontSize: 15, color: props.bold ? '#303030' : '#888888'}}
       contentStyle={{height: 45, justifyContent: 'center'}}

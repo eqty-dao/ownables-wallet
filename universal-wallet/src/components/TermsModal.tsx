@@ -19,7 +19,7 @@ export default function TermsModal(props: {visible: boolean; onClose: any; onReq
             <Container>
               <StyledButton
                 mode="contained"
-                color="#A017B7"
+                color="#615fff"
                 uppercase={false}
                 labelStyle={{fontWeight: '400', fontSize: 16, width: '100%'}}
                 onPress={() => {

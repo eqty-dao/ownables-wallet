@@ -43,7 +43,7 @@ export default function TransactionListItem(params: {direction: 'in' | 'out'; tx
       onPress={() => navigateToTransaction(tx.id!)}
       left={({color, style}) =>
         tx.pending ? (
-          <ActivityIndicator style={{...style, marginLeft: 8}} animating={true} color="#A017B7" />
+          <ActivityIndicator style={{...style, marginLeft: 8}} animating={true} color="#615fff" />
         ) : (
           <List.Icon
             color={color}

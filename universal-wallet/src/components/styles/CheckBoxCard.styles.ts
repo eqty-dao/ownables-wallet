@@ -12,8 +12,8 @@ export const CheckContainer = styled.TouchableOpacity<{value: boolean}>`
   border-radius: 2px;
   justify-content: center;
   align-items: center;
-  background-color: ${({value}) => (value ? '#510094' : 'transparent')};
-  border: 1px solid ${({value}) => (value ? '#510094' : '#3A3A3C')};
+  background-color: ${({value}) => (value ? '#615fff' : 'transparent')};
+  border: 1px solid ${({value}) => (value ? '#615fff' : '#3A3A3C')};
 `;
 
 export const CheckBoxLabelContainer = styled.TouchableOpacity.attrs({

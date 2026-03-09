@@ -1,4 +1,4 @@
-const tintColorLight = '#9e1eb6';
+const tintColorLight = '#615fff';
 const tintColorDark = '#fff';
 
 export default {
@@ -13,7 +13,7 @@ export default {
       200: '#909092',
     },
     purple: {
-      100: '#9D8EE6',
+      100: '#615fff',
     },
     black: {
       100: '#000000',
@@ -30,7 +30,7 @@ export default {
       200: '#909092',
     },
     purple: {
-      100: '#9D8EE6',
+      100: '#615fff',
     },
     black: {
       100: '#000000',
