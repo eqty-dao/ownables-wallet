@@ -10,7 +10,6 @@ const linking: LinkingOptions<RootStackParamList> = {
           Wallet: {
             screens: {
               WalletHome: 'one',
-              AccountManager: 'one/accounts',
               AddAccount: 'one/accounts/add',
               WalletSettings: 'one/settings',
               RecoveryPhrase: 'one/settings/recovery',

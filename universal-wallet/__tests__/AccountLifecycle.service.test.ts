@@ -167,6 +167,46 @@ describe('AccountLifecycleService', () => {
     expect(accounts[0].nickname).toBe('alice');
   });
 
+  it('renames stored account and updates active metadata', async () => {
+    storage['@activeAccountAddress'] = '0xabc0000000000000000000000000000000000000';
+    storage['@accountMetaList'] = [
+      {
+        nickname: 'alice',
+        address: '0xabc0000000000000000000000000000000000000',
+        derivationPath: "m/44'/60'/0'/0/0",
+        accountVersion: 1,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    await AccountLifecycleService.renameAccount('0xabc0000000000000000000000000000000000000', 'Main Account');
+
+    expect(storage['@accountMetaList'][0].nickname).toBe('Main Account');
+    expect(storage['@userAlias']).toEqual({ nickname: 'Main Account' });
+    expect(storage['@accountMeta']).toEqual(
+      expect.objectContaining({
+        address: '0xabc0000000000000000000000000000000000000',
+        nickname: 'Main Account',
+      }),
+    );
+  });
+
+  it('rejects rename when nickname is empty', async () => {
+    storage['@accountMetaList'] = [
+      {
+        nickname: 'alice',
+        address: '0xabc0000000000000000000000000000000000000',
+        derivationPath: "m/44'/60'/0'/0/0",
+        accountVersion: 1,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    await expect(
+      AccountLifecycleService.renameAccount('0xabc0000000000000000000000000000000000000', '   '),
+    ).rejects.toThrow('Nickname is required');
+  });
+
   it('deletes active account and clears scoped secret', async () => {
     storage['@activeAccountAddress'] = '0xabc0000000000000000000000000000000000000';
     storage['@accountMetaList'] = [

@@ -140,6 +140,40 @@ export default class AccountLifecycleService {
     return this.ensureStoredMetaList();
   };
 
+  public static renameAccount = async (address: EvmAddress, nickname: string): Promise<void> => {
+    const normalizedAddress = normalizeEvmAddress(address) as EvmAddress;
+    const trimmedNickname = nickname.trim();
+
+    if (!trimmedNickname) {
+      throw new Error('Nickname is required');
+    }
+
+    const currentList = await this.ensureStoredMetaList();
+    const targetIndex = currentList.findIndex(meta => meta.address === normalizedAddress);
+
+    if (targetIndex < 0) {
+      throw new Error('Account not found');
+    }
+
+    const updatedMeta: StoredAccountMeta = {
+      ...currentList[targetIndex],
+      nickname: trimmedNickname,
+    };
+
+    const updatedList = [...currentList];
+    updatedList[targetIndex] = updatedMeta;
+
+    await LocalStorageService.storeData(ACCOUNT_META_LIST_KEY, updatedList);
+
+    const activeAddress = await this.getActiveAddress();
+    if (activeAddress === normalizedAddress) {
+      await Promise.all([
+        LocalStorageService.storeData(USER_ALIAS_KEY, { nickname: trimmedNickname }),
+        LocalStorageService.storeData(ACCOUNT_META_KEY, updatedMeta),
+      ]);
+    }
+  };
+
   public static unlock = async (
     password?: string,
     biometricSignature?: string,

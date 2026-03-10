@@ -6,7 +6,6 @@ export type WalletTokenSymbol = 'ETH' | 'EQTY';
 
 export type WalletStackParamList = {
   WalletHome: undefined;
-  AccountManager: undefined;
   AddAccount: { suggestedName?: string } | undefined;
   WalletSettings: undefined;
   RecoveryPhrase: undefined;

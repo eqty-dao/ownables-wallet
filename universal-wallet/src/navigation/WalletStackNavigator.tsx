@@ -2,7 +2,6 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { WalletStackParamList } from '../../types';
 import WalletHomeScreen from '../screens/WalletFlow/WalletHomeScreen';
-import AccountManagerScreen from '../screens/WalletFlow/AccountManagerScreen';
 import AddAccountScreen from '../screens/WalletFlow/AddAccountScreen';
 import WalletSettingsScreen from '../screens/WalletFlow/WalletSettingsScreen';
 import RecoveryPhraseScreen from '../screens/WalletFlow/RecoveryPhraseScreen';
@@ -16,7 +15,6 @@ export default function WalletStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="WalletHome" component={WalletHomeScreen} />
-      <Stack.Screen name="AccountManager" component={AccountManagerScreen} />
       <Stack.Screen name="AddAccount" component={AddAccountScreen} />
       <Stack.Screen name="WalletSettings" component={WalletSettingsScreen} />
       <Stack.Screen name="RecoveryPhrase" component={RecoveryPhraseScreen} />

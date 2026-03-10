@@ -35,7 +35,7 @@ export default function AddAccountScreen({ navigation }: WalletStackScreenProps<
       await AccountLifecycleService.switchAccount(created.address as `0x${string}`, password);
 
       setMessage('Account added successfully.');
-      navigation.navigate('AccountManager');
+      navigation.navigate('WalletHome');
     } catch (_error) {
       setMessage('Could not add account. Verify the recovery phrase and password.');
     } finally {
