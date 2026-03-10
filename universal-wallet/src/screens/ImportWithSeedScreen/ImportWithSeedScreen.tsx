@@ -9,8 +9,10 @@ import { BackButton } from '../../components/BackButton';
 import { StyledButton } from '../../components/StyledButton';
 import { SeedPhraseInput } from '../../components/SeedPhraseInput/SeedPhraseInput';
 import { extractEnteredWords, isValidMnemonicLength, normalizeMnemonicWords } from './mnemonicInput';
+import useEffectiveColorScheme from '../../hooks/useEffectiveColorScheme';
 
 export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'ImportSeed'>) {
+  const isDark = useEffectiveColorScheme() === 'dark';
   const [words, setWords] = useState<string[]>(Array(24).fill(''));
   const [visibleWordCount, setVisibleWordCount] = useState<number>(12);
   const { setShowMessage, setMessageInfo } = useContext(MessageContext);
@@ -82,8 +84,8 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
       <View style={styles.headerRow}>
         <BackButton onPress={navigation.goBack} />
         <View style={styles.headerTextContainer}>
-          <Text style={styles.title}>{IMPORT_WITHSEEDS.IMPORT_TITLE}</Text>
-          <Text style={styles.subtitle}>{IMPORT_WITHSEEDS.IMPORT_SUBTITLE}</Text>
+          <Text style={[styles.title, { color: isDark ? '#fcfcf7' : '#141414' }]}>{IMPORT_WITHSEEDS.IMPORT_TITLE}</Text>
+          <Text style={[styles.subtitle, { color: isDark ? '#909092' : '#6E6F78' }]}>{IMPORT_WITHSEEDS.IMPORT_SUBTITLE}</Text>
         </View>
       </View>
 
@@ -91,7 +93,7 @@ export default function ImportSeedScreen({ navigation }: RootStackScreenProps<'I
         onPress={() => setVisibleWordCount(visibleWordCount === 12 ? 24 : 12)}
         style={styles.wordCountToggle}
       >
-        <Text style={styles.wordCountToggleText}>
+        <Text style={[styles.wordCountToggleText, { color: '#615fff' }]}>
           {visibleWordCount === 12 ? 'Need more than 12 words? Show 24 fields' : 'Use 12 fields'}
         </Text>
       </TouchableOpacity>

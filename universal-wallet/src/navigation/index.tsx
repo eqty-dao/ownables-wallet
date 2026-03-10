@@ -33,7 +33,7 @@ const lightNavTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: '#FFFFFF',
+    background: '#f3f4f6',
     card: '#FFFFFF',
     text: '#141414',
     primary: '#615fff',
@@ -45,8 +45,8 @@ const darkNavTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: '#0D0D0D',
-    card: '#141414',
+    background: '#1a1a1a',
+    card: '#252525',
     text: '#FFFFFF',
     primary: '#615fff',
     border: '#1E1E1E',
@@ -155,10 +155,10 @@ function RootNavigator(): any {
           headerTitleStyle: { color: '#615fff', fontWeight: '400', fontSize: 16 },
           headerTintColor: '#615fff',
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: colorScheme === 'dark' ? '#0D0D0D' : '#FFFFFF' },
+          headerStyle: { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f3f4f6' },
           statusBarStyle: colorScheme === 'dark' ? 'light' : 'dark',
-          statusBarColor: colorScheme === 'dark' ? '#0D0D0D' : '#FFFFFF',
-          navigationBarColor: colorScheme === 'dark' ? '#141414' : '#FFFFFF',
+          statusBarColor: colorScheme === 'dark' ? '#1a1a1a' : '#f3f4f6',
+          navigationBarColor: colorScheme === 'dark' ? '#252525' : '#FFFFFF',
           presentation: 'card',
         }}>
         <Stack.Screen name="OnBoarding" component={OnboardingScreen} options={{ headerShown: false }} />
@@ -210,9 +210,9 @@ function BottomTabNavigator() {
           height: tabBarHeight,
           paddingTop: 8,
           paddingBottom: tabBarBottomInset,
-          backgroundColor: colorScheme === 'dark' ? (isOpen ? '#050505' : '#141414') : '#FFFFFF',
+          backgroundColor: colorScheme === 'dark' ? (isOpen ? '#1a1a1a' : '#252525') : '#FFFFFF',
           justifyContent: 'center',
-          borderTopColor: colorScheme === 'dark' ? (isOpen ? '#060606' : '#1E1E1E') : '#E7E7EF',
+          borderTopColor: colorScheme === 'dark' ? '#343434' : '#E7E7EF',
           borderTopWidth: 1,
         },
         tabBarItemStyle: {
@@ -220,7 +220,7 @@ function BottomTabNavigator() {
           alignItems: 'center',
         },
         tabBarContentContainerStyle: {
-          backgroundColor: colorScheme === 'dark' ? (isOpen ? '#050505' : '#141414') : '#FFFFFF',
+          backgroundColor: colorScheme === 'dark' ? (isOpen ? '#1a1a1a' : '#252525') : '#FFFFFF',
           opacity: isOpen ? 0.35 : 1,
         },
       }}>

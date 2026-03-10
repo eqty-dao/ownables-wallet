@@ -7,11 +7,11 @@ import {formatNumber} from '../utils/formatNumber';
 import {TypedTransaction} from '../interfaces/TypedTransaction';
 import {navigateToTransaction} from '../utils/redirectSocialMedia';
 import Colors from '../constants/Colors';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 
 export default function TransactionListItem(params: {direction: 'in' | 'out'; tx: TypedTransaction}): JSX.Element {
   const {direction, tx} = params;
-  const colorScheme = useColorScheme();
+  const colorScheme = useEffectiveColorScheme();
 
   const color = Colors[colorScheme];
 

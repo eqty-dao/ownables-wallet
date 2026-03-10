@@ -7,7 +7,7 @@ import styled from 'styled-components/native';
 import Typography from './Typography';
 import Spacer from './Spacer';
 import {FabContext} from '../context/Fab.context';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 
 interface StyledFabProps {
   width: number;
@@ -47,7 +47,7 @@ interface FabProps {
 const WalletFAB = ({transfer}: FabProps): JSX.Element => {
   const [state, setState] = useState({open: false});
   const {open} = state;
-  const colorScheme = useColorScheme();
+  const colorScheme = useEffectiveColorScheme();
   const {setFabOpen} = React.useContext(FabContext);
 
   const handleStateChange = ({open}) => {

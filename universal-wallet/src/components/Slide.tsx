@@ -1,10 +1,10 @@
 import React from 'react';
 import {Subtitle, TitleImg} from './styles/Slide.styles';
 import {Container, TitleContainer, StyledImage} from './styles/Slide.styles';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 
 export default function Slide({item}: any) {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useEffectiveColorScheme() === 'dark';
 
   return (
     <Container>

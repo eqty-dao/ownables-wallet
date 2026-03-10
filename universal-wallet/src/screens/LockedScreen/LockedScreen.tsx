@@ -7,10 +7,10 @@ import {StyledButton} from '../../components/styles/StyledButton.styles';
 import {ButtonContainer, Container, InputContainer, StyledText, StyledTitle} from './LockedScreen.styles';
 import {LOCKED_SCREEN} from '../../constants/Text';
 import {authenticateWithBiometrics} from '../../utils/authenticateWithBiometrics';
-import useColorScheme from '../../hooks/useColorScheme';
+import useEffectiveColorScheme from '../../hooks/useEffectiveColorScheme';
 
 export default function LockedScreen({navigation}: RootStackScreenProps<'LockedScreen'>) {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useEffectiveColorScheme() === 'dark';
   const [password, setPassword] = useState<string>('');
   const [passwordVisible, setPasswordVisible] = useState<boolean>(true);
 

@@ -52,7 +52,7 @@ import styled from 'styled-components/native';
 import {useUserSettings} from '../../context/User.context';
 import InAppBrowser from 'react-native-inappbrowser-reborn';
 import { toLegacyDetails, toLegacyTransactions } from '../../utils/legacyWalletAdapters';
-import useColorScheme from '../../hooks/useColorScheme';
+import useEffectiveColorScheme from '../../hooks/useEffectiveColorScheme';
 const LEGACY_DISPLAY_FACTOR = 100000000;
 
 const ExitPopup = styled.View`
@@ -92,7 +92,7 @@ const MainTab = ({children, navigation}) => {
 
   const isFocused = useIsFocused();
 
-  const colorScheme = useColorScheme();
+  const colorScheme = useEffectiveColorScheme();
 
   const {isSignOutForced, network} = useUserSettings();
 

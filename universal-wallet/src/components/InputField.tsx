@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {StyledSubLabel, StyledInput, StyledLabel, InputContainer, FieldContainer} from './styles/InputField.styles';
 import {TouchableIcon} from './TouchableIcon';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 
 export const InputField = ({
   label,
@@ -29,7 +29,7 @@ export const InputField = ({
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }) => {
   const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useEffectiveColorScheme() === 'dark';
 
   return (
     <FieldContainer>

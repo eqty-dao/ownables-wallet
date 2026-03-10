@@ -1,6 +1,6 @@
 import React from 'react';
 import Colors from '../constants/Colors';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 import {HeaderContainer} from './styles/OverviewHeader.styles';
 import {View} from 'react-native';
 import Icon from './Icon';
@@ -16,7 +16,7 @@ export default function OverviewHeader(props: {
   marginLeft?: number | undefined;
   hideQR?: boolean;
 }): JSX.Element {
-  const colorScheme = useColorScheme();
+  const colorScheme = useEffectiveColorScheme();
   const navigation = useNavigation();
 
   return (

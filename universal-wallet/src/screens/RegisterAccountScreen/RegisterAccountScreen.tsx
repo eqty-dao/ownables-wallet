@@ -16,11 +16,11 @@ import { CheckBoxCard } from '../../components/CheckBoxCard';
 import { BottomModal } from '../../components/BottomModal';
 import { isValidEvmAddress } from '../../utils/evmAddress';
 import { StyledCreateSubtitle, StyledCreateTitle } from './RegisterAccountScreen.styles';
-import useColorScheme from '../../hooks/useColorScheme';
+import useEffectiveColorScheme from '../../hooks/useEffectiveColorScheme';
 
 
 export default function RegisterAccountScreen({ navigation, route }: RootStackScreenProps<'RegisterAccount'>) {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useEffectiveColorScheme() === 'dark';
   const [dialogVisible, setDialogVisible] = useState(false);
 
   const [loginForm, setloginForm] = useState({

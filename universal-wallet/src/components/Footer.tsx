@@ -4,11 +4,11 @@ import slides from '../utils/slideList';
 import {BtnContainer, Container, Indicator, IndicatorContainer} from './styles/Footer.styles';
 import {StyledButton} from './styles/StyledButton.styles';
 import {ONBOARDING} from '../constants/Text';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 
 export default function Footer({currentSlideIndex}: any): JSX.Element {
   const navigation = useNavigation();
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useEffectiveColorScheme() === 'dark';
 
   return (
     <Container>

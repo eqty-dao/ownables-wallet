@@ -1,9 +1,9 @@
 import React from 'react';
 import {StyledSubtitle, StyledTitle, TitleContainer} from './styles/Title.styles';
-import useColorScheme from '../hooks/useColorScheme';
+import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 
 export const Title = ({title, subtitle}: {title: string; subtitle?: string}) => {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useEffectiveColorScheme() === 'dark';
 
   return (
     <TitleContainer>

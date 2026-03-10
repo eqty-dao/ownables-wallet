@@ -34,6 +34,11 @@ jest.mock('../src/components/StyledButton', () => ({
   StyledButton: (props: unknown) => mockStyledButton(props),
 }));
 
+jest.mock('../src/hooks/useEffectiveColorScheme', () => ({
+  __esModule: true,
+  default: () => 'dark',
+}));
+
 describe('ImportWithSeedScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();

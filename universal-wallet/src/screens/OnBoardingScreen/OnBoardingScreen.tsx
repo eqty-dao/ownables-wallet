@@ -7,12 +7,12 @@ import slides from '../../utils/slideList';
 import {StyledSafeAreaView} from './OnBoardingScreen.styles';
 import {navigateToWebsite} from '../../utils/redirectSocialMedia';
 import {Dimensions} from 'react-native';
-import useColorScheme from '../../hooks/useColorScheme';
+import useEffectiveColorScheme from '../../hooks/useEffectiveColorScheme';
 
 const ITEM_WIDTH = Dimensions.get('window').width;
 
 export default function OnboardingScreen() {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useEffectiveColorScheme() === 'dark';
   const {width, height} = useWindowDimensions();
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const ref = useRef<FlatList>(null);

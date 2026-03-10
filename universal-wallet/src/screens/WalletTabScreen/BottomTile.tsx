@@ -3,7 +3,7 @@ import {BottomCard, BottomAvatar, BottomAvatarContainer, AmountContainer} from '
 import Spacer from '../../components/Spacer';
 import Typography from '../../components/Typography';
 import Colors from '../../constants/Colors';
-import useColorScheme from '../../hooks/useColorScheme';
+import useEffectiveColorScheme from '../../hooks/useEffectiveColorScheme';
 
 interface Props {
   title: string;
@@ -12,7 +12,7 @@ interface Props {
 }
 
 const BottomTile = ({title, value, suffix}: Props) => {
-  const colorScheme = useColorScheme();
+  const colorScheme = useEffectiveColorScheme();
 
   return (
     <BottomCard>
