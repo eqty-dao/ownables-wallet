@@ -364,13 +364,17 @@ const buildStyles = (scheme: 'light' | 'dark') => {
     },
     switcherRows: {
       paddingHorizontal: 18,
-      paddingVertical: 10,
+      paddingTop: 0,
+      paddingBottom: 10,
     },
     switcherRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingVertical: 12,
+    },
+    switcherRowFirst: {
+      paddingTop: 0,
     },
     switcherRowMain: {
       flex: 1,

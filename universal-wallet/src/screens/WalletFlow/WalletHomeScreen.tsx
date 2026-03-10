@@ -266,13 +266,13 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
           )}
           <Pressable style={styles.switcherBackdropPressable} onPress={closeSwitcher} />
 
-          <View style={[styles.switcherSheet, { paddingTop: topInset }]}>
+          <View style={styles.switcherSheet}>
             <View style={styles.switcherRows}>
               {accounts.map((account, index) => {
                 const isActive = account.address.toLowerCase() === activeAddress;
                 return (
                   <View key={account.address}>
-                    <View style={styles.switcherRow}>
+                    <View style={[styles.switcherRow, index === 0 ? styles.switcherRowFirst : null]}>
                       <Pressable style={styles.switcherRowMain} onPress={() => onSwitchAccount(account.address)}>
                         <Text style={styles.switcherRowTitle}>{account.nickname}</Text>
                         <Text style={styles.switcherRowAddress}>{truncateAddress(account.address)}</Text>
