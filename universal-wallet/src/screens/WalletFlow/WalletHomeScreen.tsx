@@ -48,7 +48,6 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
   const [currency, setCurrency] = useState<WalletCurrency>('USD');
   const [switcherMessage, setSwitcherMessage] = useState('');
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-  const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<EvmStoredAccountMeta | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [overview, setOverview] = useState<WalletOverview>({
@@ -110,6 +109,8 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
   const closeSwitcher = useCallback(() => {
     setIsSwitcherOpen(false);
     setSwitcherMessage('');
+    setRenameTarget(null);
+    setRenameValue('');
   }, []);
 
   const onSwitchAccount = useCallback(
@@ -133,11 +134,9 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
   const openRename = useCallback((account: EvmStoredAccountMeta) => {
     setRenameTarget(account);
     setRenameValue(account.nickname);
-    setIsRenameOpen(true);
   }, []);
 
   const closeRename = useCallback(() => {
-    setIsRenameOpen(false);
     setRenameTarget(null);
     setRenameValue('');
   }, []);
@@ -247,7 +246,7 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
         </View>
       </ScrollView>
 
-      <Modal transparent visible={isSwitcherOpen} animationType="fade" onRequestClose={closeSwitcher}>
+      <Modal transparent visible={isSwitcherOpen} animationType="fade" onRequestClose={renameTarget ? closeRename : closeSwitcher}>
         <View style={styles.switcherOverlay}>
           {canUseBlur ? (
             <BlurView
@@ -267,70 +266,71 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
           <Pressable style={styles.switcherBackdropPressable} onPress={closeSwitcher} />
 
           <View style={styles.switcherSheet}>
-            <View style={styles.switcherRows}>
-              {accounts.map((account, index) => {
-                const isActive = account.address.toLowerCase() === activeAddress;
-                return (
-                  <View key={account.address}>
-                    <View style={[styles.switcherRow, index === 0 ? styles.switcherRowFirst : null]}>
-                      <Pressable style={styles.switcherRowMain} onPress={() => onSwitchAccount(account.address)}>
-                        <Text style={styles.switcherRowTitle}>{account.nickname}</Text>
-                        <Text style={styles.switcherRowAddress}>{truncateAddress(account.address)}</Text>
-                      </Pressable>
+            {renameTarget ? (
+              <View style={styles.renameInlinePanel}>
+                <View style={styles.renameHeaderRow}>
+                  <Pressable onPress={closeRename} style={styles.renameCloseButton}>
+                    <FontAwesome6 name="xmark" size={18} color={styles.homeHeaderIcon.color} />
+                  </Pressable>
+                  <Text style={styles.renameTitle}>Rename Account</Text>
+                  <View style={styles.renameCloseButton} />
+                </View>
 
-                      <View style={styles.switcherRowActions}>
-                        {isActive ? <FontAwesome6 name="check" size={16} color="#615fff" /> : null}
-                        <Pressable style={styles.switcherSettingsButton} onPress={() => openRename(account)}>
-                          <FontAwesome6 name="sliders" size={14} color={styles.homeHeaderIcon.color} />
-                        </Pressable>
-                      </View>
-                    </View>
-                    {index < accounts.length - 1 ? <View style={styles.switcherDivider} /> : null}
-                  </View>
-                );
-              })}
-            </View>
+                <Text style={styles.renameLabel}>Account Name</Text>
+                <TextInput
+                  style={styles.renameInput}
+                  value={renameValue}
+                  onChangeText={setRenameValue}
+                  autoFocus
+                  placeholder="Account name"
+                  placeholderTextColor="#8d94a1"
+                />
 
-            <Pressable
-              style={styles.switcherAddRow}
-              onPress={() => {
-                closeSwitcher();
-                navigation.navigate('AddAccount', { suggestedName: `Account ${accounts.length + 1}` });
-              }}>
-              <View style={styles.switcherAddIconCircle}>
-                <FontAwesome6 name="plus" size={14} color="#ffffff" />
+                <Pressable style={styles.renameSaveButton} onPress={onSaveRename}>
+                  <Text style={styles.renameSaveButtonText}>Save</Text>
+                </Pressable>
+                {switcherMessage ? <Text style={styles.switcherMessage}>{switcherMessage}</Text> : null}
               </View>
-              <Text style={styles.switcherAddText}>Add Account</Text>
-            </Pressable>
-            {switcherMessage ? <Text style={styles.switcherMessage}>{switcherMessage}</Text> : null}
-          </View>
-        </View>
-      </Modal>
+            ) : (
+              <>
+                <View style={styles.switcherRows}>
+                  {accounts.map((account, index) => {
+                    const isActive = account.address.toLowerCase() === activeAddress;
+                    return (
+                      <View key={account.address}>
+                        <View style={[styles.switcherRow, index === 0 ? styles.switcherRowFirst : null]}>
+                          <Pressable style={styles.switcherRowMain} onPress={() => onSwitchAccount(account.address)}>
+                            <Text style={styles.switcherRowTitle}>{account.nickname}</Text>
+                            <Text style={styles.switcherRowAddress}>{truncateAddress(account.address)}</Text>
+                          </Pressable>
 
-      <Modal transparent visible={isRenameOpen} animationType="fade" onRequestClose={closeRename}>
-        <View style={styles.renameOverlay}>
-          <Pressable style={styles.renameBackdropPressable} onPress={closeRename} />
-          <View style={styles.renameModalCard}>
-            <View style={styles.renameHeaderRow}>
-              <Text style={styles.renameTitle}>Rename Account</Text>
-              <Pressable onPress={closeRename} style={styles.renameCloseButton}>
-                <FontAwesome6 name="xmark" size={18} color={styles.homeHeaderIcon.color} />
-              </Pressable>
-            </View>
+                          <View style={styles.switcherRowActions}>
+                            {isActive ? <FontAwesome6 name="check" size={16} color="#615fff" /> : null}
+                            <Pressable style={styles.switcherSettingsButton} onPress={() => openRename(account)}>
+                              <FontAwesome6 name="sliders" size={14} color={styles.homeHeaderIcon.color} />
+                            </Pressable>
+                          </View>
+                        </View>
+                        {index < accounts.length - 1 ? <View style={styles.switcherDivider} /> : null}
+                      </View>
+                    );
+                  })}
+                </View>
 
-            <Text style={styles.renameLabel}>Account Name</Text>
-            <TextInput
-              style={styles.renameInput}
-              value={renameValue}
-              onChangeText={setRenameValue}
-              autoFocus
-              placeholder="Account name"
-              placeholderTextColor="#8d94a1"
-            />
-
-            <Pressable style={styles.renameSaveButton} onPress={onSaveRename}>
-              <Text style={styles.renameSaveButtonText}>Save</Text>
-            </Pressable>
+                <Pressable
+                  style={styles.switcherAddRow}
+                  onPress={() => {
+                    closeSwitcher();
+                    navigation.navigate('AddAccount', { suggestedName: `Account ${accounts.length + 1}` });
+                  }}>
+                  <View style={styles.switcherAddIconCircle}>
+                    <FontAwesome6 name="plus" size={14} color="#ffffff" />
+                  </View>
+                  <Text style={styles.switcherAddText}>Add Account</Text>
+                </Pressable>
+                {switcherMessage ? <Text style={styles.switcherMessage}>{switcherMessage}</Text> : null}
+              </>
+            )}
           </View>
         </View>
       </Modal>

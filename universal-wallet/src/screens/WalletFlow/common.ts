@@ -437,24 +437,10 @@ const buildStyles = (scheme: 'light' | 'dark') => {
       paddingHorizontal: 18,
       paddingBottom: 14,
     },
-    renameOverlay: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      backgroundColor: 'rgba(8,10,17,0.45)',
-    },
-    renameBackdropPressable: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    renameModalCard: {
-      width: '100%',
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: p.rowBorder,
-      backgroundColor: p.screenSecondary,
-      padding: 18,
-      zIndex: 1,
+    renameInlinePanel: {
+      paddingHorizontal: 18,
+      paddingTop: 12,
+      paddingBottom: 18,
     },
     renameHeaderRow: {
       flexDirection: 'row',
