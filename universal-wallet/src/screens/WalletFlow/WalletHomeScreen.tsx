@@ -1,18 +1,22 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import Clipboard from '@react-native-clipboard/clipboard';
+import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
 import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import WalletPortfolioService, { WalletOverview } from '../../services/WalletPortfolio.service';
 import WalletPreferencesService, { WalletCurrency } from '../../services/WalletPreferences.service';
-import { Network, useUserSettings } from '../../context/User.context';
+import Icon from '../../components/Icon';
+import { useUserSettings } from '../../context/User.context';
 import { useWalletFlowStyles } from './common';
 
 const formatCurrency = (value: number, currency: WalletCurrency): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-    maximumFractionDigits: value > 1000 ? 0 : 2,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(value || 0);
 };
 
@@ -28,12 +32,16 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
   const [nickname, setNickname] = useState('My Wallet');
   const [address, setAddress] = useState('');
   const [currency, setCurrency] = useState<WalletCurrency>('USD');
-  const [overview, setOverview] = useState<WalletOverview>({ tokens: [], totalFiat: 0 });
-  const [error, setError] = useState('');
+  const [overview, setOverview] = useState<WalletOverview>({
+    tokens: [
+      { symbol: 'ETH', name: 'Ethereum', balance: 0, price: 0, fiatValue: 0 },
+      { symbol: 'EQTY', name: 'EQTY', balance: 0, price: 0, fiatValue: 0 },
+    ],
+    totalFiat: 0,
+  });
 
   const load = useCallback(async () => {
     try {
-      setError('');
       const [account, prefs, list] = await Promise.all([
         AccountLifecycleService.getAccount(),
         WalletPreferencesService.getPreferences(),
@@ -53,8 +61,13 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
       });
       setOverview(portfolio);
     } catch (_error) {
-      setOverview({ tokens: [], totalFiat: 0 });
-      setError('Unable to load wallet data right now.');
+      setOverview({
+        tokens: [
+          { symbol: 'ETH', name: 'Ethereum', balance: 0, price: 0, fiatValue: 0 },
+          { symbol: 'EQTY', name: 'EQTY', balance: 0, price: 0, fiatValue: 0 },
+        ],
+        totalFiat: 0,
+      });
     }
   }, [network]);
 
@@ -66,38 +79,61 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Wallet</Text>
-      <Text style={styles.subtitle}>Base network wallet with ETH and EQTY.</Text>
-
-      <View style={styles.heroCard}>
-        <Text style={styles.heroLabel}>Total Balance</Text>
-        <Text style={styles.heroValue}>{formatCurrency(overview.totalFiat, currency)}</Text>
-        <Text style={styles.heroSubValue}>Network: {network === Network.MAINNET ? 'Base Mainnet' : 'Base Sepolia'}</Text>
+      <View style={styles.homeHeaderRow}>
+        <Pressable style={styles.homeAccountButton} onPress={() => navigation.navigate('AccountManager')}>
+          <Text style={styles.homeAccountText}>{nickname}</Text>
+          <Icon icon="chevronDown" size={14} color={styles.homeHeaderIcon.color} />
+        </Pressable>
+        <Pressable style={styles.homeSettingsButton} onPress={() => navigation.navigate('WalletSettings')}>
+          <FontAwesome6 name="gear" size={20} color={styles.homeHeaderIcon.color} />
+        </Pressable>
       </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <Pressable style={styles.row} onPress={() => navigation.navigate('AccountManager')}>
-        <Text style={styles.rowTitle}>{nickname}</Text>
-        <Text style={styles.rowSubTitle}>{truncateAddress(address)}</Text>
+      <Pressable style={styles.homeAddressRow} onPress={() => Clipboard.setString(address)} hitSlop={10}>
+        <Text style={styles.homeAddressText}>{truncateAddress(address)}</Text>
+        <FontAwesome6 name="copy" size={14} color={styles.homeAddressIcon.color} />
       </Pressable>
 
-      <Pressable style={styles.row} onPress={() => navigation.navigate('WalletSettings')}>
-        <Text style={styles.rowTitle}>Settings</Text>
-        <Text style={styles.rowSubTitle}>Appearance, currency, network and recovery phrase</Text>
-      </Pressable>
+      <View style={styles.homeHeaderDivider} />
+
+      <View style={styles.homeHeroCard}>
+        <Text style={styles.homeHeroLabel}>Total Balance</Text>
+        <Text style={styles.homeHeroValue}>{formatCurrency(overview.totalFiat, currency)}</Text>
+        <Text style={styles.homeHeroCurrency}>{currency}</Text>
+      </View>
 
       <Text style={styles.sectionTitle}>Tokens</Text>
-      {overview.tokens.map(token => (
-        <Pressable key={token.symbol} style={styles.row} onPress={() => navigation.navigate('TokenDetails', { token: token.symbol })}>
-          <Text style={styles.rowTitle}>{token.symbol}</Text>
-          <Text style={styles.rowSubTitle}>{token.name}</Text>
-          <Text style={styles.rowValue}>
-            {token.balance.toFixed(token.symbol === 'ETH' ? 6 : 2)} {token.symbol}
-          </Text>
-          <Text style={styles.rowSubTitle}>{formatCurrency(token.fiatValue, currency)}</Text>
-        </Pressable>
-      ))}
+
+      <View style={styles.tokenCard}>
+        {overview.tokens.map((token, index) => (
+          <View key={token.symbol}>
+            <Pressable style={styles.tokenRow} onPress={() => navigation.navigate('TokenDetails', { token: token.symbol })}>
+              <View style={styles.tokenRowLeft}>
+                <View style={styles.tokenIconCircle}>
+                  {token.symbol === 'ETH' ? (
+                    <Icon icon="diamond" size={14} color={styles.tokenIconText.color} />
+                  ) : (
+                    <Text style={styles.tokenIconText}>{token.symbol.slice(0, 2)}</Text>
+                  )}
+                </View>
+                <View>
+                  <Text style={styles.tokenMainText}>{token.symbol}</Text>
+                  <Text style={styles.tokenSubText}>{token.name}</Text>
+                </View>
+              </View>
+
+              <View style={styles.tokenRowMeta}>
+                <View style={styles.tokenRowRight}>
+                  <Text style={styles.tokenAmountText}>{token.balance.toFixed(token.symbol === 'ETH' ? 4 : 2)}</Text>
+                  <Text style={styles.tokenFiatText}>{formatCurrency(token.fiatValue, currency)}</Text>
+                </View>
+                <Icon icon="chevronRight" size={16} color={styles.tokenChevron.color} />
+              </View>
+            </Pressable>
+            {index < overview.tokens.length - 1 ? <View style={styles.rowDivider} /> : null}
+          </View>
+        ))}
+      </View>
     </ScrollView>
   );
 }

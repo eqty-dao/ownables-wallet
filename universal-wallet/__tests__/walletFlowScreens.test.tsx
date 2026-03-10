@@ -4,8 +4,14 @@ import WalletHomeScreen from '../src/screens/WalletFlow/WalletHomeScreen';
 import TokenDetailsScreen from '../src/screens/WalletFlow/TokenDetailsScreen';
 
 jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: () => undefined,
+  useFocusEffect: (callback: () => void) => callback(),
 }));
+
+jest.mock('@react-native-clipboard/clipboard', () => ({
+  setString: jest.fn(),
+}));
+
+jest.mock('react-native-vector-icons/FontAwesome6', () => 'FontAwesome6');
 
 jest.mock('../src/context/User.context', () => ({
   Network: {
@@ -56,7 +62,7 @@ jest.mock('../src/services/WalletPortfolio.service', () => ({
 }));
 
 describe('Wallet flow screens', () => {
-  it('renders wallet home token rows', async () => {
+  it('renders wallet home header and ETH/EQTY rows', async () => {
     let tree: renderer.ReactTestRenderer;
 
     await act(async () => {
@@ -71,9 +77,12 @@ describe('Wallet flow screens', () => {
     });
 
     const text = JSON.stringify((tree as renderer.ReactTestRenderer).toJSON());
+    expect(text).toContain('My Wallet');
+    expect(text).toContain('Total Balance');
     expect(text).toContain('ETH');
     expect(text).toContain('EQTY');
-    expect(text).toContain('Settings');
+    expect(text).toContain('Tokens');
+    expect(text).not.toContain('Appearance, currency, network and recovery phrase');
   });
 
   it('renders token details for route token', async () => {

@@ -63,16 +63,20 @@ export default class WalletPortfolioService {
     network: Network;
     currency: WalletCurrency;
   }): Promise<WalletOverview> => {
-    const [nativeBalance, coinInfo, txs] = await Promise.all([
+    const [nativeBalanceResult, coinInfoResult, txsResult] = await Promise.allSettled([
       EvmTransactionService.getNativeBalance(address, network),
       CoinPriceService.getCoinInfo(new AbortController().signal),
       EvmTransactionService.getAddressTransactions({ address, network }),
     ]);
 
-    const ethBalance = Number.parseFloat(nativeBalance.balanceEth || '0');
+    const ethBalance =
+      nativeBalanceResult.status === 'fulfilled'
+        ? Number.parseFloat(nativeBalanceResult.value.balanceEth || '0')
+        : 0;
+    const txs = txsResult.status === 'fulfilled' ? txsResult.value : [];
     const eqtyBalance = Math.max(getEqtyBalanceFromTransfers(txs, address), 0);
 
-    const ethPriceUsd = coinInfo.price || 0;
+    const ethPriceUsd = coinInfoResult.status === 'fulfilled' ? coinInfoResult.value.price || 0 : 0;
     const eqtyPriceUsd = 0;
 
     const tokens: WalletTokenSummary[] = [
