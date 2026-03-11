@@ -2,6 +2,7 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import WalletHomeScreen from '../src/screens/WalletFlow/WalletHomeScreen';
 import TokenDetailsScreen from '../src/screens/WalletFlow/TokenDetailsScreen';
+import WalletSettingsScreen from '../src/screens/WalletFlow/WalletSettingsScreen';
 
 jest.setTimeout(20000);
 
@@ -32,6 +33,7 @@ jest.mock('../src/context/User.context', () => ({
   useUserSettings: () => ({
     network: 'BASE_MAINNET',
     setNetwork: jest.fn(),
+    setAppearance: jest.fn(),
   }),
 }));
 
@@ -55,6 +57,12 @@ jest.mock('../src/services/WalletPreferences.service', () => ({
   __esModule: true,
   default: {
     getPreferences: jest.fn().mockResolvedValue({ appearance: 'system', currency: 'USD' }),
+    updatePreferences: jest.fn().mockImplementation(update =>
+      Promise.resolve({
+        appearance: update.appearance ?? 'system',
+        currency: update.currency ?? 'USD',
+      }),
+    ),
   },
 }));
 
@@ -119,5 +127,35 @@ describe('Wallet flow screens', () => {
     expect(text).toContain('Recent Activity');
     expect(text).toContain('No transactions yet');
     expect(text).not.toContain('Token details and recent activity.');
+  });
+
+  it('renders settings with top header and cards', async () => {
+    let tree: renderer.ReactTestRenderer;
+    const goBack = jest.fn();
+    const navigate = jest.fn();
+
+    await act(async () => {
+      tree = renderer.create(
+        <WalletSettingsScreen
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          navigation={{ navigate, goBack } as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          route={{ key: 'WalletSettings', name: 'WalletSettings' } as any}
+        />,
+      );
+    });
+
+    const text = JSON.stringify((tree as renderer.ReactTestRenderer).toJSON());
+    expect(text).toContain('Settings');
+    expect(text).toContain('Appearance');
+    expect(text).toContain('Light');
+    expect(text).toContain('Dark');
+    expect(text).toContain('System');
+    expect(text).toContain('Currency');
+    expect(text).toContain('Network');
+    expect(text).toContain('Recovery Phrase');
+    expect(text).toContain('Add Token');
+    expect(text).not.toContain('Wallet preferences and account recovery tools.');
+    expect(text).not.toContain('children":["Back"]');
   });
 });

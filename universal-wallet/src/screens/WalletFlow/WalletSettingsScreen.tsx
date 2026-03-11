@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Platform, Pressable, ScrollView, StatusBar, Switch, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WalletStackScreenProps } from '../../../types';
 import { Network, useUserSettings } from '../../context/User.context';
 import WalletPreferencesService, {
@@ -8,6 +9,7 @@ import WalletPreferencesService, {
   WalletCurrency,
   WalletPreferences,
 } from '../../services/WalletPreferences.service';
+import Icon from '../../components/Icon';
 import { useWalletFlowStyles } from './common';
 
 const APPEARANCE_OPTIONS: WalletAppearance[] = ['light', 'dark', 'system'];
@@ -15,6 +17,9 @@ const CURRENCY_OPTIONS: WalletCurrency[] = ['USD', 'EUR', 'GBP', 'JPY'];
 
 export default function WalletSettingsScreen({ navigation }: WalletStackScreenProps<'WalletSettings'>) {
   const styles = useWalletFlowStyles();
+  const insets = useSafeAreaInsets();
+  const statusBarTop = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+  const topInset = Math.max(insets.top, statusBarTop, 8);
   const { network, setNetwork, setAppearance } = useUserSettings();
   const [preferences, setPreferences] = useState<WalletPreferences>({
     appearance: 'system',
@@ -34,9 +39,10 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
 
   const updateAppearance = async (appearance: WalletAppearance) => {
     setAppearance(appearance);
+    const next = await WalletPreferencesService.updatePreferences({ appearance });
     setPreferences(current => ({
       ...current,
-      appearance,
+      appearance: next.appearance,
     }));
   };
 
@@ -45,56 +51,108 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
     setPreferences(next);
   };
 
+  const onToggleNetwork = (enabled: boolean) => {
+    setNetwork(enabled ? Network.MAINNET : Network.TESTNET);
+  };
+
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Settings</Text>
-      <Text style={styles.subtitle}>Wallet preferences and account recovery tools.</Text>
-      {message ? <Text style={styles.helper}>{message}</Text> : null}
+    <View style={styles.screen}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        style={styles.screen}
+        contentContainerStyle={[styles.settingsContent, { paddingTop: topInset }]}
+      >
+        <View style={styles.settingsHeader}>
+          <Pressable accessibilityLabel="Back" style={styles.settingsHeaderBackButton} onPress={() => navigation.goBack()}>
+            <Icon icon="chevronLeft" size={18} color={styles.homeHeaderIcon.color} />
+          </Pressable>
+          <Text style={styles.settingsHeaderTitle}>Settings</Text>
+          <View style={styles.settingsHeaderBackButton} />
+        </View>
 
-      <Text style={styles.sectionTitle}>Appearance</Text>
-      {APPEARANCE_OPTIONS.map(option => (
-        <Pressable
-          key={option}
-          style={[styles.row, preferences.appearance === option ? styles.rowActive : undefined]}
-          onPress={() => updateAppearance(option)}>
-          <Text style={styles.rowTitle}>{option.charAt(0).toUpperCase() + option.slice(1)}</Text>
-          <Text style={styles.rowSubTitle}>
-            {option === 'system' ? 'Follow device preference' : `Always use ${option} mode`}
-          </Text>
-        </Pressable>
-      ))}
+        {message ? <Text style={styles.helper}>{message}</Text> : null}
 
-      <Text style={styles.sectionTitle}>Currency</Text>
-      {CURRENCY_OPTIONS.map(option => (
-        <Pressable
-          key={option}
-          style={[styles.row, preferences.currency === option ? styles.rowActive : undefined]}
-          onPress={() => updateCurrency(option)}>
-          <Text style={styles.rowTitle}>{option}</Text>
-        </Pressable>
-      ))}
+        <View style={styles.settingsCard}>
+          <View style={styles.settingsCardHeader}>
+            <Text style={styles.settingsCardTitle}>Appearance</Text>
+            <Text style={styles.settingsCardSubtitle}>Choose wallet theme</Text>
+          </View>
+          <View style={styles.settingsSegmentedControl}>
+            {APPEARANCE_OPTIONS.map(option => {
+              const isActive = preferences.appearance === option;
+              return (
+                <Pressable
+                  key={option}
+                  style={[styles.settingsSegmentButton, isActive ? styles.settingsSegmentButtonActive : undefined]}
+                  onPress={() => updateAppearance(option)}
+                >
+                  <Text style={[styles.settingsSegmentText, isActive ? styles.settingsSegmentTextActive : undefined]}>
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
-      <Text style={styles.sectionTitle}>Network</Text>
-      <Pressable
-        style={[styles.row, network === Network.MAINNET ? styles.rowActive : undefined]}
-        onPress={() => setNetwork(Network.MAINNET)}>
-        <Text style={styles.rowTitle}>Base Mainnet</Text>
-      </Pressable>
-      <Pressable
-        style={[styles.row, network === Network.TESTNET ? styles.rowActive : undefined]}
-        onPress={() => setNetwork(Network.TESTNET)}>
-        <Text style={styles.rowTitle}>Base Sepolia</Text>
-      </Pressable>
+        <View style={styles.settingsCard}>
+          <View style={styles.settingsCardHeader}>
+            <Text style={styles.settingsCardTitle}>Currency</Text>
+            <Text style={styles.settingsCardSubtitle}>Display currency</Text>
+          </View>
+          <View style={styles.settingsCurrencyGrid}>
+            {CURRENCY_OPTIONS.map(option => {
+              const isActive = preferences.currency === option;
+              return (
+                <Pressable
+                  key={option}
+                  style={[styles.settingsCurrencyButton, isActive ? styles.settingsCurrencyButtonActive : undefined]}
+                  onPress={() => updateCurrency(option)}
+                >
+                  <Text style={[styles.settingsCurrencyText, isActive ? styles.settingsCurrencyTextActive : undefined]}>{option}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
 
-      <Text style={styles.sectionTitle}>Security</Text>
-      <Pressable style={styles.row} onPress={() => navigation.navigate('RecoveryPhrase')}>
-        <Text style={styles.rowTitle}>Recovery Phrase</Text>
-        <Text style={styles.rowSubTitle}>Reveal and verify your secret phrase</Text>
-      </Pressable>
+        <View style={styles.settingsCard}>
+          <View style={styles.settingsToggleRow}>
+            <View>
+              <Text style={styles.settingsRowTitle}>Network</Text>
+              <Text style={styles.settingsRowSubtitle}>{network === Network.MAINNET ? 'Base (Mainnet)' : 'Base (Sepolia)'}</Text>
+            </View>
+            <Switch
+              value={network === Network.MAINNET}
+              onValueChange={onToggleNetwork}
+              trackColor={{ false: '#9ca3af', true: '#615fff' }}
+              thumbColor="#ffffff"
+              ios_backgroundColor="#9ca3af"
+            />
+          </View>
+        </View>
 
-      <Pressable style={styles.actionButtonSecondary} onPress={() => navigation.goBack()}>
-        <Text style={styles.actionText}>Back</Text>
-      </Pressable>
-    </ScrollView>
+        <View style={styles.settingsCard}>
+          <Pressable style={styles.settingsActionRow} onPress={() => navigation.navigate('RecoveryPhrase')}>
+            <View>
+              <Text style={styles.settingsRowTitle}>Recovery Phrase</Text>
+              <Text style={styles.settingsRowSubtitle}>Reveal and verify your secret phrase</Text>
+            </View>
+            <Icon icon="chevronRight" size={18} color={styles.homeAddressIcon.color} />
+          </Pressable>
+          <View style={styles.rowDivider} />
+          <Pressable
+            style={styles.settingsActionRow}
+            onPress={() => setMessage('Add token support will be available soon.')}
+          >
+            <View>
+              <Text style={styles.settingsRowTitle}>Add Token</Text>
+              <Text style={styles.settingsRowSubtitle}>Custom token support (coming soon)</Text>
+            </View>
+            <Icon icon="chevronRight" size={18} color={styles.homeAddressIcon.color} />
+          </Pressable>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
