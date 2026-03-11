@@ -33,7 +33,7 @@ const lightNavTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: '#f3f4f6',
+    background: '#FFFFFF',
     card: '#FFFFFF',
     text: '#141414',
     primary: '#615fff',
@@ -155,9 +155,9 @@ function RootNavigator(): any {
           headerTitleStyle: { color: '#615fff', fontWeight: '400', fontSize: 16 },
           headerTintColor: '#615fff',
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f3f4f6' },
+          headerStyle: { backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#FFFFFF' },
           statusBarStyle: colorScheme === 'dark' ? 'light' : 'dark',
-          statusBarColor: colorScheme === 'dark' ? '#1a1a1a' : '#f3f4f6',
+          statusBarColor: colorScheme === 'dark' ? '#1a1a1a' : '#FFFFFF',
           navigationBarColor: colorScheme === 'dark' ? '#252525' : '#FFFFFF',
           presentation: 'card',
         }}>

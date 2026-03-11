@@ -10,7 +10,8 @@ const ACCOUNT_META_LIST_KEY = '@accountMetaList';
 const ACTIVE_ACCOUNT_KEY = '@activeAccountAddress';
 const USER_ALIAS_KEY = '@userAlias';
 const ACCOUNT_VERSION = 1;
-const DERIVATION_PATH = "m/44'/60'/0'/0/0";
+const DERIVATION_PATH_PREFIX = "m/44'/60'/0'/0";
+const DERIVATION_PATH = `${DERIVATION_PATH_PREFIX}/0`;
 
 export interface EvmAccount {
   address: string;
@@ -31,15 +32,31 @@ interface StoredAccountMeta {
 
 const normalizeMnemonic = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
-const toEvmAccount = (mnemonic: string): EvmAccount => {
-  const account = mnemonicToAccount(mnemonic, { path: DERIVATION_PATH });
+const toDerivationPath = (index: number): string => `${DERIVATION_PATH_PREFIX}/${index}`;
+
+const derivationIndexFromPath = (path: string | undefined): number => {
+  if (!path) {
+    return 0;
+  }
+
+  const match = path.match(/\/(\d+)$/);
+  if (!match) {
+    return 0;
+  }
+
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toEvmAccount = (mnemonic: string, derivationPath: string = DERIVATION_PATH): EvmAccount => {
+  const account = mnemonicToAccount(mnemonic, { path: derivationPath });
 
   return {
     address: normalizeEvmAddress(account.address),
     mnemonic,
     seed: mnemonic,
     publicKey: account.publicKey,
-    derivationPath: DERIVATION_PATH,
+    derivationPath,
   };
 };
 
@@ -102,6 +119,50 @@ export default class AccountLifecycleService {
     return metaList.find(meta => meta.address === address);
   };
 
+  private static getCanonicalStoredMnemonic = async (): Promise<string | undefined> => {
+    const metaList = await this.ensureStoredMetaList();
+    if (metaList.length === 0) {
+      return undefined;
+    }
+
+    const scopedSecret = await SecureStorageService.readAccountSecretForAddress(metaList[0].address);
+    if (scopedSecret?.mnemonic) {
+      return normalizeMnemonic(scopedSecret.mnemonic);
+    }
+
+    const legacySecret = await SecureStorageService.readAccountSecret();
+    if (legacySecret?.mnemonic) {
+      return normalizeMnemonic(legacySecret.mnemonic);
+    }
+
+    return undefined;
+  };
+
+  private static getActiveAccountPassword = async (): Promise<string> => {
+    const activeAddress = await this.getActiveAddress();
+    if (activeAddress) {
+      const scopedSecret = await SecureStorageService.readAccountSecretForAddress(activeAddress);
+      if (scopedSecret?.password) {
+        return scopedSecret.password;
+      }
+    }
+
+    const legacySecret = await SecureStorageService.readAccountSecret();
+    if (legacySecret?.password) {
+      return legacySecret.password;
+    }
+
+    const metaList = await this.ensureStoredMetaList();
+    for (const meta of metaList) {
+      const scopedSecret = await SecureStorageService.readAccountSecretForAddress(meta.address);
+      if (scopedSecret?.password) {
+        return scopedSecret.password;
+      }
+    }
+
+    throw new Error('Account password not found');
+  };
+
   public static isUnlocked = (): boolean => {
     return !!this.account;
   };
@@ -128,6 +189,11 @@ export default class AccountLifecycleService {
       throw new Error('Invalid mnemonic');
     }
 
+    const canonicalMnemonic = await this.getCanonicalStoredMnemonic();
+    if (canonicalMnemonic && canonicalMnemonic !== normalizedMnemonic) {
+      throw new Error('Multiple seeds are not supported');
+    }
+
     this.account = toEvmAccount(normalizedMnemonic);
     return this.account;
   };
@@ -138,6 +204,38 @@ export default class AccountLifecycleService {
 
   public static getStoredAccounts = async (): Promise<StoredAccountMeta[]> => {
     return this.ensureStoredMetaList();
+  };
+
+  public static addDerivedAccount = async (nickname: string): Promise<EvmAccount> => {
+    const trimmedNickname = nickname.trim();
+    if (!trimmedNickname) {
+      throw new Error('Nickname is required');
+    }
+
+    const mnemonic = this.account?.mnemonic || (await this.getCanonicalStoredMnemonic());
+    if (!mnemonic) {
+      throw new Error('Account not found');
+    }
+
+    const currentList = await this.ensureStoredMetaList();
+    const existingAddresses = new Set(currentList.map(meta => normalizeEvmAddress(meta.address)));
+    const maxIndex = currentList.reduce((max, meta) => {
+      const next = derivationIndexFromPath(meta.derivationPath);
+      return next > max ? next : max;
+    }, 0);
+
+    let nextIndex = maxIndex + 1;
+    let nextAccount = toEvmAccount(mnemonic, toDerivationPath(nextIndex));
+    while (existingAddresses.has(normalizeEvmAddress(nextAccount.address))) {
+      nextIndex += 1;
+      nextAccount = toEvmAccount(mnemonic, toDerivationPath(nextIndex));
+    }
+
+    this.account = nextAccount;
+    const password = await this.getActiveAccountPassword();
+    await this.storeAccount(trimmedNickname, password);
+
+    return this.account;
   };
 
   public static renameAccount = async (address: EvmAddress, nickname: string): Promise<void> => {

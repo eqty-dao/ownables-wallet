@@ -31,7 +31,7 @@ jest.mock('bip39', () => ({
 
 jest.mock('viem/accounts', () => ({
   mnemonicToAccount: jest.fn((mnemonic: string, opts: { path: string }) => ({
-    address: `0x${mnemonic.replace(/\s/g, '').slice(0, 40).padEnd(40, '0')}`,
+    address: `0x${opts.path.split('/').pop()}${mnemonic.replace(/\s/g, '').slice(0, 39).padEnd(39, '0')}`,
     publicKey: `pub_${opts.path}`,
   })),
 }));
@@ -165,6 +165,94 @@ describe('AccountLifecycleService', () => {
     const accounts = await AccountLifecycleService.getStoredAccounts();
     expect(accounts).toHaveLength(1);
     expect(accounts[0].nickname).toBe('alice');
+  });
+
+  it('creates derived account using the next derivation index', async () => {
+    storage['@activeAccountAddress'] = '0x0ablebakercable000000000000000000000000000';
+    storage['@accountMetaList'] = [
+      {
+        nickname: 'Account 1',
+        address: '0x0ablebakercable000000000000000000000000000',
+        derivationPath: "m/44'/60'/0'/0/0",
+        accountVersion: 1,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    scopedSecrets['0x0ablebakercable000000000000000000000000000'] = {
+      mnemonic: 'able baker cable',
+      password: 'Pass1234!',
+      accountVersion: 1,
+    };
+
+    (AccountLifecycleService as any).account = {
+      address: '0x0ablebakercable000000000000000000000000000',
+      mnemonic: 'able baker cable',
+      seed: 'able baker cable',
+      derivationPath: "m/44'/60'/0'/0/0",
+    };
+
+    const next = await AccountLifecycleService.addDerivedAccount('Account 2');
+
+    expect(next.derivationPath).toBe("m/44'/60'/0'/0/1");
+    expect(storage['@accountMetaList']).toHaveLength(2);
+    expect(storage['@accountMetaList'][1]).toEqual(
+      expect.objectContaining({
+        nickname: 'Account 2',
+        derivationPath: "m/44'/60'/0'/0/1",
+      }),
+    );
+  });
+
+  it('creates derived account even when runtime account is locked by using stored mnemonic', async () => {
+    storage['@activeAccountAddress'] = '0x0ablebakercable000000000000000000000000000';
+    storage['@accountMetaList'] = [
+      {
+        nickname: 'Account 1',
+        address: '0x0ablebakercable000000000000000000000000000',
+        derivationPath: "m/44'/60'/0'/0/0",
+        accountVersion: 1,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    legacySecret = {
+      mnemonic: 'able baker cable',
+      password: 'Pass1234!',
+      accountVersion: 1,
+    };
+    (AccountLifecycleService as any).account = undefined;
+
+    const next = await AccountLifecycleService.addDerivedAccount('Account 2');
+
+    expect(next.derivationPath).toBe("m/44'/60'/0'/0/1");
+    expect(storage['@accountMetaList']).toHaveLength(2);
+    expect(storage['@accountMetaList'][1]).toEqual(
+      expect.objectContaining({
+        nickname: 'Account 2',
+        derivationPath: "m/44'/60'/0'/0/1",
+      }),
+    );
+  });
+
+  it('rejects importing a different mnemonic when accounts already exist', async () => {
+    storage['@accountMetaList'] = [
+      {
+        nickname: 'alice',
+        address: '0xabc0000000000000000000000000000000000000',
+        derivationPath: "m/44'/60'/0'/0/0",
+        accountVersion: 1,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    scopedSecrets['0xabc0000000000000000000000000000000000000'] = {
+      mnemonic: 'able baker cable',
+      password: 'Pass1234!',
+      accountVersion: 1,
+    };
+    mockedBip39.validateMnemonic.mockReturnValue(true);
+
+    await expect(AccountLifecycleService.importAccountFromMnemonic('zebra tiger moon')).rejects.toThrow(
+      'Multiple seeds are not supported',
+    );
   });
 
   it('renames stored account and updates active metadata', async () => {

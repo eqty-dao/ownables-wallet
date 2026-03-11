@@ -1,22 +1,21 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
+import Icon from '../../components/Icon';
 import { useWalletFlowStyles } from './common';
 
-export default function AddAccountScreen({ navigation }: WalletStackScreenProps<'AddAccount'>) {
+export default function AddAccountScreen({ navigation, route }: WalletStackScreenProps<'AddAccount'>) {
   const styles = useWalletFlowStyles();
-  const [nickname, setNickname] = useState('');
-  const [password, setPassword] = useState('');
-  const [mnemonic, setMnemonic] = useState('');
+  const [nickname, setNickname] = useState(route.params?.suggestedName || '');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const submit = async () => {
     if (isLoading) return;
 
-    if (!nickname.trim() || !password.trim()) {
-      setMessage('Nickname and password are required.');
+    if (!nickname.trim()) {
+      setMessage('Account name is required.');
       return;
     }
 
@@ -24,65 +23,42 @@ export default function AddAccountScreen({ navigation }: WalletStackScreenProps<
       setIsLoading(true);
       setMessage('');
 
-      if (mnemonic.trim()) {
-        await AccountLifecycleService.importAccountFromMnemonic(mnemonic);
-      } else {
-        await AccountLifecycleService.createAccount();
-      }
-
-      await AccountLifecycleService.storeAccount(nickname.trim(), password);
-      const created = await AccountLifecycleService.getAccount();
-      await AccountLifecycleService.switchAccount(created.address as `0x${string}`, password);
-
-      setMessage('Account added successfully.');
+      await AccountLifecycleService.addDerivedAccount(nickname.trim());
       navigation.navigate('WalletHome');
     } catch (_error) {
-      setMessage('Could not add account. Verify the recovery phrase and password.');
+      setMessage('Could not add account. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Add Account</Text>
-      <Text style={styles.subtitle}>Create a new account or import with a recovery phrase.</Text>
+    <View style={styles.screen}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={styles.screen} contentContainerStyle={styles.addAccountContent}>
+        <View style={styles.addAccountHeader}>
+          <Pressable accessibilityLabel="Back" style={styles.addAccountBackButton} onPress={() => navigation.goBack()}>
+            <Icon icon="chevronLeft" size={18} color={styles.homeHeaderIcon.color} />
+          </Pressable>
+          <Text style={styles.addAccountHeaderTitle}>Add Account</Text>
+          <View style={styles.addAccountBackButton} />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        value={nickname}
-        onChangeText={setNickname}
-        placeholder="Account name"
-        placeholderTextColor="#8d94a1"
-      />
+        <Text style={styles.addAccountLabel}>Account Name</Text>
+        <TextInput
+          style={styles.addAccountInput}
+          value={nickname}
+          onChangeText={setNickname}
+          placeholder="Account name"
+          placeholderTextColor="#8d94a1"
+          autoCapitalize="words"
+        />
 
-      <TextInput
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Password"
-        placeholderTextColor="#8d94a1"
-        secureTextEntry
-      />
+        {message ? <Text style={styles.helper}>{message}</Text> : null}
 
-      <TextInput
-        style={[styles.input, { minHeight: 92, textAlignVertical: 'top' }]}
-        value={mnemonic}
-        onChangeText={setMnemonic}
-        placeholder="Optional: paste 12-word recovery phrase to import"
-        placeholderTextColor="#8d94a1"
-        multiline
-      />
-
-      {message ? <Text style={styles.helper}>{message}</Text> : null}
-
-      <Pressable style={styles.actionButton} onPress={submit}>
-        <Text style={styles.actionText}>{isLoading ? 'Please wait...' : 'Save Account'}</Text>
-      </Pressable>
-
-      <Pressable style={styles.actionButtonSecondary} onPress={() => navigation.goBack()}>
-        <Text style={styles.actionText}>Back</Text>
-      </Pressable>
-    </ScrollView>
+        <Pressable style={styles.actionButton} onPress={submit}>
+          <Text style={styles.actionText}>{isLoading ? 'Please wait...' : 'Add Account'}</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }

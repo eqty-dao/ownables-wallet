@@ -3,7 +3,7 @@ import styled from 'styled-components/native';
 
 export const ScreenSafeAreaView = styled.SafeAreaView<{isDark: boolean}>`
   flex: 1;
-  background: ${({isDark}) => (isDark ? '#1a1a1a' : '#f3f4f6')};
+  background: ${({isDark}) => (isDark ? '#1a1a1a' : '#ffffff')};
 `;
 
 export const ScreenView = styled.View<{spaceBetween: boolean; topPadding?: number; gapSize?: number}>`

@@ -3,6 +3,7 @@ import renderer, { act } from 'react-test-renderer';
 import WalletHomeScreen from '../src/screens/WalletFlow/WalletHomeScreen';
 import TokenDetailsScreen from '../src/screens/WalletFlow/TokenDetailsScreen';
 import WalletSettingsScreen from '../src/screens/WalletFlow/WalletSettingsScreen';
+import AddAccountScreen from '../src/screens/WalletFlow/AddAccountScreen';
 
 jest.setTimeout(20000);
 
@@ -50,6 +51,12 @@ jest.mock('../src/services/AccountLifecycle.service', () => ({
         address: '0x1234567890123456789012345678901234567890',
       },
     ]),
+    addDerivedAccount: jest.fn().mockResolvedValue({
+      address: '0x1123456789012345678901234567890123456789',
+      mnemonic: 'able baker cable',
+      seed: 'able baker cable',
+      derivationPath: "m/44'/60'/0'/0/1",
+    }),
   },
 }));
 
@@ -157,5 +164,28 @@ describe('Wallet flow screens', () => {
     expect(text).toContain('Add Token');
     expect(text).not.toContain('Wallet preferences and account recovery tools.');
     expect(text).not.toContain('children":["Back"]');
+  });
+
+  it('renders add account with only account-name controls', async () => {
+    let tree: renderer.ReactTestRenderer;
+    const goBack = jest.fn();
+    const navigate = jest.fn();
+
+    await act(async () => {
+      tree = renderer.create(
+        <AddAccountScreen
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          navigation={{ navigate, goBack } as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          route={{ key: 'AddAccount', name: 'AddAccount', params: { suggestedName: 'Account 2' } } as any}
+        />,
+      );
+    });
+
+    const text = JSON.stringify((tree as renderer.ReactTestRenderer).toJSON());
+    expect(text).toContain('Add Account');
+    expect(text).toContain('Account Name');
+    expect(text).not.toContain('Password');
+    expect(text).not.toContain('recovery phrase');
   });
 });

@@ -21,8 +21,8 @@ export const ScreenContainer = ({
       <KeyboardAvoidingView {...(Platform.OS === 'ios' && {behavior: 'position'})}>
         <ScrollView
           bounces={false}
-          style={{backgroundColor: isDark ? '#1a1a1a' : '#f3f4f6'}}
-          contentContainerStyle={{backgroundColor: isDark ? '#1a1a1a' : '#f3f4f6'}}>
+          style={{backgroundColor: isDark ? '#1a1a1a' : '#ffffff'}}
+          contentContainerStyle={{backgroundColor: isDark ? '#1a1a1a' : '#ffffff'}}>
           <ScreenView spaceBetween={spaceBetween} topPadding={topPadding} gapSize={gapSize}>
             {children}
           </ScreenView>

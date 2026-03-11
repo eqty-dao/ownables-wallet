@@ -43,7 +43,7 @@ const palettes = {
     tokenDetailsSecondaryBorder: '#615fff',
   },
   light: {
-    screen: '#f3f4f6',
+    screen: '#ffffff',
     screenSecondary: '#ffffff',
     title: '#141414',
     subtitle: '#6b7280',
@@ -883,6 +883,45 @@ const buildStyles = (scheme: 'light' | 'dark') => {
       color: p.rowSub,
       fontSize: 13,
       fontWeight: '500',
+    },
+    addAccountContent: {
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 24,
+    },
+    addAccountHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 20,
+    },
+    addAccountBackButton: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addAccountHeaderTitle: {
+      color: p.title,
+      fontSize: 30 / 2,
+      fontWeight: '700',
+      letterSpacing: 0.2,
+    },
+    addAccountLabel: {
+      color: p.rowTitle,
+      fontSize: 14,
+      fontWeight: '700',
+      marginBottom: 8,
+    },
+    addAccountInput: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#615fff',
+      backgroundColor: p.screenSecondary,
+      color: p.inputText,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      marginBottom: 16,
     },
   });
 };
