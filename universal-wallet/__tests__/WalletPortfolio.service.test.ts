@@ -65,3 +65,72 @@ describe('WalletPortfolioService.getWalletOverview', () => {
     expect(overview.totalFiat).toBe(0);
   });
 });
+
+describe('WalletPortfolioService.buildTokenDetailsViewModel', () => {
+  it('builds token details rows and activity labels for incoming and outgoing txs', () => {
+    const model = WalletPortfolioService.buildTokenDetailsViewModel({
+      token: 'ETH',
+      walletAddress: '0x1234567890123456789012345678901234567890',
+      overview: {
+        tokens: [
+          { symbol: 'ETH', name: 'Ethereum', balance: 1.5, price: 2000, fiatValue: 3000 },
+          { symbol: 'EQTY', name: 'EQTY', balance: 0, price: 0, fiatValue: 0 },
+        ],
+        totalFiat: 3000,
+      },
+      transactions: [
+        {
+          hash: '0xabc',
+          timestamp: 1710000000000,
+          from: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          to: '0x1234567890123456789012345678901234567890',
+          amount: 0.75,
+          symbol: 'ETH',
+          pending: false,
+          failed: false,
+        },
+        {
+          hash: '0xdef',
+          timestamp: 1710000100000,
+          from: '0x1234567890123456789012345678901234567890',
+          to: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          amount: 0.3,
+          symbol: 'ETH',
+          pending: false,
+          failed: false,
+        },
+      ],
+    } as any);
+
+    expect(model.name).toBe('Ethereum');
+    expect(model.amountLabel).toBe('1.5000');
+    expect(model.fiatLabel).toBe('$3000.00');
+    expect(model.priceLabel).toBe('$2000.0000');
+    expect(model.contractLabel).toBe('Native asset');
+    expect(model.contractUrl).toBeUndefined();
+    expect(model.activities).toHaveLength(2);
+    expect(model.activities[0].amountLabel).toBe('+ 0.75 ETH');
+    expect(model.activities[0].counterpartyLabel).toBe('From: 0xaaaa...aaaa');
+    expect(model.activities[0].incoming).toBe(true);
+    expect(model.activities[1].amountLabel).toBe('- 0.30 ETH');
+    expect(model.activities[1].counterpartyLabel).toBe('To: 0xbbbb...bbbb');
+    expect(model.activities[1].incoming).toBe(false);
+  });
+
+  it('uses fallback values for EQTY when no overview token is present', () => {
+    const model = WalletPortfolioService.buildTokenDetailsViewModel({
+      token: 'EQTY',
+      walletAddress: '0x1234567890123456789012345678901234567890',
+      overview: { tokens: [], totalFiat: 0 },
+      transactions: [],
+    } as any);
+
+    expect(model.name).toBe('EQTY');
+    expect(model.amountLabel).toBe('0.00');
+    expect(model.fiatLabel).toBe('$0.00');
+    expect(model.priceLabel).toBe('—');
+    expect(model.contractLabel).toBe('Not available');
+    expect(model.contractUrl).toBe('https://basescan.org');
+    expect(model.activities).toHaveLength(0);
+  });
+});

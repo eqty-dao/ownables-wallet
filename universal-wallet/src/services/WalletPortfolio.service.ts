@@ -19,6 +19,25 @@ export interface WalletOverview {
   totalFiat: number;
 }
 
+export interface TokenDetailsActivityItem {
+  hash: string;
+  amountLabel: string;
+  counterpartyLabel: string;
+  dateLabel: string;
+  incoming: boolean;
+}
+
+export interface TokenDetailsViewModel {
+  symbol: SupportedWalletToken;
+  name: string;
+  amountLabel: string;
+  fiatLabel: string;
+  contractLabel: string;
+  contractUrl?: string;
+  priceLabel: string;
+  activities: TokenDetailsActivityItem[];
+}
+
 const FX_USD: Record<WalletCurrency, number> = {
   USD: 1,
   EUR: 0.92,
@@ -29,6 +48,19 @@ const FX_USD: Record<WalletCurrency, number> = {
 const TOKEN_NAMES: Record<SupportedWalletToken, string> = {
   ETH: 'Ethereum',
   EQTY: 'EQTY',
+};
+
+const truncateAddress = (value: string): string => {
+  if (!value) return '';
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+};
+
+const formatDate = (timestamp: number): string => {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(timestamp));
 };
 
 const toCurrency = (usdValue: number, currency: WalletCurrency): number => {
@@ -113,5 +145,44 @@ export default class WalletPortfolioService {
   }): Promise<EvmExplorerTx[]> => {
     const txs = await EvmTransactionService.getAddressTransactions({ address, network });
     return txs.filter(tx => tx.symbol.toUpperCase() === token).sort((a, b) => b.timestamp - a.timestamp);
+  };
+
+  public static buildTokenDetailsViewModel = ({
+    token,
+    overview,
+    transactions,
+    walletAddress,
+  }: {
+    token: SupportedWalletToken;
+    overview: WalletOverview;
+    transactions: EvmExplorerTx[];
+    walletAddress: string;
+  }): TokenDetailsViewModel => {
+    const summary = overview.tokens.find(item => item.symbol === token);
+    const balance = summary?.balance || 0;
+    const fiatValue = summary?.fiatValue || 0;
+    const activityRows = transactions.slice(0, 4).map(tx => {
+      const incoming = tx.to?.toLowerCase() === walletAddress.toLowerCase();
+      const counterparty = incoming ? tx.from : tx.to;
+
+      return {
+        hash: tx.hash,
+        amountLabel: `${incoming ? '+' : '-'} ${tx.amount.toFixed(2)} ${tx.symbol.toUpperCase()}`,
+        counterpartyLabel: `${incoming ? 'From' : 'To'}: ${truncateAddress(counterparty || '')}`,
+        dateLabel: formatDate(tx.timestamp),
+        incoming,
+      };
+    });
+
+    return {
+      symbol: token,
+      name: summary?.name || TOKEN_NAMES[token],
+      amountLabel: balance.toFixed(token === 'ETH' ? 4 : 2),
+      fiatLabel: `$${fiatValue.toFixed(2)}`,
+      contractLabel: token === 'ETH' ? 'Native asset' : 'Not available',
+      contractUrl: token === 'EQTY' ? 'https://basescan.org' : undefined,
+      priceLabel: fiatValue > 0 && balance > 0 ? `$${(fiatValue / balance).toFixed(4)}` : '—',
+      activities: activityRows,
+    };
   };
 }

@@ -3,8 +3,15 @@ import renderer, { act } from 'react-test-renderer';
 import WalletHomeScreen from '../src/screens/WalletFlow/WalletHomeScreen';
 import TokenDetailsScreen from '../src/screens/WalletFlow/TokenDetailsScreen';
 
+jest.setTimeout(20000);
+
 jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: (callback: () => void) => callback(),
+  useFocusEffect: (callback: () => void) => {
+    const ReactNative = require('react');
+    ReactNative.useEffect(() => {
+      callback();
+    }, [callback]);
+  },
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -104,6 +111,13 @@ describe('Wallet flow screens', () => {
     });
 
     const text = JSON.stringify((tree as renderer.ReactTestRenderer).toJSON());
+    expect(text).toContain('ETH');
+    expect(text).toContain('Ethereum');
     expect(text).toContain('Send');
+    expect(text).toContain('Receive');
+    expect(text).toContain('Token Information');
+    expect(text).toContain('Recent Activity');
+    expect(text).toContain('No transactions yet');
+    expect(text).not.toContain('Token details and recent activity.');
   });
 });
