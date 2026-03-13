@@ -6,12 +6,12 @@ import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import { useWalletFlowStyles } from './common';
 
-export default function AddAccountScreen({ navigation, route }: WalletStackScreenProps<'AddAccount'>) {
+export default function RenameAccountScreen({ navigation, route }: WalletStackScreenProps<'RenameAccount'>) {
   const styles = useWalletFlowStyles();
   const insets = useSafeAreaInsets();
   const statusBarTop = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
   const topInset = Platform.OS === 'android' ? Math.max(insets.top, statusBarTop - 10, 0) : insets.top;
-  const [nickname, setNickname] = useState(route.params?.suggestedName || '');
+  const [nickname, setNickname] = useState(route.params.nickname);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -26,11 +26,10 @@ export default function AddAccountScreen({ navigation, route }: WalletStackScree
     try {
       setIsLoading(true);
       setMessage('');
-
-      await AccountLifecycleService.addDerivedAccount(nickname.trim());
+      await AccountLifecycleService.renameAccount(route.params.address, nickname.trim());
       navigation.navigate('WalletHome');
     } catch (_error) {
-      setMessage('Could not add account. Please try again.');
+      setMessage('Could not rename account. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +46,7 @@ export default function AddAccountScreen({ navigation, route }: WalletStackScree
           <Pressable accessibilityLabel="Back" style={styles.addAccountBackButton} onPress={() => navigation.goBack()}>
             <ArrowLeft size={18} color={styles.homeHeaderIcon.color} strokeWidth={2.25} />
           </Pressable>
-          <Text style={styles.addAccountHeaderTitle}>Add Account</Text>
+          <Text style={styles.addAccountHeaderTitle}>Rename Account</Text>
         </View>
 
         <Text style={styles.addAccountLabel}>Account Name</Text>
@@ -58,12 +57,13 @@ export default function AddAccountScreen({ navigation, route }: WalletStackScree
           placeholder="Account name"
           placeholderTextColor="#8d94a1"
           autoCapitalize="words"
+          autoFocus
         />
 
         {message ? <Text style={styles.helper}>{message}</Text> : null}
 
         <Pressable style={styles.formPrimaryButton} onPress={submit}>
-          <Text style={styles.actionText}>{isLoading ? 'Please wait...' : 'Add Account'}</Text>
+          <Text style={styles.actionText}>{isLoading ? 'Please wait...' : 'Save'}</Text>
         </Pressable>
       </ScrollView>
     </View>

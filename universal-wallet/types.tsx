@@ -7,6 +7,8 @@ export type WalletTokenSymbol = 'ETH' | 'EQTY';
 export type WalletStackParamList = {
   WalletHome: undefined;
   AddAccount: { suggestedName?: string } | undefined;
+  RenameAccount: { address: `0x${string}`; nickname: string };
+  AddToken: undefined;
   WalletSettings: undefined;
   RecoveryPhrase: undefined;
   TokenDetails: { token: WalletTokenSymbol };

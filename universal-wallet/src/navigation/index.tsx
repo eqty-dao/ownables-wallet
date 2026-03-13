@@ -1,6 +1,7 @@
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { DarkTheme, DefaultTheme, NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Package, WalletMinimal } from 'lucide-react-native';
 import * as React from 'react';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { AppState, ColorSchemeName, Dimensions } from 'react-native';
@@ -20,7 +21,6 @@ import LinkingConfiguration from './LinkingConfiguration';
 import CreateLeaseScreen from '../screens/CreateLeaseScreen/CreateLeaseScreen';
 import TransactionsScreen from '../screens/TransactionsScreen/TransactionsScreen';
 import LeaseScreen from '../screens/LeaseScreen/LeaseScreen';
-import Icon from '../components/Icon';
 import { FabContext } from '../context/Fab.context';
 import { CurrentState, useAppContext } from '../../providers/AppContext';
 import NewOwnablesTabScreen from '../screens/OwnablesTabScreen/NewOwnablesTabScreen';
@@ -184,7 +184,7 @@ function BottomTabNavigator() {
   const insets = useSafeAreaInsets();
   const { isOpen } = React.useContext(FabContext);
   const tabBarBottomInset = Math.max(insets.bottom, 8);
-  const tabBarHeight = 56 + tabBarBottomInset + 8;
+  const tabBarHeight = 60 + tabBarBottomInset;
 
   const handleTabPress = (e: any) => {
     if (isOpen) {
@@ -204,20 +204,23 @@ function BottomTabNavigator() {
         swipeEnabled: false,
         animationEnabled: false,
         tabBarIndicator: () => <></>,
-        tabBarActiveTintColor: colorScheme === 'dark' ? Colors.dark.white[100] : '#141414',
+        tabBarActiveTintColor: colorScheme === 'dark' ? Colors.dark.white[100] : '#635BFF',
         tabBarInactiveTintColor: colorScheme === 'dark' ? Colors.dark.white[200] : '#707070',
         tabBarStyle: {
           height: tabBarHeight,
-          paddingTop: 8,
+          paddingTop: 6,
           paddingBottom: tabBarBottomInset,
           backgroundColor: colorScheme === 'dark' ? (isOpen ? '#1a1a1a' : '#252525') : '#FFFFFF',
           justifyContent: 'center',
-          borderTopColor: colorScheme === 'dark' ? '#343434' : '#E7E7EF',
+          borderTopColor: colorScheme === 'dark' ? '#343434' : 'rgba(0, 0, 0, 0.1)',
           borderTopWidth: 1,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
+          paddingVertical: 2,
         },
         tabBarContentContainerStyle: {
           backgroundColor: colorScheme === 'dark' ? (isOpen ? '#1a1a1a' : '#252525') : '#FFFFFF',
@@ -230,19 +233,19 @@ function BottomTabNavigator() {
         options={{
           tabBarShowIcon: true,
           tabBarIcon: ({ focused }) => (
-            <Icon
-              icon="wallet"
-              size={26}
+            <WalletMinimal
+              size={24}
               color={
                 colorScheme === 'dark'
                   ? Colors.dark.white[focused ? 100 : 200]
                   : focused
-                    ? '#141414'
+                    ? '#635BFF'
                     : '#707070'
               }
+              strokeWidth={2}
             />
           ),
-          tabBarLabelStyle: { fontSize: 10, textTransform: 'capitalize', fontFamily: 'Urbanist' },
+          tabBarLabelStyle: { fontSize: 12, lineHeight: 16, textTransform: 'capitalize', fontWeight: '600' },
           tabBarIndicatorStyle: { backgroundColor: Colors[colorScheme].tint, top: 0, height: 3 },
         }}
       />
@@ -255,19 +258,19 @@ function BottomTabNavigator() {
           headerTitleStyle: { fontWeight: '800', marginLeft: 20 },
           headerTitleAllowFontScaling: true,
           tabBarIcon: ({ focused }) => (
-            <Icon
-              icon="ownables"
-              size={26}
+            <Package
+              size={24}
               color={
                 colorScheme === 'dark'
                   ? Colors.dark.white[focused ? 100 : 200]
                   : focused
-                    ? '#141414'
+                    ? '#635BFF'
                     : '#707070'
               }
+              strokeWidth={2}
             />
           ),
-          tabBarLabelStyle: { fontSize: 10, textTransform: 'capitalize', fontFamily: 'Urbanist' },
+          tabBarLabelStyle: { fontSize: 12, lineHeight: 16, textTransform: 'capitalize', fontWeight: '600' },
           tabBarIndicatorStyle: { backgroundColor: Colors[colorScheme].tint, top: 0, height: 3 },
         }}
       />

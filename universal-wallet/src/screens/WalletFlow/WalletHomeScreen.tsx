@@ -1,8 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { LayoutChangeEvent, Modal, Platform, Pressable, ScrollView, StatusBar, Text, TextInput, UIManager, View } from 'react-native';
+import { LayoutChangeEvent, Modal, Platform, Pressable, ScrollView, StatusBar, Text, UIManager, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Gem,
+  Plus,
+  Settings,
+  SlidersHorizontal,
+} from 'lucide-react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BlurView } from '@react-native-community/blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +19,6 @@ import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import WalletPortfolioService, { WalletOverview } from '../../services/WalletPortfolio.service';
 import WalletPreferencesService, { WalletCurrency } from '../../services/WalletPreferences.service';
-import Icon from '../../components/Icon';
 import { useUserSettings } from '../../context/User.context';
 import { EvmStoredAccountMeta } from '../../types/evm';
 import useEffectiveColorScheme from '../../hooks/useEffectiveColorScheme';
@@ -38,7 +46,7 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
   const statusBarTop = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
   const hasAndroidBlurView = Platform.OS === 'android' && Boolean(UIManager.getViewManagerConfig?.('AndroidBlurView'));
   const canUseBlur = Platform.OS === 'ios' || hasAndroidBlurView;
-  const topInset = Math.max(insets.top, statusBarTop, 8) + 8;
+  const topInset = Platform.OS === 'android' ? Math.max(insets.top, statusBarTop - 10, 0) : insets.top;
   const { network } = useUserSettings();
   const [heroSize, setHeroSize] = useState({ width: 0, height: 0 });
   const [accounts, setAccounts] = useState<EvmStoredAccountMeta[]>([]);
@@ -48,8 +56,6 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
   const [currency, setCurrency] = useState<WalletCurrency>('USD');
   const [switcherMessage, setSwitcherMessage] = useState('');
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-  const [renameTarget, setRenameTarget] = useState<EvmStoredAccountMeta | null>(null);
-  const [renameValue, setRenameValue] = useState('');
   const [overview, setOverview] = useState<WalletOverview>({
     tokens: [
       { symbol: 'ETH', name: 'Ethereum', balance: 0, price: 0, fiatValue: 0 },
@@ -109,8 +115,6 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
   const closeSwitcher = useCallback(() => {
     setIsSwitcherOpen(false);
     setSwitcherMessage('');
-    setRenameTarget(null);
-    setRenameValue('');
   }, []);
 
   const onSwitchAccount = useCallback(
@@ -131,36 +135,10 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
     [activeAddress, closeSwitcher, load],
   );
 
-  const openRename = useCallback((account: EvmStoredAccountMeta) => {
-    setRenameTarget(account);
-    setRenameValue(account.nickname);
-  }, []);
-
-  const closeRename = useCallback(() => {
-    setRenameTarget(null);
-    setRenameValue('');
-  }, []);
-
-  const onSaveRename = useCallback(async () => {
-    if (!renameTarget || !renameValue.trim()) {
-      setSwitcherMessage('Nickname is required.');
-      return;
-    }
-
-    try {
-      await AccountLifecycleService.renameAccount(renameTarget.address as `0x${string}`, renameValue.trim());
-      await load();
-      closeRename();
-      setSwitcherMessage('');
-    } catch (_error) {
-      setSwitcherMessage('Could not rename account right now.');
-    }
-  }, [closeRename, load, renameTarget, renameValue]);
-
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior="never"
         style={styles.screen}
         contentContainerStyle={[styles.content, { paddingTop: topInset }]}
       >
@@ -172,10 +150,10 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
               setIsSwitcherOpen(true);
             }}>
             <Text style={styles.homeAccountText}>{nickname}</Text>
-            <Icon icon="chevronDown" size={14} color={styles.homeHeaderIcon.color} />
+            <ChevronDown size={14} color={styles.homeHeaderIcon.color} strokeWidth={2} />
           </Pressable>
           <Pressable style={styles.homeSettingsButton} onPress={() => navigation.navigate('WalletSettings')}>
-            <FontAwesome6 name="gear" size={20} color={styles.homeHeaderIcon.color} />
+            <Settings size={20} color={styles.homeHeaderIcon.color} strokeWidth={2} />
           </Pressable>
         </View>
 
@@ -185,7 +163,7 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
         >
           <Text style={styles.homeAddressText}>{truncateAddress(address)}</Text>
-          <FontAwesome6 name="copy" size={14} color={styles.homeAddressIcon.color} />
+          <Copy size={14} color={styles.homeAddressIcon.color} strokeWidth={2} />
         </Pressable>
 
         <View style={styles.homeHeaderDivider} />
@@ -221,7 +199,7 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
                 <View style={styles.tokenRowLeft}>
                   <View style={styles.tokenIconCircle}>
                     {token.symbol === 'ETH' ? (
-                      <Icon icon="diamond" size={14} color={styles.tokenIconText.color} />
+                      <Gem size={14} color={styles.tokenIconText.color} strokeWidth={1.9} />
                     ) : (
                       <Text style={styles.tokenIconText}>{token.symbol.slice(0, 2)}</Text>
                     )}
@@ -237,7 +215,7 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
                     <Text style={styles.tokenAmountText}>{token.balance.toFixed(token.symbol === 'ETH' ? 4 : 2)}</Text>
                     <Text style={styles.tokenFiatText}>{formatCurrency(token.fiatValue, currency)}</Text>
                   </View>
-                  <Icon icon="chevronRight" size={20} color={styles.tokenChevron.color} />
+                  <ChevronRight size={18} color={styles.tokenChevron.color} strokeWidth={2} />
                 </View>
               </Pressable>
               {index < overview.tokens.length - 1 ? <View style={styles.rowDivider} /> : null}
@@ -246,7 +224,7 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
         </View>
       </ScrollView>
 
-      <Modal transparent visible={isSwitcherOpen} animationType="fade" onRequestClose={renameTarget ? closeRename : closeSwitcher}>
+      <Modal transparent visible={isSwitcherOpen} animationType="fade" onRequestClose={closeSwitcher}>
         <View style={styles.switcherOverlay}>
           {canUseBlur ? (
             <BlurView
@@ -266,71 +244,50 @@ export default function WalletHomeScreen({ navigation }: WalletStackScreenProps<
           <Pressable style={styles.switcherBackdropPressable} onPress={closeSwitcher} />
 
           <View style={styles.switcherSheet}>
-            {renameTarget ? (
-              <View style={styles.renameInlinePanel}>
-                <View style={styles.renameHeaderRow}>
-                  <Pressable onPress={closeRename} style={styles.renameCloseButton}>
-                    <FontAwesome6 name="xmark" size={18} color={styles.homeHeaderIcon.color} />
-                  </Pressable>
-                  <Text style={styles.renameTitle}>Rename Account</Text>
-                  <View style={styles.renameCloseButton} />
-                </View>
+            <View style={styles.switcherRows}>
+              {accounts.map((account, index) => {
+                const isActive = account.address.toLowerCase() === activeAddress;
+                return (
+                  <View key={account.address}>
+                    <View style={[styles.switcherRow, index === 0 ? styles.switcherRowFirst : null]}>
+                      <Pressable style={styles.switcherRowMain} onPress={() => onSwitchAccount(account.address)}>
+                        <Text style={styles.switcherRowTitle}>{account.nickname}</Text>
+                        <Text style={styles.switcherRowAddress}>{truncateAddress(account.address)}</Text>
+                      </Pressable>
 
-                <Text style={styles.renameLabel}>Account Name</Text>
-                <TextInput
-                  style={styles.renameInput}
-                  value={renameValue}
-                  onChangeText={setRenameValue}
-                  autoFocus
-                  placeholder="Account name"
-                  placeholderTextColor="#8d94a1"
-                />
-
-                <Pressable style={styles.renameSaveButton} onPress={onSaveRename}>
-                  <Text style={styles.renameSaveButtonText}>Save</Text>
-                </Pressable>
-                {switcherMessage ? <Text style={styles.switcherMessage}>{switcherMessage}</Text> : null}
-              </View>
-            ) : (
-              <>
-                <View style={styles.switcherRows}>
-                  {accounts.map((account, index) => {
-                    const isActive = account.address.toLowerCase() === activeAddress;
-                    return (
-                      <View key={account.address}>
-                        <View style={[styles.switcherRow, index === 0 ? styles.switcherRowFirst : null]}>
-                          <Pressable style={styles.switcherRowMain} onPress={() => onSwitchAccount(account.address)}>
-                            <Text style={styles.switcherRowTitle}>{account.nickname}</Text>
-                            <Text style={styles.switcherRowAddress}>{truncateAddress(account.address)}</Text>
-                          </Pressable>
-
-                          <View style={styles.switcherRowActions}>
-                            {isActive ? <FontAwesome6 name="check" size={16} color="#615fff" /> : null}
-                            <Pressable style={styles.switcherSettingsButton} onPress={() => openRename(account)}>
-                              <FontAwesome6 name="sliders" size={14} color={styles.homeHeaderIcon.color} />
-                            </Pressable>
-                          </View>
-                        </View>
-                        {index < accounts.length - 1 ? <View style={styles.switcherDivider} /> : null}
+                      <View style={styles.switcherRowActions}>
+                        {isActive ? <Check size={16} color="#615fff" strokeWidth={2} /> : null}
+                        <Pressable
+                          style={styles.switcherSettingsButton}
+                          onPress={() => {
+                            closeSwitcher();
+                            navigation.navigate('RenameAccount', {
+                              address: account.address as `0x${string}`,
+                              nickname: account.nickname,
+                            });
+                          }}>
+                          <SlidersHorizontal size={14} color={styles.homeHeaderIcon.color} strokeWidth={2} />
+                        </Pressable>
                       </View>
-                    );
-                  })}
-                </View>
-
-                <Pressable
-                  style={styles.switcherAddRow}
-                  onPress={() => {
-                    closeSwitcher();
-                    navigation.navigate('AddAccount', { suggestedName: `Account ${accounts.length + 1}` });
-                  }}>
-                  <View style={styles.switcherAddIconCircle}>
-                    <FontAwesome6 name="plus" size={14} color="#ffffff" />
+                    </View>
+                    {index < accounts.length - 1 ? <View style={styles.switcherDivider} /> : null}
                   </View>
-                  <Text style={styles.switcherAddText}>Add Account</Text>
-                </Pressable>
-                {switcherMessage ? <Text style={styles.switcherMessage}>{switcherMessage}</Text> : null}
-              </>
-            )}
+                );
+              })}
+            </View>
+
+            <Pressable
+              style={styles.switcherAddRow}
+              onPress={() => {
+                closeSwitcher();
+                navigation.navigate('AddAccount', { suggestedName: `Account ${accounts.length + 1}` });
+              }}>
+              <View style={styles.switcherAddIconCircle}>
+                <Plus size={14} color="#ffffff" strokeWidth={2} />
+              </View>
+              <Text style={styles.switcherAddText}>Add Account</Text>
+            </Pressable>
+            {switcherMessage ? <Text style={styles.switcherMessage}>{switcherMessage}</Text> : null}
           </View>
         </View>
       </Modal>

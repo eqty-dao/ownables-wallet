@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
+import { ArrowLeft } from 'lucide-react-native';
 import { Platform, Pressable, ScrollView, StatusBar, Switch, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { ChevronRight, DollarSign, Eye, Monitor, Moon, Network as NetworkIcon, Plus, Sun } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WalletStackScreenProps } from '../../../types';
 import { Network, useUserSettings } from '../../context/User.context';
@@ -9,17 +11,22 @@ import WalletPreferencesService, {
   WalletCurrency,
   WalletPreferences,
 } from '../../services/WalletPreferences.service';
-import Icon from '../../components/Icon';
 import { useWalletFlowStyles } from './common';
 
 const APPEARANCE_OPTIONS: WalletAppearance[] = ['light', 'dark', 'system'];
 const CURRENCY_OPTIONS: WalletCurrency[] = ['USD', 'EUR', 'GBP', 'JPY'];
+const CURRENCY_LABELS: Record<WalletCurrency, string> = {
+  USD: 'USD ($)',
+  EUR: 'EUR (€)',
+  GBP: 'GBP (£)',
+  JPY: 'JPY (¥)',
+};
 
 export default function WalletSettingsScreen({ navigation }: WalletStackScreenProps<'WalletSettings'>) {
   const styles = useWalletFlowStyles();
   const insets = useSafeAreaInsets();
   const statusBarTop = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
-  const topInset = Math.max(insets.top, statusBarTop, 8);
+  const topInset = Platform.OS === 'android' ? Math.max(insets.top, statusBarTop - 10, 0) : insets.top;
   const { network, setNetwork, setAppearance } = useUserSettings();
   const [preferences, setPreferences] = useState<WalletPreferences>({
     appearance: 'system',
@@ -64,28 +71,34 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
       >
         <View style={styles.settingsHeader}>
           <Pressable accessibilityLabel="Back" style={styles.settingsHeaderBackButton} onPress={() => navigation.goBack()}>
-            <Icon icon="chevronLeft" size={18} color={styles.homeHeaderIcon.color} />
+            <ArrowLeft size={18} color={styles.settingsIconTone.color} strokeWidth={2.25} />
           </Pressable>
           <Text style={styles.settingsHeaderTitle}>Settings</Text>
-          <View style={styles.settingsHeaderBackButton} />
         </View>
 
         {message ? <Text style={styles.helper}>{message}</Text> : null}
 
         <View style={styles.settingsCard}>
           <View style={styles.settingsCardHeader}>
-            <Text style={styles.settingsCardTitle}>Appearance</Text>
-            <Text style={styles.settingsCardSubtitle}>Choose wallet theme</Text>
+            <View style={styles.settingsCardHeaderIcon}>
+              <Sun size={18} color={styles.settingsIconTone.color} strokeWidth={2} />
+            </View>
+            <View>
+              <Text style={styles.settingsCardTitle}>Appearance</Text>
+              <Text style={styles.settingsCardSubtitle}>Choose your theme</Text>
+            </View>
           </View>
           <View style={styles.settingsSegmentedControl}>
             {APPEARANCE_OPTIONS.map(option => {
               const isActive = preferences.appearance === option;
+              const IconComponent = option === 'light' ? Sun : option === 'dark' ? Moon : Monitor;
               return (
                 <Pressable
                   key={option}
                   style={[styles.settingsSegmentButton, isActive ? styles.settingsSegmentButtonActive : undefined]}
                   onPress={() => updateAppearance(option)}
                 >
+                  <IconComponent size={18} color={isActive ? '#635BFF' : styles.settingsIconTone.color} strokeWidth={2} />
                   <Text style={[styles.settingsSegmentText, isActive ? styles.settingsSegmentTextActive : undefined]}>
                     {option.charAt(0).toUpperCase() + option.slice(1)}
                   </Text>
@@ -97,8 +110,13 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
 
         <View style={styles.settingsCard}>
           <View style={styles.settingsCardHeader}>
-            <Text style={styles.settingsCardTitle}>Currency</Text>
-            <Text style={styles.settingsCardSubtitle}>Display currency</Text>
+            <View style={styles.settingsCardHeaderIcon}>
+              <DollarSign size={18} color={styles.settingsIconTone.color} strokeWidth={2} />
+            </View>
+            <View>
+              <Text style={styles.settingsCardTitle}>Currency</Text>
+              <Text style={styles.settingsCardSubtitle}>Choose display currency</Text>
+            </View>
           </View>
           <View style={styles.settingsCurrencyGrid}>
             {CURRENCY_OPTIONS.map(option => {
@@ -109,7 +127,9 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
                   style={[styles.settingsCurrencyButton, isActive ? styles.settingsCurrencyButtonActive : undefined]}
                   onPress={() => updateCurrency(option)}
                 >
-                  <Text style={[styles.settingsCurrencyText, isActive ? styles.settingsCurrencyTextActive : undefined]}>{option}</Text>
+                  <Text style={[styles.settingsCurrencyText, isActive ? styles.settingsCurrencyTextActive : undefined]}>
+                    {CURRENCY_LABELS[option]}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -118,9 +138,14 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
 
         <View style={styles.settingsCard}>
           <View style={styles.settingsToggleRow}>
-            <View>
-              <Text style={styles.settingsRowTitle}>Network</Text>
-              <Text style={styles.settingsRowSubtitle}>{network === Network.MAINNET ? 'Base (Mainnet)' : 'Base (Sepolia)'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <View style={styles.settingsRowIcon}>
+                <NetworkIcon size={16} color={styles.settingsIconTone.color} strokeWidth={2} />
+              </View>
+              <View>
+                <Text style={styles.settingsRowTitle}>Network</Text>
+                <Text style={styles.settingsRowSubtitle}>{network === Network.MAINNET ? 'Base (Mainnet)' : 'Base (Sepolia)'}</Text>
+              </View>
             </View>
             <Switch
               value={network === Network.MAINNET}
@@ -134,22 +159,34 @@ export default function WalletSettingsScreen({ navigation }: WalletStackScreenPr
 
         <View style={styles.settingsCard}>
           <Pressable style={styles.settingsActionRow} onPress={() => navigation.navigate('RecoveryPhrase')}>
-            <View>
-              <Text style={styles.settingsRowTitle}>Recovery Phrase</Text>
-              <Text style={styles.settingsRowSubtitle}>Reveal and verify your secret phrase</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <View style={styles.settingsRowIcon}>
+                <Eye size={16} color={styles.settingsIconTone.color} strokeWidth={2} />
+              </View>
+              <View>
+                <Text style={styles.settingsRowTitle}>Recovery Phrase</Text>
+                <Text style={styles.settingsRowSubtitle}>View your secret recovery phrase</Text>
+              </View>
             </View>
-            <Icon icon="chevronRight" size={18} color={styles.homeAddressIcon.color} />
+            <ChevronRight size={18} color={styles.settingsChevronTone.color} strokeWidth={2} />
           </Pressable>
-          <View style={styles.rowDivider} />
+        </View>
+
+        <View style={styles.settingsCard}>
           <Pressable
             style={styles.settingsActionRow}
-            onPress={() => setMessage('Add token support will be available soon.')}
+            onPress={() => navigation.navigate('AddToken')}
           >
-            <View>
-              <Text style={styles.settingsRowTitle}>Add Token</Text>
-              <Text style={styles.settingsRowSubtitle}>Custom token support (coming soon)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <View style={styles.settingsRowIcon}>
+                <Plus size={16} color={styles.settingsIconTone.color} strokeWidth={2} />
+              </View>
+              <View>
+                <Text style={styles.settingsRowTitle}>Add Token</Text>
+                <Text style={styles.settingsRowSubtitle}>Import custom ERC20 token</Text>
+              </View>
             </View>
-            <Icon icon="chevronRight" size={18} color={styles.homeAddressIcon.color} />
+            <ChevronRight size={18} color={styles.settingsChevronTone.color} strokeWidth={2} />
           </Pressable>
         </View>
       </ScrollView>

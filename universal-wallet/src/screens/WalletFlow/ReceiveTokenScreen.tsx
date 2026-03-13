@@ -25,7 +25,7 @@ export default function ReceiveTokenScreen({ navigation, route }: WalletStackScr
       </Pressable>
 
       <Pressable style={styles.actionButtonSecondary} onPress={() => navigation.goBack()}>
-        <Text style={styles.actionText}>Back</Text>
+        <Text style={styles.actionTextSecondary}>Back</Text>
       </Pressable>
     </ScrollView>
   );

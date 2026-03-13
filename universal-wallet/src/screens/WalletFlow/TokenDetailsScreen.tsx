@@ -1,12 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StatusBar, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, ExternalLink, Gem } from 'lucide-react-native';
 import { WalletStackScreenProps } from '../../../types';
 import AccountLifecycleService from '../../services/AccountLifecycle.service';
 import WalletPortfolioService, { TokenDetailsViewModel } from '../../services/WalletPortfolio.service';
 import { useUserSettings } from '../../context/User.context';
-import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
-import Icon from '../../components/Icon';
 import { useWalletFlowStyles } from './common';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,7 +13,7 @@ export default function TokenDetailsScreen({ navigation, route }: WalletStackScr
   const styles = useWalletFlowStyles();
   const insets = useSafeAreaInsets();
   const statusBarTop = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
-  const topInset = Math.max(insets.top, statusBarTop, 8);
+  const topInset = Platform.OS === 'android' ? Math.max(insets.top, statusBarTop - 10, 0) : insets.top;
   const { network } = useUserSettings();
   const token = route.params.token;
   const [viewModel, setViewModel] = useState<TokenDetailsViewModel>({
@@ -81,16 +80,15 @@ export default function TokenDetailsScreen({ navigation, route }: WalletStackScr
       >
         <View style={styles.tokenDetailsHeader}>
           <Pressable accessibilityLabel="Back" style={styles.tokenDetailsBackButton} onPress={() => navigation.goBack()}>
-            <Icon icon="chevronLeft" size={18} color={styles.homeHeaderIcon.color} />
+            <ArrowLeft size={18} color={styles.homeHeaderIcon.color} strokeWidth={2.25} />
           </Pressable>
           <Text style={styles.tokenDetailsHeaderTitle}>{token}</Text>
-          <View style={styles.tokenDetailsBackButton} />
         </View>
 
         <View style={styles.tokenDetailsHero}>
           <View style={styles.tokenDetailsBadge}>
             {token === 'ETH' ? (
-              <Icon icon="diamond" size={16} color={styles.tokenIconText.color} />
+              <Gem size={16} color={styles.tokenIconText.color} strokeWidth={1.9} />
             ) : (
               <Text style={styles.tokenDetailsBadgeText}>EQ</Text>
             )}
@@ -102,7 +100,7 @@ export default function TokenDetailsScreen({ navigation, route }: WalletStackScr
 
         <View style={styles.tokenDetailsActionsRow}>
           <Pressable accessibilityLabel="Send" style={styles.tokenDetailsPrimaryAction} onPress={() => navigation.navigate('SendToken', { token })}>
-            <FontAwesome6 name="paper-plane" size={18} color="#ffffff" />
+            <ArrowUpRight size={20} color="#ffffff" strokeWidth={2.1} />
             <Text style={styles.tokenDetailsPrimaryActionText}>Send</Text>
           </Pressable>
           <Pressable
@@ -110,7 +108,7 @@ export default function TokenDetailsScreen({ navigation, route }: WalletStackScr
             style={styles.tokenDetailsSecondaryAction}
             onPress={() => navigation.navigate('ReceiveToken', { token })}
           >
-            <FontAwesome6 name="arrow-down" size={18} color="#615fff" />
+            <ArrowDownLeft size={20} color="#615fff" strokeWidth={2.1} />
             <Text style={styles.tokenDetailsSecondaryActionText}>Receive</Text>
           </Pressable>
         </View>
@@ -123,12 +121,12 @@ export default function TokenDetailsScreen({ navigation, route }: WalletStackScr
               {!viewModel.contractUrl ? (
                 <Text style={styles.tokenDetailsInfoValue}>{viewModel.contractLabel}</Text>
               ) : (
-                <Pressable onPress={() => Linking.openURL(viewModel.contractUrl!)}>
+                <Pressable onPress={() => Linking.openURL(viewModel.contractUrl!)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={styles.tokenDetailsInfoValueLink}>{viewModel.contractLabel}</Text>
+                  <ExternalLink size={12} color="#635BFF" strokeWidth={2} />
                 </Pressable>
               )}
             </View>
-            <View style={styles.rowDivider} />
             <View style={styles.tokenDetailsInfoRow}>
               <Text style={styles.tokenDetailsInfoLabel}>Price</Text>
               <Text style={styles.tokenDetailsInfoValue}>{viewModel.priceLabel}</Text>

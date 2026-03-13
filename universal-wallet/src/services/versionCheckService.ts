@@ -23,8 +23,7 @@ export const checkAppVersion = async (currentVersion: string): Promise<{
     }
     const needsUpdate = !isVersionGreaterOrEqual(currentVersion, data.minVersion);
     return { needsUpdate, minVersion: data.minVersion };
-  } catch (error) {
-    console.error('Error checking version:', error);
+  } catch (_error) {
     return { needsUpdate: false, minVersion: '0.0.0' };
   }
 };
