@@ -12,10 +12,10 @@ export CI="false"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 
-chmod +x "$REPO_ROOT/universal-wallet/ios/ci_scripts/ci_post_clone.sh"
+chmod +x "$REPO_ROOT/wallet/ios/ci_scripts/ci_post_clone.sh"
 
 # Set base directory relative to the script for easier navigation
-BASE_DIR="$REPO_ROOT/universal-wallet"
+BASE_DIR="$REPO_ROOT/wallet"
 OWNABLES_DIR="$REPO_ROOT/ownables_sdk"
 DESTINATION_ENV_FILE="$BASE_DIR/.env"
 SOURCE_ENV_FILE="$BASE_DIR/.env.stg"

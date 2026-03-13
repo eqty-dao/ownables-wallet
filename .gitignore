@@ -1,14 +1,14 @@
-/universal-wallet/node_modules/
-/universal-wallet/.expo/
-/universal-wallet/dist/
-/universal-wallet/npm-debug.*
+/wallet/node_modules/
+/wallet/.expo/
+/wallet/dist/
+/wallet/npm-debug.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 *.orig.*
-/universal-wallet/web-build/
+/wallet/web-build/
 
 # macOS
 .DS_Store
@@ -23,7 +23,7 @@
 
 # Xcode
 #
-/universal-wallet/build/
+/wallet/build/
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -43,22 +43,22 @@ project.xcworkspace
 
 # Android/IntelliJ
 #
-/universal-wallet/build/
+/wallet/build/
 .idea
 .gradle
 local.properties
 *.iml
 *.hprof
-/universal-wallet/.cxx/
+/wallet/.cxx/
 
 # node.js
 #
-/universal-wallet/node_modules/
-/universal-wallet/npm-debug.log
-/universal-wallet/yarn-error.log
+/wallet/node_modules/
+/wallet/npm-debug.log
+/wallet/yarn-error.log
 
 # BUCK
-/universal-wallet/buck-out/
+/wallet/buck-out/
 \.buckd/
 !debug.keystore
 
@@ -66,14 +66,14 @@ local.properties
 *.jsbundle
 
 # CocoaPods
-/universal-wallet/ios/Pods/
+/wallet/ios/Pods/
 
 # Expo
-/universal-wallet/.expo/
-/universal-wallet/web-build/
-/universal-wallet/dist/
+/wallet/.expo/
+/wallet/web-build/
+/wallet/dist/
 
-/universal-wallet/.vscode
+/wallet/.vscode
 
 # ----------------------------
 
@@ -121,12 +121,12 @@ local.properties
 
 # ----------------------------
 # @end expo-cli
-universal-wallet/www/
-universal-wallet/plugins/web-server/node_modules/
+wallet/www/
+wallet/plugins/web-server/node_modules/
 
-universal-wallet/.env.deploy
-universal-wallet/android/key.properties
-universal-wallet/android/app/src/main/assets/www/
+wallet/.env.deploy
+wallet/android/key.properties
+wallet/android/app/src/main/assets/www/
 .vscode/
 ownables_sdk/.vscode/
 

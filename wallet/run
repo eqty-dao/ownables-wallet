@@ -1019,7 +1019,7 @@ check_file_watchers() {
 
 start_metro_reset_cache() {
   METRO_PORT=8081
-  METRO_LOG=/tmp/universal-wallet-metro.log
+  METRO_LOG=/tmp/wallet-metro.log
 
   if command -v lsof >/dev/null 2>&1; then
     EXISTING_METRO_PIDS=$(lsof -ti tcp:$METRO_PORT 2>/dev/null)
@@ -1056,11 +1056,11 @@ app_prebuild() {
   echo "Prebuild tasks"
   if [ ! -f "../ownables_sdk/package.json" ]; then
     echo "Initializing ownables_sdk submodule"
-    cd .. && git submodule update --init ownables_sdk && cd universal-wallet
+    cd .. && git submodule update --init ownables_sdk && cd wallet
   fi
   # generate ownables sdk
   cd ../ownables_sdk && npm run build 
-  cd ../universal-wallet
+  cd ../wallet
   echo "if _html folder is not present, create it"
   if [ ! -d "_html" ]; then mkdir _html ; fi
   echo "Removing old ownables from build"
@@ -1090,7 +1090,7 @@ app_build_common() {
   ./run build $1
   EXIT_CODE=$?
   if [ "$EXIT_CODE" = "0" ]; then ./run link-build ; fi
-  cd ../universal-wallet;
+  cd ../wallet;
   exit $EXIT_CODE
 }
 

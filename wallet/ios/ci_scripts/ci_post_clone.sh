@@ -9,17 +9,17 @@ set -x
 echo "🧩 Stage: Post-clone is activated .... "
 export CI="false"
 
-chmod +x /Volumes/workspace/repository/universal-wallet/ios/ci_scripts/ci_post_clone.sh
+chmod +x /Volumes/workspace/repository/wallet/ios/ci_scripts/ci_post_clone.sh
 
 # Set base directory relative to the script for easier navigation
-BASE_DIR="/Volumes/workspace/repository/universal-wallet/"
+BASE_DIR="/Volumes/workspace/repository/wallet/"
 OWNABLES_DIR="/Volumes/workspace/repository/ownables_sdk/"
-DESTINATION_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env"
-SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.stg"
+DESTINATION_ENV_FILE="/Volumes/workspace/repository/wallet/.env"
+SOURCE_ENV_FILE="/Volumes/workspace/repository/wallet/.env.stg"
 
 #copy the appropriate environment file to the root directory based on the branch
 if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then
-    SOURCE_ENV_FILE="/Volumes/workspace/repository/universal-wallet/.env.prod"
+    SOURCE_ENV_FILE="/Volumes/workspace/repository/wallet/.env.prod"
 fi
 
 cp $SOURCE_ENV_FILE $DESTINATION_ENV_FILE && echo "🔧 $SOURCE_ENV_FILE file is copied to $DESTINATION_ENV_FILE"

@@ -20,10 +20,10 @@ This is the official repository for the LTO Universal Wallet. The wallet is a mo
 2. If already cloned, initialize the SDK submodule: `git submodule update --init ownables_sdk`
 3. `cd ownables_sdk && yarn && yarn build && cd ..`
 
-This will build the ownable SDK and copy the build files to the `universal-wallet` project.
-### Universal Wallet
+This will build the ownable SDK and copy the build files to the `wallet` project.
+### Wallet
 1. Clone the repository.
-2. `cd universal-wallet && yarn && cd ios && pod install && cd ..`
+2. `cd wallet && yarn && cd ios && pod install && cd ..`
 3. `./run patch`
 4. `./run prebuild`
 5. `./run android` or `./run ios`
@@ -35,12 +35,12 @@ This will build the ownable SDK and copy the build files to the `universal-walle
 ## Build
 Make changes to the ownable SDK and build it using the following command:
 ### Android
-- Build apk: `cd universal-wallet/android ./run prebuild && ./run build apk`
-- Build bundle: `cd universal-wallet/android ./run prebuild && ./run build bundle`
+- Build apk: `cd wallet/android ./run prebuild && ./run build apk`
+- Build bundle: `cd wallet/android ./run prebuild && ./run build bundle`
 ### iOS
-- Build ipa: `cd universal-wallet/ios ./run prebuild && ./run build ipa`
-- Build bundle: `cd universal-wallet/ios ./run prebuild && ./run build bundle`
-- JS bundle: `cd universal-wallet && ./run prebuild && cd ios && pod install && cd .. && npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios`
+- Build ipa: `cd wallet/ios ./run prebuild && ./run build ipa`
+- Build bundle: `cd wallet/ios ./run prebuild && ./run build bundle`
+- JS bundle: `cd wallet && ./run prebuild && cd ios && pod install && cd .. && npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ios/main.jsbundle --assets-dest ios`
 
 Build the ownable SDK:
 - `cd ownables_sdk && yarn && yarn build && cd ..`
