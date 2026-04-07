@@ -6,7 +6,6 @@ import { MainScreenContainer } from '../../components/MainScreenContainer';
 import OverviewHeader from '../../components/OverviewHeader';
 import { StyledImage } from '../../components/styles/OverviewHeader.styles';
 import { logoTitle } from '../../utils/images';
-import { useNavigation } from '@react-navigation/native';
 import { Icon as RneIcons } from 'react-native-elements'
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import RNFS from 'react-native-fs';
@@ -75,7 +74,6 @@ const NewOwnablesTabScreen = () => {
     const [webViewError, setWebViewError] = useState<boolean>(false);
     const [webviewUrl, setWebviewUrl] = useState<string>('');
     const webViewRef = React.useRef<WebView>(null);
-    const navigation = useNavigation();
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [sdkError, setSdkError] = useState<boolean>(false);
     const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
@@ -388,9 +386,6 @@ const NewOwnablesTabScreen = () => {
             )}
             <MainScreenContainer disableScroll={true}>
                 <OverviewHeader
-                    icon="menu"
-                    onPress={() => navigation.navigate('Menu' as never)}
-                    hideQR={true}
                     input={<StyledImage testID="logo-title" source={logoTitle} />}
                 />
                 <View style={{ flex: 1, backgroundColor: '#0D0D0D' }}>

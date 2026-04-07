@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
+import { TouchableOpacity } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import {StyledSubLabel, StyledInput, StyledLabel, InputContainer, FieldContainer} from './styles/InputField.styles';
-import {TouchableIcon} from './TouchableIcon';
 import useEffectiveColorScheme from '../hooks/useEffectiveColorScheme';
 
 export const InputField = ({
@@ -48,12 +49,13 @@ export const InputField = ({
           autoCapitalize={autoCapitalize}
         />
         {secureTextEntry && (
-          <TouchableIcon
-            icon={passwordVisible ? 'eye' : 'eyeCross'}
-            color={isDark ? '#FCFCF7' : '#212227'}
-            size={24}
-            onPress={() => setPasswordVisible(!passwordVisible)}
-          />
+          <TouchableOpacity onPress={() => setPasswordVisible(!passwordVisible)}>
+            {passwordVisible ? (
+              <Eye color={isDark ? '#FCFCF7' : '#212227'} size={22} strokeWidth={2.25} />
+            ) : (
+              <EyeOff color={isDark ? '#FCFCF7' : '#212227'} size={22} strokeWidth={2.25} />
+            )}
+          </TouchableOpacity>
         )}
       </InputContainer>
       {subLabel && <StyledSubLabel isDark={isDark}>{subLabel}</StyledSubLabel>}

@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { Alert, Modal, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { X } from 'lucide-react-native';
 import {
   CloseIconContainer,
   FlexContainer,
@@ -11,7 +12,6 @@ import {
   TopSpace,
 } from './styles/BottomModal.styles';
 import { StyledButton } from './StyledButton';
-import Icon from './Icon';
 import { Text } from 'react-native';
 import { InAppBrowser } from 'react-native-inappbrowser-reborn';
 import PressToCopy from './PressToCopy';
@@ -58,7 +58,7 @@ export const BottomModal = ({
         <ModalContainer>
           <ModalSubContainer>
             <CloseIconContainer onPress={onCancel}>
-              <Icon icon="xmark" color="#909092" size={20} />
+              <X color="#909092" size={20} strokeWidth={2.25} />
             </CloseIconContainer>
             <ModalTitle type={type}>{title}</ModalTitle>
             {body.map(({ text, heading }: { text: string; heading?: boolean }, index: number) =>

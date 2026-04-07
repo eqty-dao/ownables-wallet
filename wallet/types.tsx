@@ -33,12 +33,6 @@ export type RootStackParamList = {
     onScan?: (value: string) => void;
     address?: string;
   };
-  Menu: undefined;
-  Profile: undefined;
-  CreateTransfer: undefined;
-  CreateLease: { address: string } | undefined;
-  Lease: { address: string };
-  Transactions: undefined;
   LockedScreen: undefined;
   Airdrop: undefined;
 };
@@ -50,7 +44,6 @@ export type RootStackScreenProps<Screen extends keyof RootStackParamList> = Nati
 
 export type RootTabParamList = {
   Wallet: NavigatorScreenParams<WalletStackParamList> | undefined;
-  Credentials: undefined;
   Ownables: undefined;
 };
 

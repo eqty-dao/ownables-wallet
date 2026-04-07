@@ -1,10 +1,10 @@
 import React from 'react';
+import { Check } from 'lucide-react-native';
 import {CheckBoxContainer, CheckBoxLabel, CheckBoxLabelContainer, CheckContainer} from './styles/CheckBoxCard.styles';
-import Icon from './Icon';
 
 const CheckBox = ({value, onPress}: {value: boolean; onPress: () => void}) => (
   <CheckContainer value={value} onPress={onPress}>
-    {value && <Icon icon="check" color="#FFFFFF" />}
+    {value && <Check color="#FFFFFF" size={16} strokeWidth={2.5} />}
   </CheckContainer>
 );
 

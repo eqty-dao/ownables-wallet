@@ -20,19 +20,9 @@ const linking: LinkingOptions<RootStackParamList> = {
               ReceiveToken: 'one/token/:token/receive',
             },
           },
-          Credentials: {
-            screens: {
-              CredentialsTabScreen: 'two',
-            },
-          },
-          Ownables: {
-            screens: {
-              OwnablesTabScreen: 'three',
-            },
-          },
+          Ownables: 'three',
         },
       },
-      Menu: 'modal',
       NotFound: '*',
     },
   },

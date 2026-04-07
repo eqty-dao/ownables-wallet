@@ -8,6 +8,7 @@ buildscript {
         kotlinVersion = "1.8.22"
         frescoVersion = '2.5.0'
         androidXBrowser = "1.5.0"
+        androidXAnnotation = "1.8.2"
     }
     repositories {
         google()
@@ -46,6 +47,8 @@ allprojects {
     configurations.all {
         resolutionStrategy {
             force "androidx.browser:browser:1.5.0"
+            force "androidx.annotation:annotation:$androidXAnnotation"
+            force "androidx.annotation:annotation-jvm:$androidXAnnotation"
             force "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
             force "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlinVersion"
             force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"

@@ -63,7 +63,6 @@
 	<string>LTO Wallet needs access to your location to provide location-based services and features</string>
 	<key>UIAppFonts</key>
 	<array>
-		<string>LTOIcons.ttf</string>
 		<string>Inter.ttf</string>
 		<string>Urbanist.ttf</string>
 		<string>Satoshi.ttf</string>
