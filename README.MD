@@ -1,9 +1,9 @@
-# LTO Universal Wallet
-This is the official repository for the LTO Universal Wallet. The wallet is a mobile application that allows users to manage their LTO coins and tokens. The wallet is built using React Native and is available for both Android and iOS devices.
+# Ownables Wallet
+This is the official repository for the Ownables Wallet. The wallet is a mobile application that allows users to manage their Ownables. The wallet is built using React Native and is available for both Android and iOS devices.
 
 ## TL;DR
 - The wallet is built using React Native and the ownable SDK.
-- Ownable_SDK is a library that provides a set of functions to interact with the LTO Network blockchain.
+- Ownable_SDK is a library that provides a set of functions to interact with the Base blockchain.
 - The ownable SDK served from the users device using react-native-rl-web-server.
 
 
